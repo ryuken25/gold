@@ -1,0 +1,42 @@
+<aside class="admin-sidebar" id="adminSidebar">
+    <div class="p-4 border-bottom border-dark-subtle">
+        <a href="<?= base_url('/admin/dashboard'); ?>"
+            class="d-flex align-items-center gap-3 text-decoration-none text-white">
+            <span class="brand-mark">
+                <?= esc($pengaturan['logo_text'] ?? 'MG'); ?>
+            </span>
+            <div>
+                <div class="fw-bold">
+                    <?= esc($pengaturan['nama_toko'] ?? 'MahenGold'); ?>
+                </div>
+                <small class="text-gold-soft">Admin Console</small>
+            </div>
+        </a>
+    </div>
+    <div class="p-3">
+        <?php
+        $menu = [
+            ['icon' => 'bi-grid', 'label' => 'Dashboard', 'url' => '/admin/dashboard', 'segment' => 'admin/dashboard'],
+            ['icon' => 'bi-gem', 'label' => 'Produk', 'url' => '/admin/produk', 'segment' => 'admin/produk'],
+            ['icon' => 'bi-people', 'label' => 'Nasabah', 'url' => '/admin/nasabah', 'segment' => 'admin/nasabah'],
+            ['icon' => 'bi-receipt', 'label' => 'Kredit', 'url' => '/admin/kredit', 'segment' => 'admin/kredit'],
+            ['icon' => 'bi-cash-coin', 'label' => 'Pembayaran', 'url' => '/admin/pembayaran', 'segment' => 'admin/pembayaran'],
+            ['icon' => 'bi-wallet2', 'label' => 'Piutang', 'url' => '/admin/piutang', 'segment' => 'admin/piutang'],
+            ['icon' => 'bi-file-earmark-text', 'label' => 'Laporan', 'url' => '/admin/laporan/kredit', 'segment' => 'admin/laporan'],
+            ['icon' => 'bi-whatsapp', 'label' => 'WhatsApp Logs', 'url' => '/admin/whatsapp-logs', 'segment' => 'admin/whatsapp-logs'],
+            ['icon' => 'bi-gear', 'label' => 'Pengaturan', 'url' => '/admin/pengaturan', 'segment' => 'admin/pengaturan'],
+        ];
+        ?>
+        <nav class="nav flex-column gap-1">
+            <?php foreach ($menu as $item): ?>
+                <a class="admin-nav-link <?= is_active_menu($item['segment']) ? 'active' : ''; ?>"
+                    href="<?= base_url($item['url']); ?>">
+                    <i class="bi <?= esc($item['icon']); ?>"></i>
+                    <span>
+                        <?= esc($item['label']); ?>
+                    </span>
+                </a>
+            <?php endforeach; ?>
+        </nav>
+    </div>
+</aside>
