@@ -42,8 +42,11 @@ diagram/
 contoh/
 screenshots/
 ci4tmp/
+/builds
+tools/
 *.docx
 *.pdf
+Proposal_*
 
 #-------------------------
 # Temporary Files (CodeIgniter 4)
@@ -59,6 +62,9 @@ ci4tmp/
 
 /writable/uploads/*
 !/writable/uploads/index.html
+!/writable/uploads/ktp/
+/writable/uploads/ktp/*
+!/writable/uploads/ktp/index.html
 
 /writable/debugbar/*
 !/writable/debugbar/index.html

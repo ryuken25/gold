@@ -24,8 +24,26 @@
 
         <div class="public-nav-actions">
             <a class="btn btn-gold px-4" href="<?= base_url('/katalog'); ?>">Lihat Produk</a>
-            <a class="btn btn-whatsapp px-4" href="https://wa.me/<?= esc($waNumber); ?>" target="_blank"
-                rel="noopener">WhatsApp</a>
+            <?php if (is_pelanggan_logged_in()): ?>
+                <div class="dropdown">
+                    <button class="btn btn-outline-gold px-3 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <?= esc(current_pelanggan()['nama']); ?>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="<?= base_url('/akun'); ?>">Akun Saya</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form action="<?= base_url('/logout'); ?>" method="post" class="d-inline">
+                                <?= csrf_field(); ?>
+                                <button type="submit" class="dropdown-item text-danger">Keluar</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            <?php else: ?>
+                <a class="btn btn-outline-gold px-4" href="<?= base_url('/login'); ?>">Masuk</a>
+                <a class="btn btn-whatsapp px-4" href="<?= base_url('/register'); ?>">Daftar</a>
+            <?php endif; ?>
         </div>
     </div>
 </nav>
@@ -52,7 +70,17 @@
     </div>
     <div class="public-drawer-actions">
         <a class="btn btn-gold w-100" href="<?= base_url('/katalog'); ?>">Lihat Produk</a>
-        <a class="btn btn-whatsapp w-100" href="https://wa.me/<?= esc($waNumber); ?>" target="_blank"
-            rel="noopener">WhatsApp</a>
+        <?php if (is_pelanggan_logged_in()): ?>
+            <a class="btn btn-outline-gold w-100" href="<?= base_url('/akun'); ?>">
+                <?= esc(current_pelanggan()['nama']); ?> — Akun
+            </a>
+            <form action="<?= base_url('/logout'); ?>" method="post">
+                <?= csrf_field(); ?>
+                <button type="submit" class="btn btn-outline-secondary w-100">Keluar</button>
+            </form>
+        <?php else: ?>
+            <a class="btn btn-outline-gold w-100" href="<?= base_url('/login'); ?>">Masuk</a>
+            <a class="btn btn-whatsapp w-100" href="<?= base_url('/register'); ?>">Daftar</a>
+        <?php endif; ?>
     </div>
 </aside>

@@ -56,6 +56,41 @@ class WhatsAppTemplateService
         ]);
     }
 
+    public function createPembelianCashLink(array $payload): array
+    {
+        $message = trim(implode("\n", [
+            'Halo Admin MahenGold, saya ingin membeli emas secara tunai.',
+            '',
+            'DATA PEMBELI',
+            'Nama: ' . $payload['nama'],
+            'Alamat: ' . $payload['alamat'],
+            'Nomor WhatsApp: mengikuti nomor pengirim chat ini',
+            '',
+            'DETAIL PRODUK',
+            'Kode Produk: ' . $payload['kode_produk'],
+            'Produk: ' . $payload['nama_produk'],
+            'Jenis/Kadar: ' . $payload['jenis_emas'] . ' / ' . $payload['kadar'],
+            'Berat: ' . format_angka($payload['berat_gram'], 2) . ' gram',
+            'Harga Pokok: ' . format_rupiah($payload['harga_pokok']),
+            '',
+            'Pembayaran: Tunai / Cash',
+            '',
+            'Saya ingin menyelesaikan pembelian emas ini. Mohon konfirmasi ketersediaan dan proses selanjutnya.',
+        ]));
+
+        return $this->buildAndLog([
+            'tipe'         => 'info_transaksi',
+            'target'       => 'admin',
+            'tujuan_nomor' => $this->getStoreWaNumber(),
+            'nama_tujuan'  => 'Admin MahenGold',
+            'pesan'        => $message,
+            'status'       => 'dibuka',
+            'related_type' => 'produk_emas',
+            'related_id'   => $payload['produk_id'] ?? null,
+            'created_by'   => null,
+        ]);
+    }
+
     public function createInfoTransaksiLink(array $data): array
     {
         $message = trim(implode("\n", [

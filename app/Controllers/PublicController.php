@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\PengajuanModel;
 use App\Models\PengaturanSistemModel;
 use App\Models\ProdukEmasModel;
 use App\Services\CreditCalculatorService;
@@ -129,13 +130,20 @@ class PublicController extends BaseController
 
     public function waPengajuan()
     {
+        $metode = $this->request->getPost('metode_pembayaran') ?? 'kredit';
+
         $rules = [
-            'produk_id' => 'required|integer',
-            'nama' => 'required|min_length[3]|max_length[150]',
-            'alamat' => 'required|min_length[5]',
-            'tenor_bulan' => 'required|in_list[6,10,12]',
-            'periode_angsuran' => 'required|in_list[bulanan,mingguan]',
+            'produk_id'         => 'required|integer',
+            'metode_pembayaran' => 'required|in_list[cash,kredit]',
+            'nama'              => 'required|min_length[3]|max_length[150]',
+            'alamat'            => 'required|min_length[5]',
         ];
+
+        if ($metode === 'kredit') {
+            $rules['tenor_bulan']      = 'required|in_list[6,10,12]';
+            $rules['periode_angsuran'] = 'required|in_list[bulanan,mingguan]';
+            $rules['foto_ktp']         = 'uploaded[foto_ktp]|is_image[foto_ktp]|mime_in[foto_ktp,image/jpeg,image/jpg,image/png]|max_size[foto_ktp,3072]';
+        }
 
         if (!$this->validate($rules)) {
             $payload = ['errors' => $this->validator->getErrors()];
@@ -149,25 +157,70 @@ class PublicController extends BaseController
             return $this->response->setStatusCode(404)->setJSON(['message' => 'Produk tidak ditemukan.']);
         }
 
-        $marginDefault = (float) $this->pengaturanModel->getPengaturan()['margin_default'];
-        $kalkulasi = $this->calculator->calculate(
-            $produk['harga_pokok'],
-            $marginDefault,
-            (int) $this->request->getPost('tenor_bulan'),
-            (string) $this->request->getPost('periode_angsuran')
-        );
+        $namaFile = null;
+        if ($metode === 'kredit') {
+            $file = $this->request->getFile('foto_ktp');
+            if ($file && $file->isValid() && !$file->hasMoved()) {
+                $ktpDir = WRITEPATH . 'uploads/ktp/';
+                if (!is_dir($ktpDir)) {
+                    mkdir($ktpDir, 0755, true);
+                    file_put_contents($ktpDir . 'index.html', '');
+                }
+                $namaFile = $file->getRandomName();
+                $file->move($ktpDir, $namaFile);
+            }
+        }
 
-        $result = $this->whatsAppService->createPengajuanLink(array_merge($kalkulasi, [
-            'nama' => $this->request->getPost('nama'),
-            'alamat' => $this->request->getPost('alamat'),
-            'kode_produk' => $produk['kode_produk'],
-            'nama_produk' => $produk['nama_produk'],
-            'jenis_emas' => $produk['jenis_emas'],
-            'kadar' => $produk['kadar'],
-            'berat_gram' => $produk['berat_gram'],
-            'harga_pokok' => $produk['harga_pokok'],
-            'produk_id' => $produk['id'],
-        ]));
+        $marginDefault  = (float) $this->pengaturanModel->getPengaturan()['margin_default'];
+        $pengajuanData  = [
+            'user_id'           => is_pelanggan_logged_in() ? current_pelanggan()['id'] : null,
+            'produk_emas_id'    => $produk['id'],
+            'metode_pembayaran' => $metode,
+            'nama'              => $this->request->getPost('nama'),
+            'alamat'            => $this->request->getPost('alamat'),
+            'foto_ktp'          => $namaFile,
+            'status'            => 'baru',
+        ];
+
+        if ($metode === 'kredit') {
+            $pengajuanData['tenor_bulan']      = (int) $this->request->getPost('tenor_bulan');
+            $pengajuanData['periode_angsuran'] = $this->request->getPost('periode_angsuran');
+
+            $kalkulasi = $this->calculator->calculate(
+                $produk['harga_pokok'],
+                $marginDefault,
+                $pengajuanData['tenor_bulan'],
+                (string) $pengajuanData['periode_angsuran']
+            );
+
+            (new PengajuanModel())->insert($pengajuanData);
+
+            $result = $this->whatsAppService->createPengajuanLink(array_merge($kalkulasi, [
+                'nama'        => $pengajuanData['nama'],
+                'alamat'      => $pengajuanData['alamat'],
+                'kode_produk' => $produk['kode_produk'],
+                'nama_produk' => $produk['nama_produk'],
+                'jenis_emas'  => $produk['jenis_emas'],
+                'kadar'       => $produk['kadar'],
+                'berat_gram'  => $produk['berat_gram'],
+                'harga_pokok' => $produk['harga_pokok'],
+                'produk_id'   => $produk['id'],
+            ]));
+        } else {
+            (new PengajuanModel())->insert($pengajuanData);
+
+            $result = $this->whatsAppService->createPembelianCashLink([
+                'nama'        => $pengajuanData['nama'],
+                'alamat'      => $pengajuanData['alamat'],
+                'kode_produk' => $produk['kode_produk'],
+                'nama_produk' => $produk['nama_produk'],
+                'jenis_emas'  => $produk['jenis_emas'],
+                'kadar'       => $produk['kadar'],
+                'berat_gram'  => $produk['berat_gram'],
+                'harga_pokok' => $produk['harga_pokok'],
+                'produk_id'   => $produk['id'],
+            ]);
+        }
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON($result);

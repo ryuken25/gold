@@ -3,16 +3,39 @@
         <div class="modal-content border-0">
             <div class="modal-header border-0 p-4 pb-2">
                 <div class="pe-3">
-                    <span class="section-eyebrow d-block mb-2">Pengajuan WhatsApp</span>
-                    <h5 class="modal-title fw-black mb-1">Ajukan via WhatsApp</h5>
-                    <p class="text-muted-mg mb-0">Isi nama dan alamat terlebih dahulu sebelum membuka WhatsApp.</p>
+                    <span class="section-eyebrow d-block mb-2">Pengajuan</span>
+                    <h5 class="modal-title fw-black mb-1">Ajukan Pembelian</h5>
+                    <p class="text-muted-mg mb-0">Pilih metode pembayaran lalu isi data diri Anda.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
             <div class="modal-body p-4">
-                <form id="waPengajuanForm" action="<?= base_url('/wa/pengajuan'); ?>" method="post">
+                <form id="waPengajuanForm" action="<?= base_url('/wa/pengajuan'); ?>" method="post"
+                    enctype="multipart/form-data">
                     <?= csrf_field(); ?>
                     <input type="hidden" name="produk_id" id="wa_produk_id">
+
+                    {{-- Pilihan metode --}}
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Metode Pembayaran</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metode_pembayaran"
+                                    id="metode_kredit" value="kredit" checked>
+                                <label class="form-check-label" for="metode_kredit">
+                                    <strong>Kredit</strong> — cicil
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metode_pembayaran"
+                                    id="metode_cash" value="cash">
+                                <label class="form-check-label" for="metode_cash">
+                                    <strong>Cash</strong> — beli langsung
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Nama Lengkap</label>
@@ -29,7 +52,9 @@
                                 required></textarea>
                             <div class="form-text">Nomor WhatsApp akan mengikuti nomor pengirim chat ini.</div>
                         </div>
-                        <div class="col-md-6">
+
+                        {{-- Field khusus kredit --}}
+                        <div class="col-md-6 wa-kredit-field">
                             <label class="form-label">Tenor</label>
                             <select class="form-select form-select-lg" name="tenor_bulan" id="wa_tenor">
                                 <option value="6">6 bulan</option>
@@ -37,14 +62,15 @@
                                 <option value="12" selected>12 bulan</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 wa-kredit-field">
                             <label class="form-label">Periode Angsuran</label>
                             <select class="form-select form-select-lg" name="periode_angsuran" id="wa_periode">
                                 <option value="bulanan">Bulanan</option>
                                 <option value="mingguan">Mingguan</option>
                             </select>
                         </div>
-                        <div class="col-12">
+
+                        <div class="col-12 wa-kredit-field">
                             <div class="wa-summary p-3">
                                 <div class="simulation-row"><span>Total Kredit</span><strong
                                         id="wa_total_kredit">-</strong></div>
@@ -54,6 +80,25 @@
                                         id="wa_nominal_angsuran">-</strong></div>
                             </div>
                         </div>
+
+                        {{-- Ringkasan cash --}}
+                        <div class="col-12 wa-cash-field" style="display:none;">
+                            <div class="wa-summary p-3">
+                                <div class="simulation-row"><span>Harga Pokok</span><strong
+                                        id="wa_harga_pokok_cash">-</strong></div>
+                                <p class="text-muted-mg small mb-0 mt-2">Pembayaran dilakukan sekaligus saat
+                                    transaksi.</p>
+                            </div>
+                        </div>
+
+                        {{-- Upload KTP hanya untuk kredit --}}
+                        <div class="col-12 wa-kredit-field" id="wa_ktp_wrapper">
+                            <label class="form-label">Foto KTP <span class="text-danger">*</span></label>
+                            <input type="file" class="form-control form-control-lg" name="foto_ktp" id="wa_foto_ktp"
+                                accept="image/jpeg,image/png">
+                            <div class="form-text">Format JPG/PNG, maks. 3 MB. Wajib untuk pengajuan kredit.</div>
+                        </div>
+
                         <div class="col-12">
                             <label class="form-label">Preview Template WhatsApp</label>
                             <textarea class="form-control font-monospace small" id="wa_preview" rows="10"
