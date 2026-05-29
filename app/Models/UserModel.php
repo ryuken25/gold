@@ -16,6 +16,7 @@ class UserModel extends Model
         'nama',
         'email',
         'username',
+        'no_telepon',
         'password_hash',
         'role',
         'is_active',

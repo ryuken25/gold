@@ -104,3 +104,17 @@ if (!function_exists('generate_kode')) {
         return $prefix . '-' . str_pad((string) $id, $padding, '0', STR_PAD_LEFT);
     }
 }
+
+if (!function_exists('current_pelanggan')) {
+    function current_pelanggan(): ?array
+    {
+        return session()->get('pelanggan_user');
+    }
+}
+
+if (!function_exists('is_pelanggan_logged_in')) {
+    function is_pelanggan_logged_in(): bool
+    {
+        return current_pelanggan() !== null;
+    }
+}

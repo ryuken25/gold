@@ -13,6 +13,18 @@ $routes->get('produk/(:segment)', 'PublicController::detail/$1');
 $routes->get('simulasi', 'PublicController::simulasi');
 $routes->post('wa/pengajuan', 'PublicController::waPengajuan');
 
+// Customer Auth
+$routes->get('login', 'Customer\AuthController::login', ['namespace' => 'App\Controllers']);
+$routes->post('login', 'Customer\AuthController::attempt', ['namespace' => 'App\Controllers']);
+$routes->get('register', 'Customer\AuthController::register', ['namespace' => 'App\Controllers']);
+$routes->post('register', 'Customer\AuthController::store', ['namespace' => 'App\Controllers']);
+$routes->post('logout', 'Customer\AuthController::logout', ['namespace' => 'App\Controllers']);
+
+// Area akun pelanggan (butuh login)
+$routes->group('akun', ['namespace' => 'App\Controllers', 'filter' => 'customerauth'], static function (RouteCollection $routes) {
+    $routes->get('/', 'Customer\AkunController::index');
+});
+
 $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function (RouteCollection $routes) {
     $routes->match(['get', 'post'], 'kredit/preview', 'KreditApiController::preview');
     $routes->get('produk/(:num)/simulasi', 'KreditApiController::produkSimulasi/$1');

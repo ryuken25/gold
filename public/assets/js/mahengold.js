@@ -40,6 +40,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const periodeEl = document.getElementById('wa_jumlah_periode');
         const angsuranEl = document.getElementById('wa_nominal_angsuran');
         const previewEl = document.getElementById('wa_preview');
+        const hargaPokokCashEl = document.getElementById('wa_harga_pokok_cash');
+        const kreditFields = waModal.querySelectorAll('.wa-kredit-field');
+        const cashFields = waModal.querySelectorAll('.wa-cash-field');
+        const ktpInput = document.getElementById('wa_foto_ktp');
+        let currentHargaPokok = 0;
+
+        const getMetode = () => (waModal.querySelector('input[name="metode_pembayaran"]:checked')?.value || 'kredit');
+
+        const applyMetodePembayaran = () => {
+            const isKredit = getMetode() === 'kredit';
+            kreditFields.forEach((el) => { el.style.display = isKredit ? '' : 'none'; });
+            cashFields.forEach((el) => { el.style.display = isKredit ? 'none' : ''; });
+            if (ktpInput) ktpInput.required = isKredit;
+            if (!isKredit && currentHargaPokok && hargaPokokCashEl) {
+                hargaPokokCashEl.textContent = currency(currentHargaPokok);
+            }
+            updatePreview();
+        };
+
+        waModal.querySelectorAll('input[name="metode_pembayaran"]').forEach((radio) => {
+            radio.addEventListener('change', applyMetodePembayaran);
+        });
 
         const updatePreview = async () => {
             if (!produkIdInput.value) return;
@@ -49,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 periode_angsuran: periodeInput.value,
                 nama: namaInput.value,
                 alamat: alamatInput.value,
+                metode_pembayaran: getMetode(),
             });
             const response = await fetch(`${window.location.origin}/simulasi?${params.toString()}`);
             const data = await response.json();
@@ -63,15 +86,24 @@ document.addEventListener('DOMContentLoaded', () => {
             button.addEventListener('click', () => {
                 produkIdInput.value = button.dataset.produkId || '';
                 produkLabel.value = `${button.dataset.kode || ''} - ${button.dataset.nama || ''}`.trim();
+                currentHargaPokok = parseFloat(button.dataset.hargaPokok || '0');
                 namaInput.value = namaInput.value || '';
                 alamatInput.value = alamatInput.value || '';
-                updatePreview();
+                // Reset ke kredit saat buka modal
+                const kreditRadio = waModal.querySelector('#metode_kredit');
+                if (kreditRadio) kreditRadio.checked = true;
+                applyMetodePembayaran();
             });
         });
 
         [tenorInput, periodeInput, namaInput, alamatInput].forEach((el) => el?.addEventListener('input', updatePreview));
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
+            if (getMetode() === 'kredit' && ktpInput && !ktpInput.files.length) {
+                alert('Foto KTP wajib diunggah untuk pengajuan kredit.');
+                ktpInput.focus();
+                return;
+            }
             const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             const data = await response.json();
             if (!response.ok) {
@@ -80,6 +112,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             window.open(data.wa_url, '_blank', 'noopener');
         });
+
+        // Terapkan state awal
+        applyMetodePembayaran();
     }
 
     const config = window.MahenGoldAdminPreview;

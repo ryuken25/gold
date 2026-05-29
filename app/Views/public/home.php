@@ -7,10 +7,10 @@
     <div class="container-mg">
         <div class="row align-items-center g-4 g-xl-5">
             <div class="col-lg-7">
-                <span class="mg-badge px-3 py-2 mb-3">MahenGold Premium Credit System</span>
-                <h1 class="fw-black mb-4">Sistem Informasi Penjualan dan Kredit Emas Berbasis Web</h1>
-                <p class="lead text-light-emphasis mb-4">Pilih koleksi emas dengan tampilan yang rapi, informasi yang
-                    jelas, dan pengajuan praktis melalui WhatsApp MahenGold.</p>
+                <span class="mg-badge px-3 py-2 mb-3">Penjualan &amp; Kredit Emas Tepercaya</span>
+                <h1 class="fw-black mb-4">MahenGold</h1>
+                <p class="lead text-light-emphasis mb-4">Pilih koleksi emas terbaik, ajukan kredit dengan mudah, dan
+                    dapatkan layanan jual-beli emas yang jelas &amp; terpercaya.</p>
                 <div class="hero-cta mb-4">
                     <a href="<?= base_url('/katalog'); ?>" class="btn btn-gold btn-lg px-4">Lihat Katalog</a>
                     <a href="https://wa.me/<?= esc($waNumber); ?>" target="_blank" rel="noopener"
