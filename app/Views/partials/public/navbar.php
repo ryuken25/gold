@@ -25,24 +25,28 @@
         <div class="public-nav-actions">
             <a class="btn btn-gold px-4" href="<?= base_url('/katalog'); ?>">Lihat Produk</a>
             <?php if (is_pelanggan_logged_in()): ?>
-                <div class="dropdown">
-                    <button class="btn btn-outline-gold px-3 dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <?= esc(current_pelanggan()['nama']); ?>
+                <div class="dropdown account-dropdown">
+                    <button class="btn btn-outline-gold px-3 dropdown-toggle account-toggle" type="button"
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="account-avatar" aria-hidden="true"><?= esc(strtoupper(mb_substr(current_pelanggan()['nama'], 0, 1))); ?></span>
+                        <span class="account-name d-none d-xl-inline"><?= esc(current_pelanggan()['nama']); ?></span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="<?= base_url('/akun'); ?>">Akun Saya</a></li>
+                    <ul class="dropdown-menu dropdown-menu-end account-menu shadow">
+                        <li><a class="dropdown-item" href="<?= base_url('/akun'); ?>">🏠 Dashboard</a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('/akun/pesanan'); ?>">🧾 Pesanan</a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('/akun/profil'); ?>">👤 Profil</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <form action="<?= base_url('/logout'); ?>" method="post" class="d-inline">
                                 <?= csrf_field(); ?>
-                                <button type="submit" class="dropdown-item text-danger">Keluar</button>
+                                <button type="submit" class="dropdown-item text-danger">↩ Keluar</button>
                             </form>
                         </li>
                     </ul>
                 </div>
             <?php else: ?>
-                <a class="btn btn-outline-gold px-4" href="<?= base_url('/login'); ?>">Masuk</a>
-                <a class="btn btn-whatsapp px-4" href="<?= base_url('/register'); ?>">Daftar</a>
+                <a class="btn btn-outline-gold px-4 nav-cta" href="<?= base_url('/login'); ?>">Masuk</a>
+                <a class="btn btn-whatsapp px-4 nav-cta" href="<?= base_url('/register'); ?>">Daftar</a>
             <?php endif; ?>
         </div>
     </div>
@@ -71,9 +75,16 @@
     <div class="public-drawer-actions">
         <a class="btn btn-gold w-100" href="<?= base_url('/katalog'); ?>">Lihat Produk</a>
         <?php if (is_pelanggan_logged_in()): ?>
-            <a class="btn btn-outline-gold w-100" href="<?= base_url('/akun'); ?>">
-                <?= esc(current_pelanggan()['nama']); ?> — Akun
-            </a>
+            <div class="drawer-account">
+                <span class="account-avatar" aria-hidden="true"><?= esc(strtoupper(mb_substr(current_pelanggan()['nama'], 0, 1))); ?></span>
+                <span class="min-w-0">
+                    <strong class="d-block text-truncate"><?= esc(current_pelanggan()['nama']); ?></strong>
+                    <small class="d-block text-truncate"><?= esc(current_pelanggan()['email']); ?></small>
+                </span>
+            </div>
+            <a class="btn btn-outline-gold w-100" href="<?= base_url('/akun'); ?>">Dashboard</a>
+            <a class="btn btn-outline-gold w-100" href="<?= base_url('/akun/pesanan'); ?>">Pesanan</a>
+            <a class="btn btn-outline-gold w-100" href="<?= base_url('/akun/profil'); ?>">Profil</a>
             <form action="<?= base_url('/logout'); ?>" method="post">
                 <?= csrf_field(); ?>
                 <button type="submit" class="btn btn-outline-secondary w-100">Keluar</button>

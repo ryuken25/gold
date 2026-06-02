@@ -4,6 +4,7 @@ namespace App\Controllers\Admin;
 
 use App\Models\KreditModel;
 use App\Models\NasabahModel;
+use App\Models\UserModel;
 use Config\Database;
 
 class NasabahController extends BaseAdminController
@@ -14,6 +15,19 @@ class NasabahController extends BaseAdminController
     {
         parent::initController($request, $response, $logger);
         $this->nasabahModel = new NasabahModel();
+    }
+
+    /**
+     * Daftar akun pelanggan yang bisa ditautkan ke nasabah.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function pelangganOptions(): array
+    {
+        return (new UserModel())
+            ->where('role', 'pelanggan')
+            ->orderBy('nama', 'ASC')
+            ->findAll();
     }
 
     public function index(): string
@@ -34,7 +48,11 @@ class NasabahController extends BaseAdminController
 
     public function create(): string
     {
-        return $this->render('admin/nasabah/form', ['pageTitle' => 'Tambah Nasabah', 'nasabah' => null]);
+        return $this->render('admin/nasabah/form', [
+            'pageTitle'  => 'Tambah Nasabah',
+            'nasabah'    => null,
+            'pelanggan'  => $this->pelangganOptions(),
+        ]);
     }
 
     public function store()
@@ -51,6 +69,7 @@ class NasabahController extends BaseAdminController
         $next = $this->nasabahModel->withDeleted()->countAllResults() + 1;
         $this->nasabahModel->insert([
             'kode_nasabah' => generate_kode('NSB', $next),
+            'user_id' => $this->resolveUserId($this->request->getPost('user_id')),
             'nama' => $this->request->getPost('nama'),
             'no_telepon' => wa_number_normalize((string) $this->request->getPost('no_telepon')),
             'alamat' => $this->request->getPost('alamat'),
@@ -67,7 +86,11 @@ class NasabahController extends BaseAdminController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound('Nasabah tidak ditemukan.');
         }
 
-        return $this->render('admin/nasabah/form', ['pageTitle' => 'Edit Nasabah', 'nasabah' => $nasabah]);
+        return $this->render('admin/nasabah/form', [
+            'pageTitle'  => 'Edit Nasabah',
+            'nasabah'    => $nasabah,
+            'pelanggan'  => $this->pelangganOptions(),
+        ]);
     }
 
     public function update(int $id)
@@ -77,6 +100,7 @@ class NasabahController extends BaseAdminController
         }
 
         $this->nasabahModel->update($id, [
+            'user_id' => $this->resolveUserId($this->request->getPost('user_id')),
             'nama' => $this->request->getPost('nama'),
             'no_telepon' => wa_number_normalize((string) $this->request->getPost('no_telepon')),
             'alamat' => $this->request->getPost('alamat'),
@@ -84,6 +108,21 @@ class NasabahController extends BaseAdminController
         ]);
 
         return redirect()->to('/admin/nasabah')->with('success', 'Nasabah berhasil diperbarui.');
+    }
+
+    /**
+     * Validasi user_id terpilih benar-benar akun pelanggan, jika tidak kembalikan null.
+     */
+    protected function resolveUserId($value): ?int
+    {
+        $id = (int) $value;
+        if ($id <= 0) {
+            return null;
+        }
+
+        $user = (new UserModel())->where('id', $id)->where('role', 'pelanggan')->first();
+
+        return $user ? (int) $user['id'] : null;
     }
 
     public function delete(int $id)

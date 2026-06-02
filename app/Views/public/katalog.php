@@ -76,10 +76,16 @@
                             <div class="product-actions">
                                 <a href="<?= base_url('/produk/' . $item['kode_produk']); ?>"
                                     class="btn btn-outline-gold">Detail</a>
-                                <button type="button" class="btn btn-whatsapp js-open-wa-modal" data-bs-toggle="modal"
-                                    data-bs-target="#waPengajuanModal" data-produk-id="<?= esc($item['id']); ?>"
-                                    data-kode="<?= esc($item['kode_produk']); ?>" data-nama="<?= esc($item['nama_produk']); ?>"
-                                    data-link="<?= base_url('/produk/' . $item['kode_produk']); ?>">Ajukan via WhatsApp</button>
+                                <?php if (is_pelanggan_logged_in()): ?>
+                                    <button type="button" class="btn btn-whatsapp js-open-wa-modal" data-bs-toggle="modal"
+                                        data-bs-target="#waPengajuanModal" data-produk-id="<?= esc($item['id']); ?>"
+                                        data-kode="<?= esc($item['kode_produk']); ?>" data-nama="<?= esc($item['nama_produk']); ?>"
+                                        data-harga-pokok="<?= esc($item['harga_pokok']); ?>"
+                                        data-link="<?= base_url('/produk/' . $item['kode_produk']); ?>">Ajukan via WhatsApp</button>
+                                <?php else: ?>
+                                    <a href="<?= base_url('/login?redirect=' . urlencode('/produk/' . $item['kode_produk'])); ?>"
+                                        class="btn btn-whatsapp">Masuk untuk Memesan</a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </article>

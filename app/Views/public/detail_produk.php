@@ -69,10 +69,16 @@
                             <h3 class="fw-black mb-2">Rincian Pengajuan</h3>
                             <p class="text-muted-mg mb-0">Nomor WhatsApp akan mengikuti nomor pengirim chat ini.</p>
                         </div>
-                        <button type="button" class="btn btn-whatsapp js-open-wa-modal" data-bs-toggle="modal"
-                            data-bs-target="#waPengajuanModal" data-produk-id="<?= esc($produk['id']); ?>"
-                            data-kode="<?= esc($produk['kode_produk']); ?>"
-                            data-nama="<?= esc($produk['nama_produk']); ?>">Ajukan via WhatsApp</button>
+                        <?php if (is_pelanggan_logged_in()): ?>
+                            <button type="button" class="btn btn-whatsapp js-open-wa-modal" data-bs-toggle="modal"
+                                data-bs-target="#waPengajuanModal" data-produk-id="<?= esc($produk['id']); ?>"
+                                data-kode="<?= esc($produk['kode_produk']); ?>"
+                                data-harga-pokok="<?= esc($produk['harga_pokok']); ?>"
+                                data-nama="<?= esc($produk['nama_produk']); ?>">Ajukan via WhatsApp</button>
+                        <?php else: ?>
+                            <a href="<?= base_url('/login?redirect=' . urlencode('/produk/' . $produk['kode_produk'])); ?>"
+                                class="btn btn-whatsapp">Masuk untuk Memesan</a>
+                        <?php endif; ?>
                     </div>
                     <div class="simulation-box p-3 p-lg-4 mb-4">
                         <div class="simulation-row"><span>Total Harga
@@ -85,23 +91,13 @@
                                 minggu</span><strong><?= esc(format_rupiah($simulasiMingguan['nominal_angsuran'])); ?>/minggu</strong>
                         </div>
                     </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Tenor</label>
-                            <select class="form-select form-select-lg" disabled>
-                                <option>12 bulan</option>
-                                <option>10 bulan</option>
-                                <option>6 bulan</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Periode Angsuran</label>
-                            <select class="form-select form-select-lg" disabled>
-                                <option>Bulanan / Mingguan</option>
-                            </select>
-                        </div>
+                    <div class="tenor-info-row">
+                        <span class="tenor-info-chip"><span class="tenor-info-label">Tenor tersedia</span>6 / 10 / 12
+                            bulan</span>
+                        <span class="tenor-info-chip"><span class="tenor-info-label">Periode</span>Bulanan /
+                            Mingguan</span>
                     </div>
-                    <p class="small text-muted-mg mt-3 mb-0">Pilihan tenor dan periode aktif saat membuka form Ajukan
+                    <p class="small text-muted-mg mt-3 mb-0">Pilih tenor dan periode angsuran saat membuka form Ajukan
                         via WhatsApp.</p>
                 </div>
             </div>

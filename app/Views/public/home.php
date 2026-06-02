@@ -7,14 +7,19 @@
     <div class="container-mg">
         <div class="row align-items-center g-4 g-xl-5">
             <div class="col-lg-7">
-                <span class="mg-badge px-3 py-2 mb-3">Penjualan &amp; Kredit Emas Tepercaya</span>
+                <span class="mg-badge px-3 py-2 mb-3">Penjualan &amp; Kredit Emas Terpercaya</span>
                 <h1 class="fw-black mb-4">MahenGold</h1>
                 <p class="lead text-light-emphasis mb-4">Pilih koleksi emas terbaik, ajukan kredit dengan mudah, dan
                     dapatkan layanan jual-beli emas yang jelas &amp; terpercaya.</p>
                 <div class="hero-cta mb-4">
                     <a href="<?= base_url('/katalog'); ?>" class="btn btn-gold btn-lg px-4">Lihat Katalog</a>
-                    <a href="https://wa.me/<?= esc($waNumber); ?>" target="_blank" rel="noopener"
-                        class="btn btn-whatsapp btn-lg px-4">Ajukan via WhatsApp</a>
+                    <?php if (is_pelanggan_logged_in()): ?>
+                        <a href="https://wa.me/<?= esc($waNumber); ?>" target="_blank" rel="noopener"
+                            class="btn btn-whatsapp btn-lg px-4">Ajukan via WhatsApp</a>
+                    <?php else: ?>
+                        <a href="<?= base_url('/login'); ?>" class="btn btn-whatsapp btn-lg px-4">Masuk untuk
+                            Memesan</a>
+                    <?php endif; ?>
                 </div>
                 <p class="hero-note small mb-0">Pengajuan dilakukan langsung melalui WhatsApp MahenGold.</p>
             </div>
@@ -122,8 +127,13 @@
                         <div class="product-actions">
                             <a href="<?= base_url('/produk/' . $item['kode_produk']); ?>"
                                 class="btn btn-outline-gold">Detail</a>
-                            <a href="https://wa.me/<?= esc($waNumber); ?>" target="_blank" rel="noopener"
-                                class="btn btn-whatsapp">WhatsApp</a>
+                            <?php if (is_pelanggan_logged_in()): ?>
+                                <a href="https://wa.me/<?= esc($waNumber); ?>" target="_blank" rel="noopener"
+                                    class="btn btn-whatsapp">WhatsApp</a>
+                            <?php else: ?>
+                                <a href="<?= base_url('/login?redirect=' . urlencode('/produk/' . $item['kode_produk'])); ?>"
+                                    class="btn btn-whatsapp">Masuk</a>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </article>

@@ -11,6 +11,19 @@
                                 name="no_telepon" class="form-control"
                                 value="<?= esc(old('no_telepon', $nasabah['no_telepon'] ?? '')); ?>" required>
                 </div>
+                <div class="col-12">
+                        <label class="form-label">Tautkan ke Akun Pelanggan <span class="text-muted">(opsional)</span></label>
+                        <?php $selectedUser = old('user_id', $nasabah['user_id'] ?? ''); ?>
+                        <select name="user_id" class="form-select">
+                                <option value="">— Tidak ditautkan —</option>
+                                <?php foreach (($pelanggan ?? []) as $akun): ?>
+                                        <option value="<?= esc($akun['id']); ?>" <?= (string) $selectedUser === (string) $akun['id'] ? 'selected' : ''; ?>>
+                                                <?= esc($akun['nama']); ?> — <?= esc($akun['email']); ?>
+                                        </option>
+                                <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Tautkan agar pelanggan dapat melihat kredit &amp; jadwal angsurannya di akun.</div>
+                </div>
                 <div class="col-12"><label class="form-label">Alamat</label><textarea name="alamat" class="form-control"
                                 rows="3" required><?= esc(old('alamat', $nasabah['alamat'] ?? '')); ?></textarea></div>
                 <div class="col-12"><label class="form-label">Catatan</label><textarea name="catatan"

@@ -23,6 +23,11 @@ $routes->post('logout', 'Customer\AuthController::logout', ['namespace' => 'App\
 // Area akun pelanggan (butuh login)
 $routes->group('akun', ['namespace' => 'App\Controllers', 'filter' => 'customerauth'], static function (RouteCollection $routes) {
     $routes->get('/', 'Customer\AkunController::index');
+    $routes->get('profil', 'Customer\AkunController::profil');
+    $routes->post('profil', 'Customer\AkunController::updateProfil');
+    $routes->post('password', 'Customer\AkunController::updatePassword');
+    $routes->get('pesanan', 'Customer\AkunController::pesanan');
+    $routes->get('kredit/(:num)', 'Customer\AkunController::kreditDetail/$1');
 });
 
 $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function (RouteCollection $routes) {

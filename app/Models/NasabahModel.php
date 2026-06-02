@@ -14,6 +14,7 @@ class NasabahModel extends Model
 
     protected $allowedFields = [
         'kode_nasabah',
+        'user_id',
         'nama',
         'no_telepon',
         'alamat',

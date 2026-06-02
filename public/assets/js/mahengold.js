@@ -48,6 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const getMetode = () => (waModal.querySelector('input[name="metode_pembayaran"]:checked')?.value || 'kredit');
 
+        const syncMetodeCards = () => {
+            waModal.querySelectorAll('.metode-option').forEach((card) => {
+                const input = card.querySelector('input[name="metode_pembayaran"]');
+                card.classList.toggle('is-active', !!input?.checked);
+            });
+        };
+
         const applyMetodePembayaran = () => {
             const isKredit = getMetode() === 'kredit';
             kreditFields.forEach((el) => { el.style.display = isKredit ? '' : 'none'; });
@@ -56,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isKredit && currentHargaPokok && hargaPokokCashEl) {
                 hargaPokokCashEl.textContent = currency(currentHargaPokok);
             }
+            syncMetodeCards();
             updatePreview();
         };
 
@@ -106,6 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             const data = await response.json();
+            if (response.status === 401 && data.redirect) {
+                window.location.href = data.redirect;
+                return;
+            }
             if (!response.ok) {
                 alert(Object.values(data.errors || { error: data.message || 'Validasi gagal.' }).join('\n'));
                 return;
