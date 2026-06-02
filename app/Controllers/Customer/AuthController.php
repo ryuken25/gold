@@ -25,7 +25,23 @@ class AuthController extends BaseController
         return view('public/auth/login', [
             'pageTitle'   => 'Masuk - MahenGold',
             'pengaturan'  => (new PengaturanSistemModel())->getPengaturan(),
+            'redirect'    => $this->safeRedirect($this->request->getGet('redirect')),
         ]);
+    }
+
+    /**
+     * Hanya izinkan redirect ke path internal (mulai dengan satu "/") untuk
+     * mencegah open redirect ke domain eksternal.
+     */
+    protected function safeRedirect(?string $target): ?string
+    {
+        $target = trim((string) $target);
+
+        if ($target === '' || !str_starts_with($target, '/') || str_starts_with($target, '//')) {
+            return null;
+        }
+
+        return $target;
     }
 
     public function attempt()
@@ -60,7 +76,9 @@ class AuthController extends BaseController
             'role'        => $user['role'],
         ]);
 
-        return redirect()->to('/akun')->with('success', 'Selamat datang, ' . $user['nama'] . '!');
+        $redirect = $this->safeRedirect($this->request->getPost('redirect'));
+
+        return redirect()->to($redirect ?? '/akun')->with('success', 'Selamat datang, ' . $user['nama'] . '!');
     }
 
     public function register()

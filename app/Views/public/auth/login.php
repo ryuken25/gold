@@ -18,6 +18,9 @@
 
                     <form action="<?= base_url('/login'); ?>" method="post" novalidate>
                         <?= csrf_field(); ?>
+                        <?php if (!empty($redirect)): ?>
+                            <input type="hidden" name="redirect" value="<?= esc($redirect, 'attr'); ?>">
+                        <?php endif; ?>
                         <div class="mb-3">
                             <label class="form-label">Email</label>
                             <input type="email" class="form-control form-control-lg" name="email"

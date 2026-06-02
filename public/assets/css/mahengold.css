@@ -1487,3 +1487,355 @@ h6 {
     border-radius: 999px;
     background: linear-gradient(90deg, var(--mg-gold-600), var(--mg-gold-300));
 }
+/* ============================================================
+   Metode pembayaran — toggle card (modal pengajuan)
+   ============================================================ */
+.metode-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .85rem;
+}
+
+.metode-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin: 0;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    border: 1.5px solid var(--mg-line);
+    border-radius: var(--mg-radius-md);
+    background: var(--mg-cream-50);
+    transition: border-color .2s ease, box-shadow .2s ease, background .2s ease, transform .15s ease;
+}
+
+.metode-option:hover {
+    border-color: var(--mg-gold-400);
+    transform: translateY(-1px);
+}
+
+.metode-option .metode-option-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.metode-option.is-active {
+    border-color: var(--mg-gold-500);
+    background: linear-gradient(180deg, var(--mg-cream-50), #fff);
+    box-shadow: 0 0 0 3px rgba(212, 161, 42, .18);
+}
+
+.metode-option-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    flex: 0 0 auto;
+}
+
+.metode-option-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.metode-option-title {
+    font-weight: 800;
+    color: var(--mg-text);
+}
+
+.metode-option-desc {
+    font-size: .82rem;
+    color: var(--mg-muted);
+}
+
+.metode-option-check {
+    margin-left: auto;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    border: 2px solid var(--mg-line);
+    transition: border-color .2s ease, background .2s ease;
+}
+
+.metode-option.is-active .metode-option-check {
+    border-color: var(--mg-gold-500);
+    background: radial-gradient(circle at center, var(--mg-gold-500) 0 45%, transparent 48%);
+}
+
+.metode-option:focus-within {
+    outline: none;
+    border-color: var(--mg-gold-500);
+    box-shadow: 0 0 0 3px rgba(212, 161, 42, .22);
+}
+
+@media (max-width: 480px) {
+    .metode-toggle {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================================
+   Detail produk — info tenor (pengganti select disabled)
+   ============================================================ */
+.tenor-info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+
+.tenor-info-chip {
+    display: inline-flex;
+    flex-direction: column;
+    gap: .15rem;
+    padding: .65rem 1rem;
+    border: 1px solid rgba(231, 216, 189, .92);
+    border-radius: var(--mg-radius-md);
+    background: var(--mg-cream-50);
+    font-weight: 700;
+    color: var(--mg-text);
+}
+
+.tenor-info-label {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--mg-gold-600);
+}
+
+/* ============================================================
+   Navbar — micro-interactions akun
+   ============================================================ */
+.public-nav-actions .btn,
+.account-toggle {
+    transition: transform .15s ease, box-shadow .2s ease, background .2s ease, color .2s ease;
+}
+
+.public-nav-actions .nav-cta:hover {
+    transform: translateY(-1px);
+}
+
+.account-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.account-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    font-weight: 800;
+    font-size: .85rem;
+    color: var(--mg-brown-950);
+    background: linear-gradient(135deg, var(--mg-gold-300), var(--mg-gold-500));
+}
+
+.account-menu {
+    border: 1px solid var(--mg-line);
+    border-radius: var(--mg-radius-md);
+    padding: .4rem;
+    margin-top: .4rem;
+}
+
+.account-menu .dropdown-item {
+    border-radius: 10px;
+    padding: .55rem .75rem;
+    font-weight: 600;
+    transition: background .15s ease;
+}
+
+.account-menu .dropdown-item:hover {
+    background: rgba(231, 190, 85, .16);
+}
+
+.drawer-account {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    padding: .85rem 1rem;
+    margin-bottom: .35rem;
+    border-radius: var(--mg-radius-md);
+    background: rgba(255, 249, 239, .06);
+    border: 1px solid rgba(255, 249, 239, .12);
+    color: rgba(255, 249, 239, .9);
+}
+
+.drawer-account small {
+    color: rgba(255, 249, 239, .6);
+}
+
+/* ============================================================
+   Area akun pelanggan
+   ============================================================ */
+.akun-section {
+    min-height: 70vh;
+}
+
+.akun-sidebar {
+    overflow: hidden;
+    position: sticky;
+    top: 92px;
+}
+
+.akun-sidebar-head {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--mg-line);
+    background: linear-gradient(180deg, var(--mg-cream-50), #fff);
+}
+
+.akun-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    flex: 0 0 auto;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 1.2rem;
+    color: var(--mg-brown-950);
+    background: linear-gradient(135deg, var(--mg-gold-300), var(--mg-gold-500));
+}
+
+.akun-nav {
+    display: flex;
+    flex-direction: column;
+    padding: .65rem;
+    gap: .2rem;
+}
+
+.akun-nav-link {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    width: 100%;
+    padding: .7rem .85rem;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--mg-text);
+    font-weight: 600;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease, transform .12s ease;
+}
+
+.akun-nav-link:hover {
+    background: rgba(231, 190, 85, .14);
+    transform: translateX(2px);
+}
+
+.akun-nav-link.is-active {
+    color: var(--mg-brown-950);
+    background: linear-gradient(135deg, var(--mg-gold-300), var(--mg-gold-500));
+    box-shadow: var(--mg-shadow-sm);
+}
+
+.akun-nav-icon {
+    width: 1.4rem;
+    text-align: center;
+}
+
+.akun-nav-logout {
+    margin-top: .2rem;
+    border-top: 1px solid var(--mg-line);
+    padding-top: .4rem;
+}
+
+.akun-nav-danger {
+    color: var(--mg-danger);
+}
+
+.akun-nav-danger:hover {
+    background: rgba(217, 83, 79, .12);
+}
+
+.akun-stat {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    height: 100%;
+}
+
+.akun-stat-label {
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--mg-gold-600);
+}
+
+.akun-stat-value {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--mg-text);
+    line-height: 1.1;
+}
+
+.akun-stat-value.akun-stat-sm {
+    font-size: 1.3rem;
+}
+
+.akun-stat-link {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--mg-gold-600);
+    text-decoration: none;
+}
+
+.akun-stat-link:hover {
+    text-decoration: underline;
+}
+
+.akun-duecard {
+    background:
+        linear-gradient(135deg, rgba(255, 249, 239, .96), rgba(248, 240, 226, .98)),
+        var(--mg-cream-50);
+}
+
+.akun-duecard-date {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+
+.akun-due-label {
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--mg-gold-600);
+}
+
+.akun-due-value {
+    font-size: 1.25rem;
+    color: var(--mg-text);
+}
+
+.akun-progress {
+    height: 14px;
+    border-radius: 999px;
+    background: var(--mg-cream-200);
+}
+
+.akun-progress .progress-bar {
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--mg-gold-500), var(--mg-gold-300));
+}
+
+@media (max-width: 991.98px) {
+    .akun-sidebar {
+        position: static;
+    }
+}

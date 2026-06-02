@@ -15,32 +15,39 @@
                     <?= csrf_field(); ?>
                     <input type="hidden" name="produk_id" id="wa_produk_id">
 
-                    {{-- Pilihan metode --}}
+                    <?php // Pilihan metode pembayaran (toggle card) ?>
                     <div class="mb-4">
                         <label class="form-label fw-semibold">Metode Pembayaran</label>
-                        <div class="d-flex gap-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="metode_pembayaran"
+                        <div class="metode-toggle">
+                            <label class="metode-option is-active" for="metode_kredit">
+                                <input class="metode-option-input" type="radio" name="metode_pembayaran"
                                     id="metode_kredit" value="kredit" checked>
-                                <label class="form-check-label" for="metode_kredit">
-                                    <strong>Kredit</strong> — cicil
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="metode_pembayaran"
+                                <span class="metode-option-icon" aria-hidden="true">💳</span>
+                                <span class="metode-option-body">
+                                    <span class="metode-option-title">Kredit</span>
+                                    <span class="metode-option-desc">Cicil ringan tiap periode</span>
+                                </span>
+                                <span class="metode-option-check" aria-hidden="true"></span>
+                            </label>
+                            <label class="metode-option" for="metode_cash">
+                                <input class="metode-option-input" type="radio" name="metode_pembayaran"
                                     id="metode_cash" value="cash">
-                                <label class="form-check-label" for="metode_cash">
-                                    <strong>Cash</strong> — beli langsung
-                                </label>
-                            </div>
+                                <span class="metode-option-icon" aria-hidden="true">💰</span>
+                                <span class="metode-option-body">
+                                    <span class="metode-option-title">Cash</span>
+                                    <span class="metode-option-desc">Bayar sekaligus saat transaksi</span>
+                                </span>
+                                <span class="metode-option-check" aria-hidden="true"></span>
+                            </label>
                         </div>
                     </div>
 
                     <div class="row g-3">
+                        <?php $waPelanggan = function_exists('current_pelanggan') ? current_pelanggan() : null; ?>
                         <div class="col-md-6">
                             <label class="form-label">Nama Lengkap</label>
                             <input type="text" class="form-control form-control-lg" name="nama" id="wa_nama"
-                                autocomplete="name" required>
+                                value="<?= esc($waPelanggan['nama'] ?? ''); ?>" autocomplete="name" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Produk</label>
@@ -53,7 +60,7 @@
                             <div class="form-text">Nomor WhatsApp akan mengikuti nomor pengirim chat ini.</div>
                         </div>
 
-                        {{-- Field khusus kredit --}}
+                        <?php // Field khusus kredit ?>
                         <div class="col-md-6 wa-kredit-field">
                             <label class="form-label">Tenor</label>
                             <select class="form-select form-select-lg" name="tenor_bulan" id="wa_tenor">
@@ -81,7 +88,7 @@
                             </div>
                         </div>
 
-                        {{-- Ringkasan cash --}}
+                        <?php // Ringkasan cash ?>
                         <div class="col-12 wa-cash-field" style="display:none;">
                             <div class="wa-summary p-3">
                                 <div class="simulation-row"><span>Harga Pokok</span><strong
@@ -91,7 +98,7 @@
                             </div>
                         </div>
 
-                        {{-- Upload KTP hanya untuk kredit --}}
+                        <?php // Upload KTP hanya untuk kredit ?>
                         <div class="col-12 wa-kredit-field" id="wa_ktp_wrapper">
                             <label class="form-label">Foto KTP <span class="text-danger">*</span></label>
                             <input type="file" class="form-control form-control-lg" name="foto_ktp" id="wa_foto_ktp"

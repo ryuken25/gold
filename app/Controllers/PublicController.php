@@ -130,6 +130,17 @@ class PublicController extends BaseController
 
     public function waPengajuan()
     {
+        if (!is_pelanggan_logged_in()) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'message' => 'Silakan masuk terlebih dahulu untuk memesan.',
+                    'redirect' => base_url('/login'),
+                ]);
+            }
+
+            return redirect()->to('/login')->with('error', 'Silakan masuk terlebih dahulu untuk memesan.');
+        }
+
         $metode = $this->request->getPost('metode_pembayaran') ?? 'kredit';
 
         $rules = [
@@ -173,7 +184,8 @@ class PublicController extends BaseController
 
         $marginDefault  = (float) $this->pengaturanModel->getPengaturan()['margin_default'];
         $pengajuanData  = [
-            'user_id'           => is_pelanggan_logged_in() ? current_pelanggan()['id'] : null,
+            'user_id'           => current_pelanggan()['id'],
+            'no_telepon'        => current_pelanggan()['no_telepon'] ?? null,
             'produk_emas_id'    => $produk['id'],
             'metode_pembayaran' => $metode,
             'nama'              => $this->request->getPost('nama'),
