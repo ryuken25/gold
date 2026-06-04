@@ -114,6 +114,33 @@ class AkunController extends BaseController
     }
 
     /**
+     * Sajikan foto KTP milik pelanggan sendiri (scoped ke user_id).
+     */
+    public function ktp(int $id)
+    {
+        $userId = (int) current_pelanggan()['id'];
+
+        $pengajuan = (new PengajuanModel())
+            ->where('id', $id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$pengajuan || empty($pengajuan['foto_ktp'])) {
+            throw PageNotFoundException::forPageNotFound('Foto KTP tidak ditemukan.');
+        }
+
+        $path = WRITEPATH . 'uploads/ktp/' . basename((string) $pengajuan['foto_ktp']);
+        if (!is_file($path)) {
+            throw PageNotFoundException::forPageNotFound('File KTP tidak ada di server.');
+        }
+
+        return $this->response
+            ->setHeader('Content-Type', mime_content_type($path) ?: 'application/octet-stream')
+            ->setHeader('Content-Disposition', 'inline; filename="' . basename($path) . '"')
+            ->setBody((string) file_get_contents($path));
+    }
+
+    /**
      * Detail satu kredit milik pelanggan + jadwal angsuran.
      */
     public function kreditDetail(int $id): string

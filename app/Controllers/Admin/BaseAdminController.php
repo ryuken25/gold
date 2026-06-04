@@ -3,6 +3,7 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Models\PengajuanModel;
 use App\Models\PengaturanSistemModel;
 
 abstract class BaseAdminController extends BaseController
@@ -20,6 +21,7 @@ abstract class BaseAdminController extends BaseController
         return view($view, array_merge([
             'admin' => current_admin(),
             'pengaturan' => $this->pengaturanModel->getPengaturan(),
+            'pengajuanBaru' => (new PengajuanModel())->where('status', 'baru')->countAllResults(),
         ], $data));
     }
 }

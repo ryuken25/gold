@@ -17,6 +17,7 @@
         <?php
         $menu = [
             ['icon' => 'bi-grid', 'label' => 'Dashboard', 'url' => '/admin/dashboard', 'segment' => 'admin/dashboard'],
+            ['icon' => 'bi-inbox', 'label' => 'Pengajuan', 'url' => '/admin/pengajuan', 'segment' => 'admin/pengajuan', 'badge' => ($pengajuanBaru ?? 0)],
             ['icon' => 'bi-gem', 'label' => 'Produk', 'url' => '/admin/produk', 'segment' => 'admin/produk'],
             ['icon' => 'bi-people', 'label' => 'Nasabah', 'url' => '/admin/nasabah', 'segment' => 'admin/nasabah'],
             ['icon' => 'bi-receipt', 'label' => 'Kredit', 'url' => '/admin/kredit', 'segment' => 'admin/kredit'],
@@ -35,6 +36,9 @@
                     <span>
                         <?= esc($item['label']); ?>
                     </span>
+                    <?php if (!empty($item['badge'])): ?>
+                        <span class="badge bg-danger rounded-pill ms-auto"><?= esc($item['badge']); ?></span>
+                    <?php endif; ?>
                 </a>
             <?php endforeach; ?>
         </nav>

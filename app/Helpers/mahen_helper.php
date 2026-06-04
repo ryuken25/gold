@@ -36,11 +36,12 @@ if (!function_exists('status_badge_class')) {
     function status_badge_class(?string $status): string
     {
         return match ($status) {
-            'aktif', 'dibayar', 'dikirim_manual' => 'success',
+            'aktif', 'dibayar', 'dikirim_manual', 'disetujui', 'selesai' => 'success',
             'lunas' => 'primary',
-            'terlambat', 'gagal', 'dibatalkan' => 'danger',
+            'terlambat', 'gagal', 'dibatalkan', 'ditolak' => 'danger',
             'sebagian' => 'warning',
-            'dibuka' => 'info',
+            'dibuka', 'diproses' => 'info',
+            'baru' => 'secondary',
             default => 'secondary',
         };
     }
