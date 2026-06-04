@@ -9,6 +9,25 @@ echo  ============================================================
 echo.
 
 :: ================================================================
+:: 0. SMART UPDATE — pindah ke folder skrip, tarik update terbaru
+::    Jalankan "install.bat fresh" untuk rebuild DB + seed ulang.
+:: ================================================================
+cd /d "%~dp0"
+
+set "FRESH=0"
+if /I "%~1"=="fresh" set "FRESH=1"
+if "%FRESH%"=="1" echo [WARN] Mode FRESH aktif: database dibuat ulang ^& di-seed ulang.
+
+where git >nul 2>&1
+if errorlevel 1 goto :skip_pull
+git rev-parse --is-inside-work-tree >nul 2>&1
+if errorlevel 1 goto :skip_pull
+echo [..] Menarik update terbaru ^(git pull^)...
+git pull --autostash --ff-only
+if errorlevel 1 (echo [WARN] git pull dilewati ^(perubahan lokal / non-fast-forward^). Lanjut dengan kode saat ini.) else (echo [OK] Kode terbaru ditarik.)
+:skip_pull
+
+:: ================================================================
 :: 1. DETEKSI PHP (XAMPP)
 :: ================================================================
 set "PHP_CMD="
@@ -181,6 +200,10 @@ if exist "vendor\autoload.php" (
 :: 6. BUAT DATABASE
 :: ================================================================
 echo.
+if "%FRESH%"=="1" (
+    echo [WARN] FRESH: menghapus database mahengold_demo ^(semua data lama hilang^)...
+    "%MYSQL_CMD%" -u root -e "DROP DATABASE IF EXISTS mahengold_demo;" 2>nul
+)
 echo [..] Membuat database mahengold_demo...
 "%MYSQL_CMD%" -u root -e "CREATE DATABASE IF NOT EXISTS mahengold_demo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>&1
 if errorlevel 1 (
