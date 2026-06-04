@@ -28,7 +28,11 @@ $routes->group('akun', ['namespace' => 'App\Controllers', 'filter' => 'customera
     $routes->post('password', 'Customer\AkunController::updatePassword');
     $routes->get('pesanan', 'Customer\AkunController::pesanan');
     $routes->get('pesanan/(:num)/ktp', 'Customer\AkunController::ktp/$1');
+    $routes->post('pesanan/(:num)/bukti', 'Customer\AkunController::uploadBuktiCash/$1');
+    $routes->get('pesanan/(:num)', 'Customer\AkunController::pesananDetail/$1');
     $routes->get('kredit/(:num)', 'Customer\AkunController::kreditDetail/$1');
+    $routes->post('kredit/(:num)/bukti/(:num)', 'Customer\AkunController::uploadBuktiAngsuran/$1/$2');
+    $routes->get('bukti/(:num)', 'Customer\AkunController::bukti/$1');
 });
 
 $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function (RouteCollection $routes) {
@@ -62,6 +66,8 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
         $routes->post('produk/(:num)', 'ProdukController::update/$1');
         $routes->post('produk/(:num)/delete', 'ProdukController::delete/$1');
 
+        $routes->get('pelanggan', 'PelangganController::index');
+
         $routes->get('nasabah', 'NasabahController::index');
         $routes->get('nasabah/create', 'NasabahController::create');
         $routes->post('nasabah', 'NasabahController::store');
@@ -80,19 +86,12 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
         $routes->get('kredit/(:num)/wa-pengingat/(:num)', 'KreditController::waPengingat/$1/$2');
 
         $routes->get('pembayaran', 'PembayaranController::index');
-        $routes->get('pembayaran/create', 'PembayaranController::create');
-        $routes->post('pembayaran', 'PembayaranController::store');
-        $routes->get('pembayaran/(:num)/wa-konfirmasi', 'PembayaranController::waKonfirmasi/$1');
-
-        $routes->get('piutang', 'PiutangController::index');
+        $routes->post('pembayaran/(:num)/verifikasi', 'PembayaranController::verifikasi/$1');
+        $routes->post('pembayaran/(:num)/tolak', 'PembayaranController::tolak/$1');
+        $routes->get('pembayaran/(:num)/bukti', 'PembayaranController::bukti/$1');
 
         $routes->get('laporan/kredit', 'LaporanController::kredit');
         $routes->get('laporan/pembayaran', 'LaporanController::pembayaran');
         $routes->get('laporan/piutang', 'LaporanController::piutang');
-
-        $routes->get('whatsapp-logs', 'WhatsAppLogController::index');
-
-        $routes->get('pengaturan', 'PengaturanController::index');
-        $routes->post('pengaturan', 'PengaturanController::update');
     });
 });

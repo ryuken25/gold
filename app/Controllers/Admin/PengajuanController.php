@@ -6,6 +6,7 @@ use App\Models\PengajuanAktivitasModel;
 use App\Models\PengajuanModel;
 use App\Models\WhatsAppLogModel;
 use App\Services\CreditCalculatorService;
+use App\Services\CreditTransactionService;
 use App\Services\EmailNotificationService;
 use App\Services\WhatsAppTemplateService;
 use CodeIgniter\Exceptions\PageNotFoundException;
@@ -80,32 +81,23 @@ class PengajuanController extends BaseAdminController
             throw PageNotFoundException::forPageNotFound('Pengajuan tidak ditemukan.');
         }
 
-        // Jadwal Kedatangan final: dari input admin (opsional) atau nilai tersimpan.
-        $waktuFinal = $pengajuan['waktu_sesi'];
-        $waktuPost  = trim((string) $this->request->getPost('waktu_sesi'));
-        if ($waktuPost !== '') {
-            $ts = strtotime($waktuPost);
-            if (!$ts || $ts <= time()) {
-                return redirect()->to('/admin/pengajuan/' . $id)
-                    ->with('error', 'Jadwal Kedatangan harus waktu yang valid dan di masa depan.');
+        $this->pengajuanModel->update($id, ['status' => 'disetujui']);
+        $this->aktivitasModel->log($id, 'diverifikasi', 'Pesanan disetujui admin.', $this->adminName());
+
+        // Untuk kredit: otomatis bentuk nasabah + kredit + jadwal angsuran.
+        if ($pengajuan['metode_pembayaran'] === 'kredit') {
+            try {
+                $marginDefault = (float) $this->pengaturanModel->getPengaturan()['margin_default'];
+                $hasil = (new CreditTransactionService())->createFromPengajuan($pengajuan, $marginDefault);
+                if (!empty($hasil['kredit'])) {
+                    $this->aktivitasModel->log($id, 'kredit_dibuat', 'Kredit otomatis dibuat: ' . $hasil['kredit']['kode_kredit'], $this->adminName());
+                }
+            } catch (\Throwable $e) {
+                log_message('error', 'Auto-create kredit gagal (pengajuan ' . $id . '): ' . $e->getMessage());
+                session()->setFlashdata('warning', 'Pesanan disetujui, tetapi pembuatan kredit otomatis gagal: ' . $e->getMessage());
             }
-            $waktuFinal = date('Y-m-d H:i:s', $ts);
         }
 
-        if (empty($waktuFinal)) {
-            return redirect()->to('/admin/pengajuan/' . $id)
-                ->with('error', 'Tentukan Jadwal Kedatangan sebelum memverifikasi.');
-        }
-
-        $this->pengajuanModel->update($id, [
-            'status'                 => 'disetujui',
-            'waktu_sesi'             => $waktuFinal,
-            'reminder_sesi_terkirim' => 0,
-        ]);
-
-        $this->aktivitasModel->log($id, 'diverifikasi', 'Disetujui. Jadwal kedatangan: ' . $waktuFinal, $this->adminName());
-
-        $pengajuan['waktu_sesi'] = $waktuFinal;
         $this->kirimEmailVerifikasi($pengajuan);
 
         return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan diverifikasi & email konfirmasi dikirim.');
@@ -277,7 +269,6 @@ class PengajuanController extends BaseAdminController
             'metode_pembayaran' => $pengajuan['metode_pembayaran'],
             'tenor_bulan'       => $pengajuan['tenor_bulan'] ?? null,
             'periode_angsuran'  => $pengajuan['periode_angsuran'] ?? null,
-            'waktu_sesi'        => $pengajuan['waktu_sesi'] ?? null,
             'nama_toko'         => $pengaturan['nama_toko'] ?? 'MahenGold',
         ];
 
@@ -306,7 +297,6 @@ class PengajuanController extends BaseAdminController
             'nama_produk'       => $pengajuan['nama_produk'] ?? '-',
             'kode_produk'       => $pengajuan['kode_produk'] ?? '',
             'metode_pembayaran' => $pengajuan['metode_pembayaran'],
-            'waktu_sesi'        => $pengajuan['waktu_sesi'],
         ];
 
         if ($simulasi) {
@@ -323,6 +313,13 @@ class PengajuanController extends BaseAdminController
             (new EmailNotificationService())->kirimPesananDiverifikasi($payload);
         } catch (\Throwable $e) {
             log_message('error', 'Email pesanan_diverifikasi gagal: ' . $e->getMessage());
+        }
+
+        try {
+            $nomor = $pengajuan['no_telepon'] ?: ($pengajuan['telepon_user'] ?? '');
+            (new \App\Services\WhatsAppGatewayService())->send((string) $nomor, 'Pesanan ' . ($pengajuan['kode_pesanan'] ?? '') . ' Anda telah diverifikasi. Cek detail di akun MahenGold Anda.');
+        } catch (\Throwable $e) {
+            log_message('error', 'WA backup pesanan_diverifikasi gagal: ' . $e->getMessage());
         }
     }
 }

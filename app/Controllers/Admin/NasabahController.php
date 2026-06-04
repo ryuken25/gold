@@ -33,13 +33,21 @@ class NasabahController extends BaseAdminController
     public function index(): string
     {
         $q = trim((string) $this->request->getGet('q'));
-        $builder = $this->nasabahModel->orderBy('created_at', 'DESC');
+
+        // Nasabah = pelanggan yang punya cicilan (kredit).
+        $builder = $this->nasabahModel
+            ->select('nasabah.*,
+                (SELECT COUNT(*) FROM kredit WHERE kredit.nasabah_id = nasabah.id AND kredit.status = "aktif") as kredit_aktif,
+                (SELECT COALESCE(SUM(sisa_piutang),0) FROM kredit WHERE kredit.nasabah_id = nasabah.id AND kredit.status = "aktif") as sisa_piutang')
+            ->where('EXISTS (SELECT 1 FROM kredit WHERE kredit.nasabah_id = nasabah.id)', null, false)
+            ->orderBy('nasabah.created_at', 'DESC');
+
         if ($q !== '') {
-            $builder->groupStart()->like('kode_nasabah', $q)->orLike('nama', $q)->orLike('no_telepon', $q)->groupEnd();
+            $builder->groupStart()->like('nasabah.kode_nasabah', $q)->orLike('nasabah.nama', $q)->orLike('nasabah.no_telepon', $q)->groupEnd();
         }
 
         return $this->render('admin/nasabah/index', [
-            'pageTitle' => 'Nasabah',
+            'pageTitle' => 'Nasabah (Cicilan)',
             'nasabah' => $builder->paginate(10),
             'pager' => $this->nasabahModel->pager,
             'q' => $q,

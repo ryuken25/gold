@@ -35,6 +35,7 @@
                                         <th>KTP</th>
                                         <th>Status</th>
                                         <th>Tanggal</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -65,6 +66,10 @@
                                                 </span>
                                             </td>
                                             <td><?= esc(format_tanggal($p['created_at'], 'd M Y')); ?></td>
+                                            <td class="text-end">
+                                                <a href="<?= base_url('/akun/pesanan/' . $p['id']); ?>"
+                                                    class="btn btn-sm btn-outline-gold">Detail</a>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>

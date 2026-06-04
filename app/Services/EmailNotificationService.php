@@ -47,54 +47,68 @@ class EmailNotificationService
     public function kirimPesananDiverifikasi(array $p): bool
     {
         $pengaturan = $this->pengaturanModel->getPengaturan();
-        $jadwal = !empty($p['waktu_sesi']) ? format_tanggal($p['waktu_sesi'], 'd M Y, H:i') : 'akan dikonfirmasi admin';
 
         $baris = $this->barisPesanan($p);
-        $baris['Jadwal Kedatangan'] = $jadwal . ' WITA';
         if (!empty($pengaturan['alamat_toko'])) {
             $baris['Alamat Toko'] = $pengaturan['alamat_toko'];
         }
 
+        $isKredit = ($p['metode_pembayaran'] ?? '') === 'kredit';
+        $extra = $isKredit
+            ? 'Jadwal angsuran Anda sudah aktif. Lihat rincian jatuh tempo dan unggah bukti pembayaran di halaman akun.'
+            : 'Silakan selesaikan pembayaran dan unggah buktinya di halaman akun.';
+
         $isi = $this->daftarHtml($baris)
             . '<p style="margin:16px 0 0;">Pesanan Anda telah <strong style="color:#1f8a4c;">diverifikasi &amp; disetujui</strong>. '
-            . 'Mohon hadir tepat waktu sesuai Jadwal Kedatangan di atas. '
-            . 'Untuk pesanan kredit, bawa <strong>KTP asli</strong> untuk proses akad.</p>';
+            . esc($extra) . ' Tim kami akan menghubungi Anda untuk proses selanjutnya.</p>'
+            . '<p style="margin:14px 0 0;"><a href="' . esc(base_url('/akun')) . '" '
+            . 'style="background:#C9A24B;color:#1c1a17;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700;">Buka Akun Saya</a></p>';
 
         return $this->kirim(
             'pesanan_diverifikasi',
             (int) ($p['user_id'] ?? 0),
-            'Pesanan ' . ($p['kode_pesanan'] ?? '') . ' diverifikasi — Jadwal Kedatangan',
+            'Pesanan ' . ($p['kode_pesanan'] ?? '') . ' diverifikasi',
             'Halo ' . esc($p['nama'] ?? 'Pelanggan') . ', kabar baik! Pesanan Anda sudah diverifikasi admin.',
             $isi,
             (int) ($p['pengajuan_id'] ?? 0),
         );
     }
 
-    public function kirimReminderSesi(array $p): bool
+    public function kirimPembayaranTerverifikasi(array $p): bool
     {
-        $pengaturan = $this->pengaturanModel->getPengaturan();
-        $jadwal = !empty($p['waktu_sesi']) ? format_tanggal($p['waktu_sesi'], 'd M Y, H:i') : '-';
+        $isKredit = ($p['tipe'] ?? '') === 'cicilan';
 
-        $baris = [
-            'Nomor Pesanan' => $p['kode_pesanan'] ?? '-',
-            'Produk'        => $p['nama_produk'] ?? '-',
-            'Jadwal'        => $jadwal . ' WITA',
-        ];
-        if (!empty($pengaturan['alamat_toko'])) {
-            $baris['Alamat Toko'] = $pengaturan['alamat_toko'];
+        $baris = ['Kode Bukti' => $p['kode'] ?? '-'];
+        if ($isKredit) {
+            $baris['Kredit'] = $p['kode_kredit'] ?? '-';
+            if (!empty($p['angsuran_ke'])) {
+                $baris['Angsuran Ke'] = $p['angsuran_ke'];
+            }
+            $baris['Nominal']       = format_rupiah($p['nominal'] ?? 0);
+            $baris['Total Terbayar'] = format_rupiah($p['total_terbayar'] ?? 0);
+            $baris['Sisa Piutang']  = format_rupiah($p['sisa_piutang'] ?? 0);
+            $baris['Status Kredit'] = ucfirst((string) ($p['status_kredit'] ?? 'aktif'));
+        } else {
+            $baris['Nomor Pesanan'] = $p['kode_pesanan'] ?? '-';
+            $baris['Nominal']       = format_rupiah($p['nominal'] ?? 0);
         }
 
-        $isi = '<p style="margin:0 0 14px;">Ini pengingat bahwa <strong>sesi kedatangan Anda 30 menit lagi</strong>. '
-            . 'Mohon bersiap menuju toko MahenGold.</p>'
-            . $this->daftarHtml($baris);
+        $lunas   = $isKredit && ($p['status_kredit'] ?? '') === 'lunas';
+        $penutup = $lunas
+            ? 'Selamat! Seluruh angsuran kredit emas Anda telah <strong>LUNAS</strong>. Terima kasih telah mempercayai MahenGold.'
+            : ($isKredit
+                ? 'Pembayaran angsuran Anda telah kami verifikasi. Lanjutkan pembayaran berikutnya sesuai jadwal di akun Anda.'
+                : 'Pembayaran Anda telah kami verifikasi dan pesanan dinyatakan <strong>selesai</strong>. Terima kasih.');
+
+        $isi = $this->daftarHtml($baris) . '<p style="margin:16px 0 0;">' . $penutup . '</p>';
 
         return $this->kirim(
-            'reminder_sesi',
+            'pembayaran_terverifikasi',
             (int) ($p['user_id'] ?? 0),
-            'Pengingat: sesi kedatangan Anda 30 menit lagi',
-            'Halo ' . esc($p['nama'] ?? 'Pelanggan') . ', jangan sampai terlewat ya.',
+            'Pembayaran ' . ($p['kode'] ?? '') . ' terverifikasi',
+            'Halo ' . esc($p['nama'] ?? 'Pelanggan') . ', pembayaran Anda sudah kami verifikasi.',
             $isi,
-            (int) ($p['pengajuan_id'] ?? 0),
+            (int) ($p['related_id'] ?? 0),
         );
     }
 

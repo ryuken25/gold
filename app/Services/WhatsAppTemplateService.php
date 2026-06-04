@@ -284,11 +284,6 @@ class WhatsAppTemplateService
             }
         }
 
-        if (!empty($data['waktu_sesi'])) {
-            $lines[] = '';
-            $lines[] = 'Jadwal Kedatangan: ' . format_tanggal($data['waktu_sesi'], 'd M Y H:i');
-        }
-
         $lines[] = '';
         $lines[] = 'Terima kasih telah mempercayai ' . ($data['nama_toko'] ?? 'MahenGold') . '.';
 

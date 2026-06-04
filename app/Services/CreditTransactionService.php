@@ -117,6 +117,108 @@ class CreditTransactionService
         ];
     }
 
+    /**
+     * Buat kredit + jadwal angsuran otomatis dari pengajuan yang disetujui.
+     * Idempotent: tidak membuat ganda bila pengajuan sudah punya kredit.
+     * Auto-create nasabah dari data user/pengajuan bila belum ada.
+     */
+    public function createFromPengajuan(array $pengajuan, float $marginDefault = 10.00): array
+    {
+        if (($pengajuan['metode_pembayaran'] ?? '') !== 'kredit') {
+            return [];
+        }
+
+        $existing = $this->kreditModel->where('pengajuan_id', $pengajuan['id'])->first();
+        if ($existing) {
+            return [
+                'kredit' => $existing,
+                'jadwal' => $this->jadwalModel->where('kredit_id', $existing['id'])->orderBy('angsuran_ke', 'ASC')->findAll(),
+                'reused' => true,
+            ];
+        }
+
+        $produk = $this->produkModel->find((int) $pengajuan['produk_emas_id']);
+        if (!$produk) {
+            throw new RuntimeException('Produk emas tidak ditemukan.');
+        }
+
+        // Pastikan nasabah untuk user ini ada (auto-create bila belum).
+        $nasabah = $this->nasabahModel->where('user_id', $pengajuan['user_id'])->first();
+        if (!$nasabah) {
+            $nasabahId = $this->nasabahModel->insert([
+                'kode_nasabah' => 'PENDING',
+                'user_id'      => $pengajuan['user_id'],
+                'nama'         => $pengajuan['nama'],
+                'no_telepon'   => wa_number_normalize((string) ($pengajuan['no_telepon'] ?? '')),
+                'alamat'       => $pengajuan['alamat'] ?? '-',
+                'catatan'      => 'Auto dari pesanan ' . ($pengajuan['kode_pesanan'] ?? ''),
+            ], true);
+            $this->nasabahModel->update($nasabahId, ['kode_nasabah' => generate_kode('NSB', $nasabahId)]);
+            $nasabah = $this->nasabahModel->find($nasabahId);
+        }
+
+        $tenor   = (int) ($pengajuan['tenor_bulan'] ?: 12);
+        $periode = (string) ($pengajuan['periode_angsuran'] ?: 'bulanan');
+        $kalkulasi = $this->calculator->calculate($produk['harga_pokok'], $marginDefault, $tenor, $periode);
+
+        $tanggalKredit     = date('Y-m-d');
+        $jatuhTempoPertama = $periode === 'mingguan'
+            ? date('Y-m-d', strtotime('+7 day'))
+            : date('Y-m-d', strtotime('+1 month'));
+
+        $this->db->transStart();
+
+        $kreditId = $this->kreditModel->insert([
+            'kode_kredit'          => 'PENDING',
+            'pengajuan_id'         => $pengajuan['id'],
+            'nasabah_id'           => $nasabah['id'],
+            'produk_emas_id'       => $produk['id'],
+            'tanggal_kredit'       => $tanggalKredit,
+            'harga_pokok_snapshot' => $kalkulasi['harga_pokok'],
+            'margin_persen'        => $kalkulasi['margin_persen'],
+            'margin_nominal'       => $kalkulasi['margin_nominal'],
+            'total_harga_kredit'   => $kalkulasi['total_harga_kredit'],
+            'tenor_bulan'          => $kalkulasi['tenor_bulan'],
+            'periode_angsuran'     => $kalkulasi['periode_angsuran'],
+            'jumlah_periode'       => $kalkulasi['jumlah_periode'],
+            'nominal_angsuran'     => $kalkulasi['nominal_angsuran'],
+            'total_terbayar'       => 0,
+            'sisa_piutang'         => $kalkulasi['total_harga_kredit'],
+            'status'               => 'aktif',
+            'catatan'              => 'Auto dari pesanan ' . ($pengajuan['kode_pesanan'] ?? ''),
+        ], true);
+
+        $this->kreditModel->update($kreditId, ['kode_kredit' => generate_kode('KRD', $kreditId)]);
+
+        $jadwal = $this->calculator->generateSchedule($jatuhTempoPertama, $kalkulasi);
+        foreach ($jadwal as &$item) {
+            $item['kredit_id'] = $kreditId;
+        }
+        unset($item);
+        $this->jadwalModel->insertBatch($jadwal);
+
+        // Kurangi stok; toko fisik -> tetap lanjut walau stok 0 (log warning).
+        $stok = (int) $produk['stok'];
+        if ($stok < 1) {
+            log_message('warning', 'Stok produk ' . $produk['id'] . ' habis saat auto-create kredit dari pengajuan ' . $pengajuan['id']);
+        } else {
+            $this->produkModel->update($produk['id'], ['stok' => $stok - 1]);
+        }
+
+        $this->db->transComplete();
+
+        if (!$this->db->transStatus()) {
+            throw new RuntimeException('Gagal membuat kredit dari pesanan.');
+        }
+
+        return [
+            'kredit'  => $this->kreditModel->find($kreditId),
+            'nasabah' => $nasabah,
+            'jadwal'  => $jadwal,
+            'reused'  => false,
+        ];
+    }
+
     public function cancel(int $id): void
     {
         $kredit = $this->kreditModel->find($id);

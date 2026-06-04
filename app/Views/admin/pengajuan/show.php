@@ -3,7 +3,6 @@
 <?php
 $statusFinal    = in_array($pengajuan['status'], ['ditolak', 'dibatalkan', 'selesai'], true);
 $bisaVerifikasi = in_array($pengajuan['status'], ['baru', 'diproses'], true);
-$waktuVal       = !empty($pengajuan['waktu_sesi']) ? date('Y-m-d\TH:i', strtotime($pengajuan['waktu_sesi'])) : '';
 $telepon        = $pengajuan['no_telepon'] ?: ($pengajuan['telepon_user'] ?? '-');
 $aksiIcon = [
     'dibuat'                => 'bi-plus-circle',
@@ -56,7 +55,7 @@ $relatif = static function ($datetime): string {
                 <div><span>Berat</span><strong><?= esc(format_angka($pengajuan['berat_gram'] ?? 0, 2)); ?> gram</strong></div>
                 <div><span>Harga Pokok</span><strong><?= esc(format_rupiah($pengajuan['harga_pokok'] ?? 0)); ?></strong></div>
                 <div><span>Metode</span><strong><?= esc(ucfirst($pengajuan['metode_pembayaran'])); ?></strong></div>
-                <div><span>Jadwal Kedatangan</span><strong><?= $pengajuan['waktu_sesi'] ? esc(format_tanggal($pengajuan['waktu_sesi'], 'd M Y H:i')) : 'Belum dijadwalkan'; ?></strong></div>
+                <div><span>Status Pembayaran</span><strong><?= esc(ucfirst($pengajuan['pembayaran_status'] ?? 'belum')); ?></strong></div>
                 <?php if ($pengajuan['metode_pembayaran'] === 'kredit'): ?>
                     <div><span>Tenor</span><strong><?= esc($pengajuan['tenor_bulan']); ?> bulan (<?= esc($pengajuan['periode_angsuran']); ?>)</strong></div>
                 <?php endif; ?>
@@ -145,9 +144,10 @@ $relatif = static function ($datetime): string {
             <?php else: ?>
                 <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/verifikasi'); ?>" method="post" class="mb-3">
                     <?= csrf_field(); ?>
-                    <label class="form-label">Jadwal Kedatangan / Akad</label>
-                    <input type="datetime-local" name="waktu_sesi" class="form-control mb-2" value="<?= esc($waktuVal); ?>">
-                    <div class="form-text mb-2">Kosongkan untuk memakai preferensi pelanggan. Wajib terisi sebelum verifikasi.</div>
+                    <?php if ($pengajuan['metode_pembayaran'] === 'kredit'): ?>
+                        <div class="form-text mb-2">Menyetujui akan otomatis membuat kredit + jadwal angsuran untuk
+                            pelanggan.</div>
+                    <?php endif; ?>
                     <button type="submit" class="btn btn-gold rounded-pill w-100" <?= $bisaVerifikasi ? '' : 'disabled'; ?>>
                         Verifikasi Pesanan
                     </button>

@@ -16,7 +16,8 @@
                         <th>Kode</th>
                         <th>Nama</th>
                         <th>Telepon</th>
-                        <th>Alamat</th>
+                        <th class="text-center">Kredit Aktif</th>
+                        <th class="text-end">Sisa Piutang</th>
                         <th class="text-end">Aksi</th>
                     </tr>
                 </thead>
@@ -26,7 +27,8 @@
                             <td><?= esc($row['kode_nasabah']); ?></td>
                             <td><?= esc($row['nama']); ?></td>
                             <td><?= esc($row['no_telepon']); ?></td>
-                            <td><?= esc($row['alamat']); ?></td>
+                            <td class="text-center"><?= esc($row['kredit_aktif'] ?? 0); ?></td>
+                            <td class="text-end"><?= esc(format_rupiah($row['sisa_piutang'] ?? 0)); ?></td>
                             <td class="text-end">
                                 <a href="<?= base_url('/admin/nasabah/' . $row['id'] . '/kartu-piutang'); ?>"
                                     class="btn btn-sm btn-outline-gold rounded-pill">Kartu Piutang</a>

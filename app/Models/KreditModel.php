@@ -14,6 +14,7 @@ class KreditModel extends Model
 
     protected $allowedFields = [
         'kode_kredit',
+        'pengajuan_id',
         'nasabah_id',
         'produk_emas_id',
         'tanggal_kredit',

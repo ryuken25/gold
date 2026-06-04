@@ -3,6 +3,7 @@
 namespace App\Controllers\Customer;
 
 use App\Controllers\BaseController;
+use App\Models\BuktiPembayaranModel;
 use App\Models\JadwalAngsuranModel;
 use App\Models\KreditModel;
 use App\Models\NasabahModel;
@@ -13,6 +14,39 @@ use CodeIgniter\Exceptions\PageNotFoundException;
 
 class AkunController extends BaseController
 {
+    protected function buktiModel(): BuktiPembayaranModel
+    {
+        return new BuktiPembayaranModel();
+    }
+
+    /**
+     * Simpan file bukti ke writable/uploads/bukti/. Kembalikan nama file atau null.
+     */
+    protected function simpanBukti($file): ?string
+    {
+        if (!$file || !$file->isValid() || $file->hasMoved()) {
+            return null;
+        }
+        $dir = WRITEPATH . 'uploads/bukti/';
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+            return null;
+        }
+        if (!is_file($dir . 'index.html')) {
+            @file_put_contents($dir . 'index.html', '');
+        }
+        try {
+            $nama = $file->getRandomName();
+            $file->move($dir, $nama);
+            return is_file($dir . $nama) ? $nama : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    protected function aturanBukti(): array
+    {
+        return ['bukti' => 'uploaded[bukti]|max_size[bukti,3072]|ext_in[bukti,jpg,jpeg,png,pdf]|mime_in[bukti,image/jpeg,image/jpg,image/png,application/pdf]'];
+    }
     protected function pengaturan(): array
     {
         return (new PengaturanSistemModel())->getPengaturan();
@@ -164,14 +198,180 @@ class AkunController extends BaseController
             ->orderBy('angsuran_ke', 'ASC')
             ->findAll();
 
+        $buktiByJadwal = [];
+        foreach ($this->buktiModel()->where('kredit_id', $id)->orderBy('id', 'ASC')->findAll() as $b) {
+            if (!empty($b['jadwal_angsuran_id'])) {
+                $buktiByJadwal[(int) $b['jadwal_angsuran_id']] = $b;
+            }
+        }
+
         return view('public/akun/kredit_detail', [
-            'pageTitle'  => 'Detail Kredit - MahenGold',
-            'pengaturan' => $this->pengaturan(),
-            'pelanggan'  => $pelanggan,
-            'kredit'     => $kredit,
-            'jadwal'     => $jadwal,
-            'activeTab'  => 'dashboard',
+            'pageTitle'     => 'Detail Kredit - MahenGold',
+            'pengaturan'    => $this->pengaturan(),
+            'pelanggan'     => $pelanggan,
+            'kredit'        => $kredit,
+            'jadwal'        => $jadwal,
+            'buktiByJadwal' => $buktiByJadwal,
+            'activeTab'     => 'dashboard',
         ]);
+    }
+
+    /**
+     * Upload bukti pembayaran satu angsuran cicilan.
+     */
+    public function uploadBuktiAngsuran(int $kreditId, int $jadwalId)
+    {
+        $userId     = (int) current_pelanggan()['id'];
+        $nasabahIds = $this->nasabahIds($userId);
+
+        $kredit = (new KreditModel())->find($kreditId);
+        if (!$kredit || !in_array((int) $kredit['nasabah_id'], $nasabahIds, true)) {
+            throw PageNotFoundException::forPageNotFound('Kredit tidak ditemukan.');
+        }
+
+        $jadwal = (new JadwalAngsuranModel())->where('id', $jadwalId)->where('kredit_id', $kreditId)->first();
+        if (!$jadwal) {
+            throw PageNotFoundException::forPageNotFound('Jadwal angsuran tidak ditemukan.');
+        }
+
+        $kembali = redirect()->to('/akun/kredit/' . $kreditId);
+
+        if ($jadwal['status'] === 'dibayar') {
+            return $kembali->with('error', 'Angsuran ini sudah lunas.');
+        }
+        if ($this->buktiModel()->where('jadwal_angsuran_id', $jadwalId)->whereIn('status', ['menunggu', 'terverifikasi'])->countAllResults() > 0) {
+            return $kembali->with('error', 'Bukti untuk angsuran ini sudah ada / sedang diproses.');
+        }
+        if (!$this->validate($this->aturanBukti())) {
+            return $kembali->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        $nama = $this->simpanBukti($this->request->getFile('bukti'));
+        if (!$nama) {
+            return $kembali->with('error', 'Gagal mengunggah bukti. Gunakan JPG/PNG/PDF maks 3 MB.');
+        }
+
+        $bm  = $this->buktiModel();
+        $bid = $bm->insert([
+            'tipe'               => 'cicilan',
+            'kredit_id'          => $kreditId,
+            'jadwal_angsuran_id' => $jadwalId,
+            'user_id'            => $userId,
+            'nominal'            => $jadwal['nominal_tagihan'],
+            'file_path'          => $nama,
+            'status'             => 'menunggu',
+        ], true);
+        $bm->update($bid, ['kode' => generate_kode('BKT', $bid)]);
+
+        return $kembali->with('success', 'Bukti pembayaran angsuran ke-' . $jadwal['angsuran_ke'] . ' terkirim, menunggu verifikasi admin.');
+    }
+
+    /**
+     * Upload bukti pembayaran cash (sekali per pengajuan).
+     */
+    public function uploadBuktiCash(int $pengajuanId)
+    {
+        $userId = (int) current_pelanggan()['id'];
+
+        $pengajuan = (new PengajuanModel())
+            ->select('pengajuan.*, produk_emas.harga_pokok')
+            ->join('produk_emas', 'produk_emas.id = pengajuan.produk_emas_id', 'left')
+            ->where('pengajuan.id', $pengajuanId)
+            ->where('pengajuan.user_id', $userId)
+            ->first();
+
+        if (!$pengajuan) {
+            throw PageNotFoundException::forPageNotFound('Pesanan tidak ditemukan.');
+        }
+
+        $kembali = redirect()->to('/akun/pesanan/' . $pengajuanId);
+
+        if ($pengajuan['metode_pembayaran'] !== 'cash' || $pengajuan['status'] !== 'disetujui') {
+            return $kembali->with('error', 'Pesanan belum bisa dibayar.');
+        }
+        if ($this->buktiModel()->where('pengajuan_id', $pengajuanId)->whereIn('status', ['menunggu', 'terverifikasi'])->countAllResults() > 0) {
+            return $kembali->with('error', 'Bukti pembayaran sudah ada / sedang diproses.');
+        }
+        if (!$this->validate($this->aturanBukti())) {
+            return $kembali->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        $nama = $this->simpanBukti($this->request->getFile('bukti'));
+        if (!$nama) {
+            return $kembali->with('error', 'Gagal mengunggah bukti. Gunakan JPG/PNG/PDF maks 3 MB.');
+        }
+
+        $bm  = $this->buktiModel();
+        $bid = $bm->insert([
+            'tipe'         => 'cash',
+            'pengajuan_id' => $pengajuanId,
+            'user_id'      => $userId,
+            'nominal'      => $pengajuan['harga_pokok'] ?? 0,
+            'file_path'    => $nama,
+            'status'       => 'menunggu',
+        ], true);
+        $bm->update($bid, ['kode' => generate_kode('BKT', $bid)]);
+
+        (new PengajuanModel())->update($pengajuanId, ['pembayaran_status' => 'menunggu']);
+
+        return redirect()->to('/akun/pesanan')->with('success', 'Bukti pembayaran terkirim, menunggu verifikasi admin.');
+    }
+
+    /**
+     * Detail satu pesanan pelanggan + status/aksi pembayaran.
+     */
+    public function pesananDetail(int $id): string
+    {
+        $userId = (int) current_pelanggan()['id'];
+
+        $pengajuan = (new PengajuanModel())
+            ->select('pengajuan.*, produk_emas.nama_produk, produk_emas.kode_produk, produk_emas.harga_pokok, produk_emas.jenis_emas, produk_emas.kadar, produk_emas.berat_gram')
+            ->join('produk_emas', 'produk_emas.id = pengajuan.produk_emas_id', 'left')
+            ->where('pengajuan.id', $id)
+            ->where('pengajuan.user_id', $userId)
+            ->first();
+
+        if (!$pengajuan) {
+            throw PageNotFoundException::forPageNotFound('Pesanan tidak ditemukan.');
+        }
+
+        $bukti  = $this->buktiModel()->where('pengajuan_id', $id)->orderBy('id', 'DESC')->first();
+        $kredit = $pengajuan['metode_pembayaran'] === 'kredit'
+            ? (new KreditModel())->where('pengajuan_id', $id)->first()
+            : null;
+
+        return view('public/akun/pesanan_detail', [
+            'pageTitle'  => 'Detail Pesanan - MahenGold',
+            'pengaturan' => $this->pengaturan(),
+            'pelanggan'  => current_pelanggan(),
+            'pengajuan'  => $pengajuan,
+            'bukti'      => $bukti,
+            'kredit'     => $kredit,
+            'activeTab'  => 'pesanan',
+        ]);
+    }
+
+    /**
+     * Sajikan file bukti pembayaran milik pelanggan sendiri.
+     */
+    public function bukti(int $id)
+    {
+        $userId = (int) current_pelanggan()['id'];
+
+        $bukti = $this->buktiModel()->where('id', $id)->where('user_id', $userId)->first();
+        if (!$bukti || empty($bukti['file_path'])) {
+            throw PageNotFoundException::forPageNotFound('Bukti tidak ditemukan.');
+        }
+
+        $path = WRITEPATH . 'uploads/bukti/' . basename((string) $bukti['file_path']);
+        if (!is_file($path)) {
+            throw PageNotFoundException::forPageNotFound('File bukti tidak ada di server.');
+        }
+
+        return $this->response
+            ->setHeader('Content-Type', mime_content_type($path) ?: 'application/octet-stream')
+            ->setHeader('Content-Disposition', 'inline; filename="' . basename($path) . '"')
+            ->setBody((string) file_get_contents($path));
     }
 
     /**
