@@ -18,6 +18,25 @@ echo "============================================================"
 echo ""
 
 # ================================================================
+# 0. SMART UPDATE — pindah ke folder skrip, tarik update terbaru (git pull)
+#    Jalankan "bash install.sh fresh" untuk rebuild DB + seed ulang.
+# ================================================================
+cd "$(cd "$(dirname "$0")" && pwd)" || exit 1
+
+FRESH=false
+[[ "${1:-}" == "fresh" ]] && FRESH=true
+$FRESH && warn "Mode FRESH aktif: database akan dibuat ulang & di-seed ulang."
+
+if command -v git &>/dev/null && git rev-parse --is-inside-work-tree &>/dev/null; then
+    info "Menarik update terbaru (git pull)..."
+    if git pull --autostash --ff-only; then
+        ok "Kode terbaru ditarik."
+    else
+        warn "git pull dilewati (ada perubahan lokal / bukan fast-forward). Lanjut dengan kode saat ini."
+    fi
+fi
+
+# ================================================================
 # 1. DETEKSI PHP (XAMPP Mac atau sistem)
 # ================================================================
 PHP_CMD=""
@@ -180,6 +199,10 @@ fi
 # 5. BUAT DATABASE
 # ================================================================
 echo ""
+if $FRESH; then
+    warn "FRESH: menghapus database mahengold_demo (semua data lama hilang)..."
+    "$MYSQL_CMD" -u root -e "DROP DATABASE IF EXISTS mahengold_demo;" 2>/dev/null || true
+fi
 info "Membuat database mahengold_demo..."
 if ! "$MYSQL_CMD" -u root -e \
     "CREATE DATABASE IF NOT EXISTS mahengold_demo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" \
