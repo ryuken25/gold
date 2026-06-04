@@ -89,15 +89,21 @@ Buka di browser: **http://127.0.0.1:8080**
 
 ---
 
-## Akun Demo Admin
+## Login (admin & pelanggan disatukan)
+
+Login memakai **satu halaman** `http://127.0.0.1:8080/login` untuk semua akun.
+Sistem mengarahkan otomatis berdasarkan **role**:
+- `role = admin` → panel admin (`/admin/dashboard`)
+- `role = pelanggan` → akun pelanggan (`/akun`)
+
+Pelanggan mendaftar sendiri lewat `/register` (otomatis `role = pelanggan`).
+
+### Akun Demo Admin
 
 | Field    | Nilai                  |
 | -------- | ---------------------- |
-| Username | `admin`                |
 | Email    | `admin@mahengold.test` |
 | Password | `admin123`             |
-
-Login admin di: http://127.0.0.1:8080/admin/login
 
 ---
 

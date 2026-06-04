@@ -18,6 +18,9 @@ class AuthController extends BaseController
 
     public function login()
     {
+        if (is_admin_logged_in()) {
+            return redirect()->to('/admin/dashboard');
+        }
         if (is_pelanggan_logged_in()) {
             return redirect()->to('/akun');
         }
@@ -57,7 +60,6 @@ class AuthController extends BaseController
 
         $user = $this->userModel
             ->where('email', $this->request->getPost('email'))
-            ->where('role', 'pelanggan')
             ->first();
 
         if (!$user || !password_verify((string) $this->request->getPost('password'), $user['password_hash'])) {
@@ -68,6 +70,21 @@ class AuthController extends BaseController
             return redirect()->back()->withInput()->with('error', 'Akun Anda tidak aktif. Hubungi admin.');
         }
 
+        // Login tunggal, arahkan sesuai role.
+        if ($user['role'] === 'admin') {
+            session()->remove('pelanggan_user');
+            session()->set('admin_user', [
+                'id'       => $user['id'],
+                'nama'     => $user['nama'],
+                'username' => $user['username'],
+                'email'    => $user['email'],
+                'role'     => $user['role'],
+            ]);
+
+            return redirect()->to('/admin/dashboard')->with('success', 'Selamat datang, ' . $user['nama'] . '!');
+        }
+
+        session()->remove('admin_user');
         session()->set('pelanggan_user', [
             'id'          => $user['id'],
             'nama'        => $user['nama'],
@@ -132,6 +149,7 @@ class AuthController extends BaseController
     public function logout()
     {
         session()->remove('pelanggan_user');
+        session()->remove('admin_user');
         session()->setFlashdata('success', 'Anda telah keluar.');
 
         return redirect()->to('/login');
