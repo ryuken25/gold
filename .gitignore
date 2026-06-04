@@ -45,6 +45,7 @@ ci4tmp/
 /builds
 tools/
 *.docx
+!usage.docx
 *.pdf
 Proposal_*
 
