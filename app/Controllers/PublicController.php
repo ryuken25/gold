@@ -128,7 +128,6 @@ class PublicController extends BaseController
             'nama'              => 'required|min_length[3]|max_length[150]',
             'no_telepon'        => 'required|min_length[8]|max_length[20]|regex_match[/^[0-9+\-\s]+$/]',
             'alamat'            => 'required|min_length[5]',
-            'waktu_sesi'        => 'required',
         ];
 
         if ($metode === 'kredit') {
@@ -142,16 +141,6 @@ class PublicController extends BaseController
             return $this->request->isAJAX()
                 ? $this->response->setStatusCode(422)->setJSON($payload)
                 : redirect()->back()->withInput()->with('error', implode(' ', $payload['errors']));
-        }
-
-        // Validasi Jadwal Kedatangan (min H+1, jam operasional 09:00-17:00).
-        $waktuTs  = strtotime((string) $this->request->getPost('waktu_sesi'));
-        $errSesi  = $this->validasiWaktuSesi($waktuTs);
-        if ($errSesi !== null) {
-            $payload = ['errors' => ['waktu_sesi' => $errSesi], 'csrf' => csrf_hash()];
-            return $this->request->isAJAX()
-                ? $this->response->setStatusCode(422)->setJSON($payload)
-                : redirect()->back()->withInput()->with('error', $errSesi);
         }
 
         $produk = $this->produkModel->find((int) $this->request->getPost('produk_id'));
@@ -203,7 +192,6 @@ class PublicController extends BaseController
             'nama'              => $this->request->getPost('nama'),
             'alamat'            => $this->request->getPost('alamat'),
             'foto_ktp'          => $namaFile,
-            'waktu_sesi'        => date('Y-m-d H:i:s', $waktuTs),
             'status'            => 'baru',
         ];
 
@@ -215,7 +203,6 @@ class PublicController extends BaseController
             'nama_produk'       => $produk['nama_produk'],
             'kode_produk'       => $produk['kode_produk'],
             'metode_pembayaran' => $metode,
-            'waktu_sesi'        => $pengajuanData['waktu_sesi'],
         ];
 
         if ($metode === 'kredit') {
@@ -255,6 +242,12 @@ class PublicController extends BaseController
             log_message('error', 'Email pesanan_dibuat gagal: ' . $e->getMessage());
         }
 
+        try {
+            (new \App\Services\WhatsAppGatewayService())->send($noTelepon, 'Pesanan ' . $kode . ' diterima & menunggu verifikasi admin MahenGold.');
+        } catch (\Throwable $e) {
+            log_message('error', 'WA backup pesanan_dibuat gagal: ' . $e->getMessage());
+        }
+
         $pesanSukses = 'Pesanan ' . $kode . ' berhasil dibuat dan menunggu verifikasi admin.';
 
         if ($this->request->isAJAX()) {
@@ -268,27 +261,6 @@ class PublicController extends BaseController
         }
 
         return redirect()->to('/akun/pesanan')->with('success', $pesanSukses);
-    }
-
-    /**
-     * Validasi waktu sesi kedatangan. Kembalikan pesan error atau null bila valid.
-     */
-    protected function validasiWaktuSesi($timestamp): ?string
-    {
-        if (!$timestamp) {
-            return 'Jadwal kedatangan tidak valid.';
-        }
-
-        if ($timestamp < strtotime('+1 day', strtotime('today'))) {
-            return 'Jadwal kedatangan minimal mulai besok.';
-        }
-
-        $menit = ((int) date('G', $timestamp)) * 60 + (int) date('i', $timestamp);
-        if ($menit < 540 || $menit > 1020) {
-            return 'Pilih jam kedatangan antara 09:00 dan 17:00.';
-        }
-
-        return null;
     }
 
     /**

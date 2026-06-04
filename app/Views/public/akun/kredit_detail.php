@@ -67,6 +67,7 @@ $persen    = $total > 0 ? min(100, round($terbayar / $total * 100)) : 0;
                                 <th class="text-end">Tagihan</th>
                                 <th class="text-end">Dibayar</th>
                                 <th>Status</th>
+                                <th>Bukti Pembayaran</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -80,6 +81,29 @@ $persen    = $total > 0 ? min(100, round($terbayar / $total * 100)) : 0;
                                         <span class="badge bg-<?= status_badge_class($row['status']); ?>">
                                             <?= esc(ucfirst(str_replace('_', ' ', $row['status']))); ?>
                                         </span>
+                                    </td>
+                                    <td>
+                                        <?php $b = $buktiByJadwal[(int) $row['id']] ?? null; ?>
+                                        <?php if ($row['status'] === 'dibayar'): ?>
+                                            <span class="text-success small fw-semibold">Lunas &#10003;</span>
+                                            <?php if ($b): ?>
+                                                <a href="<?= base_url('/akun/bukti/' . $b['id']); ?>" target="_blank" rel="noopener" class="small d-block">Lihat bukti</a>
+                                            <?php endif; ?>
+                                        <?php elseif ($b && $b['status'] === 'menunggu'): ?>
+                                            <span class="badge bg-warning">Menunggu verifikasi</span>
+                                            <a href="<?= base_url('/akun/bukti/' . $b['id']); ?>" target="_blank" rel="noopener" class="small d-block">Lihat bukti</a>
+                                        <?php else: ?>
+                                            <?php if ($b && $b['status'] === 'ditolak'): ?>
+                                                <div class="small text-danger mb-1">Ditolak<?= $b['catatan_admin'] ? ': ' . esc($b['catatan_admin']) : ''; ?>. Unggah ulang.</div>
+                                            <?php endif; ?>
+                                            <form action="<?= base_url('/akun/kredit/' . $kredit['id'] . '/bukti/' . $row['id']); ?>"
+                                                method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+                                                <?= csrf_field(); ?>
+                                                <input type="file" name="bukti" class="form-control form-control-sm"
+                                                    accept="image/jpeg,image/png,application/pdf" required style="max-width:160px;">
+                                                <button class="btn btn-sm btn-gold">Upload</button>
+                                            </form>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

@@ -61,13 +61,6 @@
                             <label class="form-label">Produk</label>
                             <input type="text" class="form-control form-control-lg" id="wa_produk_label" readonly>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Jadwal Kedatangan / Akad</label>
-                            <input type="datetime-local" class="form-control form-control-lg" name="waktu_sesi"
-                                id="wa_waktu_sesi" required>
-                            <div class="form-text">Pilih jam kedatangan ke toko (09:00–17:00). Bisa disesuaikan admin saat
-                                verifikasi.</div>
-                        </div>
                         <div class="col-12">
                             <label class="form-label">Alamat</label>
                             <textarea class="form-control form-control-lg" name="alamat" id="wa_alamat" rows="2"

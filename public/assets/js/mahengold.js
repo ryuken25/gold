@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const namaInput = document.getElementById('wa_nama');
         const alamatInput = document.getElementById('wa_alamat');
         const noTeleponInput = document.getElementById('wa_no_telepon');
-        const waktuSesiInput = document.getElementById('wa_waktu_sesi');
         const previewEl = document.getElementById('wa_preview');
         const kreditFields = waModal.querySelectorAll('.wa-kredit-field');
         const ktpInput = document.getElementById('wa_foto_ktp');
@@ -52,24 +51,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        // Set minimal jadwal kedatangan ke besok 09:00.
-        const setWaktuMin = () => {
-            if (!waktuSesiInput) return;
-            const d = new Date();
-            d.setDate(d.getDate() + 1);
-            const pad = (n) => String(n).padStart(2, '0');
-            waktuSesiInput.min = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T09:00`;
-        };
-
         // Rakit ringkasan pesanan secara lokal (tanpa pesan WhatsApp).
         const buildSummary = (kalkulasi) => {
             const metode = getMetode();
             const lines = [];
             lines.push(`Produk : ${produkLabel.value || '-'}`);
             lines.push(`Metode : ${metode === 'kredit' ? 'Kredit' : 'Cash'}`);
-            if (waktuSesiInput && waktuSesiInput.value) {
-                lines.push(`Jadwal : ${waktuSesiInput.value.replace('T', ' ')}`);
-            }
             lines.push('');
             if (metode === 'kredit') {
                 lines.push(`Tenor  : ${tenorInput.value} bulan (${periodeInput.value})`);
@@ -119,7 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 produkIdInput.value = button.dataset.produkId || '';
                 produkLabel.value = `${button.dataset.kode || ''} - ${button.dataset.nama || ''}`.trim();
                 currentHargaPokok = parseFloat(button.dataset.hargaPokok || '0');
-                setWaktuMin();
                 // Reset ke kredit saat buka modal
                 const kreditRadio = waModal.querySelector('#metode_kredit');
                 if (kreditRadio) kreditRadio.checked = true;
@@ -137,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (input) input.value = token;
         };
 
-        [tenorInput, periodeInput, waktuSesiInput].forEach((el) => el?.addEventListener('input', updatePreview));
+        [tenorInput, periodeInput].forEach((el) => el?.addEventListener('input', updatePreview));
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
             if (noTeleponInput && noTeleponInput.value.trim().length < 8) {
@@ -180,7 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Terapkan state awal
-        setWaktuMin();
         applyMetodePembayaran();
     }
 

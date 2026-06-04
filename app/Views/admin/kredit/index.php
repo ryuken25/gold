@@ -5,9 +5,17 @@
         <form method="get" class="d-flex gap-2">
             <select name="status" class="form-select">
                 <option value="">Semua Status</option>
-                <?php foreach (['aktif', 'lunas', 'dibatalkan'] as $item): ?>
-                    <option value="<?= esc($item); ?>" <?= $status === $item ? 'selected' : ''; ?>><?= esc(ucfirst($item)); ?>
-                    </option><?php endforeach; ?>
+                <?php
+                $opsi = [
+                    'aktif'       => 'Aktif',
+                    'lunas'       => 'Lunas',
+                    'dibatalkan'  => 'Dibatalkan',
+                    'jatuh_tempo' => 'Jatuh Tempo Hari Ini',
+                    'terlambat'   => 'Terlambat',
+                ];
+                foreach ($opsi as $val => $label): ?>
+                    <option value="<?= esc($val); ?>" <?= $status === $val ? 'selected' : ''; ?>><?= esc($label); ?></option>
+                <?php endforeach; ?>
             </select>
             <button class="btn btn-outline-gold rounded-pill px-4">Filter</button>
         </form>

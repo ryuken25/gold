@@ -19,13 +19,11 @@
             ['icon' => 'bi-grid', 'label' => 'Dashboard', 'url' => '/admin/dashboard', 'segment' => 'admin/dashboard'],
             ['icon' => 'bi-inbox', 'label' => 'Pengajuan', 'url' => '/admin/pengajuan', 'segment' => 'admin/pengajuan', 'badge' => ($pengajuanBaru ?? 0)],
             ['icon' => 'bi-gem', 'label' => 'Produk', 'url' => '/admin/produk', 'segment' => 'admin/produk'],
+            ['icon' => 'bi-person-badge', 'label' => 'Pelanggan', 'url' => '/admin/pelanggan', 'segment' => 'admin/pelanggan'],
             ['icon' => 'bi-people', 'label' => 'Nasabah', 'url' => '/admin/nasabah', 'segment' => 'admin/nasabah'],
             ['icon' => 'bi-receipt', 'label' => 'Kredit', 'url' => '/admin/kredit', 'segment' => 'admin/kredit'],
             ['icon' => 'bi-cash-coin', 'label' => 'Pembayaran', 'url' => '/admin/pembayaran', 'segment' => 'admin/pembayaran'],
-            ['icon' => 'bi-wallet2', 'label' => 'Piutang', 'url' => '/admin/piutang', 'segment' => 'admin/piutang'],
             ['icon' => 'bi-file-earmark-text', 'label' => 'Laporan', 'url' => '/admin/laporan/kredit', 'segment' => 'admin/laporan'],
-            ['icon' => 'bi-whatsapp', 'label' => 'WhatsApp Logs', 'url' => '/admin/whatsapp-logs', 'segment' => 'admin/whatsapp-logs'],
-            ['icon' => 'bi-gear', 'label' => 'Pengaturan', 'url' => '/admin/pengaturan', 'segment' => 'admin/pengaturan'],
         ];
         ?>
         <nav class="nav flex-column gap-1">

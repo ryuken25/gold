@@ -24,9 +24,8 @@ class PengajuanModel extends Model
         'tenor_bulan',
         'periode_angsuran',
         'foto_ktp',
-        'waktu_sesi',
-        'reminder_sesi_terkirim',
         'status',
+        'pembayaran_status',
         'catatan',
     ];
 

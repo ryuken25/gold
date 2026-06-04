@@ -32,17 +32,30 @@ class KreditController extends BaseAdminController
     {
         $db = Database::connect();
         $status = (string) $this->request->getGet('status');
+        $today = date('Y-m-d');
+
         $builder = $db->table('kredit k')
             ->select('k.*, n.nama as nama_nasabah, p.nama_produk')
             ->join('nasabah n', 'n.id = k.nasabah_id')
             ->join('produk_emas p', 'p.id = k.produk_emas_id')
             ->orderBy('k.created_at', 'DESC');
-        if ($status !== '') {
+
+        if (in_array($status, ['aktif', 'lunas', 'dibatalkan'], true)) {
             $builder->where('k.status', $status);
+        } elseif ($status === 'jatuh_tempo') {
+            $builder->join('jadwal_angsuran j', 'j.kredit_id = k.id')
+                ->where('j.tanggal_jatuh_tempo', $today)
+                ->whereNotIn('j.status', ['dibayar'])
+                ->groupBy('k.id');
+        } elseif ($status === 'terlambat') {
+            $builder->join('jadwal_angsuran j', 'j.kredit_id = k.id')
+                ->where('j.tanggal_jatuh_tempo <', $today)
+                ->whereNotIn('j.status', ['dibayar'])
+                ->groupBy('k.id');
         }
 
         return $this->render('admin/kredit/index', [
-            'pageTitle' => 'Transaksi Kredit',
+            'pageTitle' => 'Transaksi Kredit & Piutang',
             'kredit' => $builder->get()->getResultArray(),
             'status' => $status,
         ]);

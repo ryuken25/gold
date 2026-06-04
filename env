@@ -68,6 +68,14 @@
 # email.SMTPTimeout = 30
 
 #--------------------------------------------------------------------
+# WHATSAPP BACKUP GATEWAY (opsional)
+#--------------------------------------------------------------------
+# Endpoint generik penerima POST form (target, message) + header
+# Authorization Bearer. Kosongkan WA_GATEWAY_URL untuk menonaktifkan.
+# WA_GATEWAY_URL =
+# WA_GATEWAY_TOKEN =
+
+#--------------------------------------------------------------------
 # ENCRYPTION
 #--------------------------------------------------------------------
 
