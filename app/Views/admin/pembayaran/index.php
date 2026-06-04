@@ -83,6 +83,9 @@
                                         <input type="hidden" name="catatan_admin">
                                         <button class="btn btn-sm btn-outline-danger rounded-pill">Tolak</button>
                                     </form>
+                                <?php elseif ($r['status'] === 'terverifikasi'): ?>
+                                    <a href="<?= base_url('/admin/pembayaran/' . $r['id'] . '/wa'); ?>" target="_blank"
+                                        rel="noopener" class="btn btn-sm btn-whatsapp rounded-pill">Kirim WA</a>
                                 <?php elseif ($r['status'] === 'ditolak' && !empty($r['catatan_admin'])): ?>
                                     <span class="small text-muted-mg d-block">Alasan: <?= esc($r['catatan_admin']); ?></span>
                                 <?php endif; ?>

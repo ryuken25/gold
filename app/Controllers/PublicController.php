@@ -242,12 +242,6 @@ class PublicController extends BaseController
             log_message('error', 'Email pesanan_dibuat gagal: ' . $e->getMessage());
         }
 
-        try {
-            (new \App\Services\WhatsAppGatewayService())->send($noTelepon, 'Pesanan ' . $kode . ' diterima & menunggu verifikasi admin MahenGold.');
-        } catch (\Throwable $e) {
-            log_message('error', 'WA backup pesanan_dibuat gagal: ' . $e->getMessage());
-        }
-
         $pesanSukses = 'Pesanan ' . $kode . ' berhasil dibuat dan menunggu verifikasi admin.';
 
         if ($this->request->isAJAX()) {

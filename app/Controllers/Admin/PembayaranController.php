@@ -10,7 +10,7 @@ use App\Models\PengajuanModel;
 use App\Models\UserModel;
 use App\Services\EmailNotificationService;
 use App\Services\PaymentService;
-use App\Services\WhatsAppGatewayService;
+use App\Services\WhatsAppTemplateService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 use CodeIgniter\HTTP\ResponseInterface;
 use Config\Database;
@@ -167,12 +167,12 @@ class PembayaranController extends BaseAdminController
     }
 
     /**
-     * Kirim email + WA backup setelah pembayaran terverifikasi.
+     * Kirim email notifikasi setelah pembayaran terverifikasi.
+     * (WhatsApp dikirim manual oleh admin lewat tombol "Kirim WA".)
      */
     protected function kirimNotifPembayaran(array $bukti): void
     {
-        $user  = (new UserModel())->find($bukti['user_id']);
-        $nomor = $user['no_telepon'] ?? '';
+        $user = (new UserModel())->find($bukti['user_id']);
 
         $payload = [
             'user_id'    => (int) $bukti['user_id'],
@@ -193,20 +193,9 @@ class PembayaranController extends BaseAdminController
                 'sisa_piutang'   => $kredit['sisa_piutang'] ?? 0,
                 'status_kredit'  => $kredit['status'] ?? 'aktif',
             ];
-            if ($nomor === '' && $kredit) {
-                $nasabah = (new NasabahModel())->find($kredit['nasabah_id']);
-                $nomor   = $nasabah['no_telepon'] ?? '';
-            }
-            $ringkas = 'Pembayaran angsuran ' . ($kredit['kode_kredit'] ?? '') . ' terverifikasi. Sisa piutang: '
-                . format_rupiah($kredit['sisa_piutang'] ?? 0) . '.'
-                . (($kredit['status'] ?? '') === 'lunas' ? ' Kredit LUNAS, terima kasih!' : '');
         } else {
             $pengajuan = $bukti['pengajuan_id'] ? (new PengajuanModel())->find($bukti['pengajuan_id']) : null;
             $payload  += ['kode_pesanan' => $pengajuan['kode_pesanan'] ?? '-'];
-            if ($nomor === '' && $pengajuan) {
-                $nomor = $pengajuan['no_telepon'] ?? '';
-            }
-            $ringkas = 'Pembayaran pesanan ' . ($pengajuan['kode_pesanan'] ?? '') . ' terverifikasi. Pesanan selesai. Terima kasih!';
         }
 
         try {
@@ -214,10 +203,55 @@ class PembayaranController extends BaseAdminController
         } catch (Throwable $e) {
             log_message('error', 'Email pembayaran_terverifikasi gagal: ' . $e->getMessage());
         }
-        try {
-            (new WhatsAppGatewayService())->send((string) $nomor, $ringkas);
-        } catch (Throwable $e) {
-            log_message('error', 'WA backup pembayaran gagal: ' . $e->getMessage());
+    }
+
+    /**
+     * Buka WhatsApp ke nomor pelanggan dengan template konfirmasi (kirim manual).
+     */
+    public function wa(int $id)
+    {
+        $bukti = $this->buktiModel->find($id);
+        if (!$bukti) {
+            throw PageNotFoundException::forPageNotFound('Bukti pembayaran tidak ditemukan.');
         }
+
+        $user  = (new UserModel())->find($bukti['user_id']);
+        $nomor = $user['no_telepon'] ?? '';
+        $toko  = $this->pengaturanModel->getPengaturan()['nama_toko'] ?? 'MahenGold';
+        $nama  = $user['nama'] ?? 'Pelanggan';
+
+        if ($bukti['tipe'] === 'cicilan') {
+            $kredit = (new KreditModel())->find($bukti['kredit_id']);
+            $jadwal = $bukti['jadwal_angsuran_id'] ? (new JadwalAngsuranModel())->find($bukti['jadwal_angsuran_id']) : null;
+            if ($nomor === '' && $kredit) {
+                $nasabah = (new NasabahModel())->find($kredit['nasabah_id']);
+                $nomor   = $nasabah['no_telepon'] ?? '';
+            }
+            $pesan = trim(implode("\n", [
+                'Halo ' . $nama . ',',
+                '',
+                'Pembayaran angsuran' . ($jadwal ? ' ke-' . $jadwal['angsuran_ke'] : '') . ' kredit ' . ($kredit['kode_kredit'] ?? '') . ' sudah kami TERIMA & VERIFIKASI.',
+                'Nominal: ' . format_rupiah($bukti['nominal']),
+                'Sisa Piutang: ' . format_rupiah($kredit['sisa_piutang'] ?? 0),
+                (($kredit['status'] ?? '') === 'lunas' ? "\nKredit Anda telah LUNAS. Terima kasih!" : ''),
+                '',
+                'Terima kasih, ' . $toko . '.',
+            ]));
+        } else {
+            $pengajuan = $bukti['pengajuan_id'] ? (new PengajuanModel())->find($bukti['pengajuan_id']) : null;
+            if ($nomor === '' && $pengajuan) {
+                $nomor = $pengajuan['no_telepon'] ?? '';
+            }
+            $pesan = trim(implode("\n", [
+                'Halo ' . $nama . ',',
+                '',
+                'Pembayaran pesanan ' . ($pengajuan['kode_pesanan'] ?? '') . ' sudah kami TERIMA & VERIFIKASI. Pesanan Anda dinyatakan SELESAI.',
+                'Nominal: ' . format_rupiah($bukti['nominal']),
+                '',
+                'Terima kasih, ' . $toko . '.',
+            ]));
+        }
+
+        return redirect()->to((new WhatsAppTemplateService())->buildWaUrl((string) $nomor, $pesan));
     }
 }

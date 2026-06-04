@@ -89,6 +89,7 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
         $routes->post('pembayaran/(:num)/verifikasi', 'PembayaranController::verifikasi/$1');
         $routes->post('pembayaran/(:num)/tolak', 'PembayaranController::tolak/$1');
         $routes->get('pembayaran/(:num)/bukti', 'PembayaranController::bukti/$1');
+        $routes->get('pembayaran/(:num)/wa', 'PembayaranController::wa/$1');
 
         $routes->get('laporan/kredit', 'LaporanController::kredit');
         $routes->get('laporan/pembayaran', 'LaporanController::pembayaran');
