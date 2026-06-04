@@ -36,13 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const periodeInput = document.getElementById('wa_periode');
         const namaInput = document.getElementById('wa_nama');
         const alamatInput = document.getElementById('wa_alamat');
-        const totalEl = document.getElementById('wa_total_kredit');
-        const periodeEl = document.getElementById('wa_jumlah_periode');
-        const angsuranEl = document.getElementById('wa_nominal_angsuran');
+        const noTeleponInput = document.getElementById('wa_no_telepon');
+        const waktuSesiInput = document.getElementById('wa_waktu_sesi');
         const previewEl = document.getElementById('wa_preview');
-        const hargaPokokCashEl = document.getElementById('wa_harga_pokok_cash');
         const kreditFields = waModal.querySelectorAll('.wa-kredit-field');
-        const cashFields = waModal.querySelectorAll('.wa-cash-field');
         const ktpInput = document.getElementById('wa_foto_ktp');
         let currentHargaPokok = 0;
 
@@ -55,14 +52,60 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
+        // Set minimal jadwal kedatangan ke besok 09:00.
+        const setWaktuMin = () => {
+            if (!waktuSesiInput) return;
+            const d = new Date();
+            d.setDate(d.getDate() + 1);
+            const pad = (n) => String(n).padStart(2, '0');
+            waktuSesiInput.min = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T09:00`;
+        };
+
+        // Rakit ringkasan pesanan secara lokal (tanpa pesan WhatsApp).
+        const buildSummary = (kalkulasi) => {
+            const metode = getMetode();
+            const lines = [];
+            lines.push(`Produk : ${produkLabel.value || '-'}`);
+            lines.push(`Metode : ${metode === 'kredit' ? 'Kredit' : 'Cash'}`);
+            if (waktuSesiInput && waktuSesiInput.value) {
+                lines.push(`Jadwal : ${waktuSesiInput.value.replace('T', ' ')}`);
+            }
+            lines.push('');
+            if (metode === 'kredit') {
+                lines.push(`Tenor  : ${tenorInput.value} bulan (${periodeInput.value})`);
+                if (kalkulasi) {
+                    lines.push(`Total Harga Kredit : ${currency(kalkulasi.total_harga_kredit)}`);
+                    lines.push(`Jumlah Periode     : ${kalkulasi.jumlah_periode} ${kalkulasi.periode_label}`);
+                    lines.push(`Estimasi Angsuran  : ${currency(kalkulasi.nominal_angsuran)} / ${kalkulasi.periode_label}`);
+                }
+            } else {
+                lines.push(`Harga Pokok : ${currency(currentHargaPokok)}`);
+                lines.push('Pembayaran dilakukan sekaligus saat transaksi.');
+            }
+            previewEl.value = lines.join('\n');
+        };
+
+        const updatePreview = async () => {
+            if (!produkIdInput.value) return;
+            if (getMetode() !== 'kredit') { buildSummary(null); return; }
+            try {
+                const params = new URLSearchParams({
+                    produk_id: produkIdInput.value,
+                    tenor_bulan: tenorInput.value,
+                    periode_angsuran: periodeInput.value,
+                });
+                const response = await fetch(`${window.location.origin}/simulasi?${params.toString()}`);
+                const data = await response.json();
+                buildSummary(data.kalkulasi || null);
+            } catch (e) {
+                buildSummary(null);
+            }
+        };
+
         const applyMetodePembayaran = () => {
             const isKredit = getMetode() === 'kredit';
             kreditFields.forEach((el) => { el.style.display = isKredit ? '' : 'none'; });
-            cashFields.forEach((el) => { el.style.display = isKredit ? 'none' : ''; });
             if (ktpInput) ktpInput.required = isKredit;
-            if (!isKredit && currentHargaPokok && hargaPokokCashEl) {
-                hargaPokokCashEl.textContent = currency(currentHargaPokok);
-            }
             syncMetodeCards();
             updatePreview();
         };
@@ -71,32 +114,12 @@ document.addEventListener('DOMContentLoaded', () => {
             radio.addEventListener('change', applyMetodePembayaran);
         });
 
-        const updatePreview = async () => {
-            if (!produkIdInput.value) return;
-            const params = new URLSearchParams({
-                produk_id: produkIdInput.value,
-                tenor_bulan: tenorInput.value,
-                periode_angsuran: periodeInput.value,
-                nama: namaInput.value,
-                alamat: alamatInput.value,
-                metode_pembayaran: getMetode(),
-            });
-            const response = await fetch(`${window.location.origin}/simulasi?${params.toString()}`);
-            const data = await response.json();
-            if (!data.kalkulasi) return;
-            totalEl.textContent = currency(data.kalkulasi.total_harga_kredit);
-            periodeEl.textContent = `${data.kalkulasi.jumlah_periode} ${data.kalkulasi.periode_label}`;
-            angsuranEl.textContent = `${currency(data.kalkulasi.nominal_angsuran)} / ${data.kalkulasi.periode_label}`;
-            previewEl.value = data.preview_message || 'Isi nama dan alamat untuk melihat preview pesan WhatsApp.';
-        };
-
         document.querySelectorAll('.js-open-wa-modal').forEach((button) => {
             button.addEventListener('click', () => {
                 produkIdInput.value = button.dataset.produkId || '';
                 produkLabel.value = `${button.dataset.kode || ''} - ${button.dataset.nama || ''}`.trim();
                 currentHargaPokok = parseFloat(button.dataset.hargaPokok || '0');
-                namaInput.value = namaInput.value || '';
-                alamatInput.value = alamatInput.value || '';
+                setWaktuMin();
                 // Reset ke kredit saat buka modal
                 const kreditRadio = waModal.querySelector('#metode_kredit');
                 if (kreditRadio) kreditRadio.checked = true;
@@ -114,9 +137,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (input) input.value = token;
         };
 
-        [tenorInput, periodeInput, namaInput, alamatInput].forEach((el) => el?.addEventListener('input', updatePreview));
+        [tenorInput, periodeInput, waktuSesiInput].forEach((el) => el?.addEventListener('input', updatePreview));
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
+            if (noTeleponInput && noTeleponInput.value.trim().length < 8) {
+                alert('Nomor WhatsApp wajib diisi (minimal 8 digit).');
+                noTeleponInput.focus();
+                return;
+            }
             if (getMetode() === 'kredit' && ktpInput && !ktpInput.files.length) {
                 alert('Foto KTP wajib diunggah untuk pengajuan kredit.');
                 ktpInput.focus();
@@ -139,7 +167,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert(messages.join('\n'));
                     return;
                 }
-                window.open(data.wa_url, '_blank', 'noopener');
+                // Sukses: tutup modal & arahkan ke halaman pesanan (tanpa WhatsApp).
+                if (window.bootstrap && bootstrap.Modal) {
+                    (bootstrap.Modal.getInstance(waModal) || bootstrap.Modal.getOrCreateInstance(waModal)).hide();
+                }
+                window.location.href = data.redirect || '/akun/pesanan';
             } catch (e) {
                 alert('Gagal menghubungi server. Periksa koneksi lalu coba lagi.');
             } finally {
@@ -148,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Terapkan state awal
+        setWaktuMin();
         applyMetodePembayaran();
     }
 

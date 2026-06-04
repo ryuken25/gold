@@ -33,6 +33,8 @@
                             <label class="form-label">Email <span class="text-danger">*</span></label>
                             <input type="email" class="form-control form-control-lg" name="email"
                                 value="<?= esc(old('email')); ?>" autocomplete="email" required>
+                            <div class="form-text">Email aktif (disarankan Gmail) — dipakai untuk notifikasi pesanan &amp;
+                                pengingat sesi kedatangan.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Nomor WhatsApp</label>

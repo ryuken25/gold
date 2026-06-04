@@ -1839,3 +1839,21 @@ h6 {
         position: static;
     }
 }
+
+/* === Fix overlap dashboard akun (append-only, tidak mengubah gaya dasar) === */
+.akun-section {
+    position: relative;
+    z-index: 1;
+    padding-bottom: clamp(40px, 5vw, 72px);
+}
+
+.akun-section .akun-duecard,
+.akun-section .feature-card {
+    align-self: start;
+    /* cegah stretch mengikuti tinggi kolom */
+}
+
+.public-footer {
+    position: relative;
+    z-index: 0;
+}

@@ -67,14 +67,14 @@
                         <div>
                             <p class="section-eyebrow mb-2">Estimasi Angsuran</p>
                             <h3 class="fw-black mb-2">Rincian Pengajuan</h3>
-                            <p class="text-muted-mg mb-0">Nomor WhatsApp akan mengikuti nomor pengirim chat ini.</p>
+                            <p class="text-muted-mg mb-0">Estimasi berdasarkan margin default toko.</p>
                         </div>
                         <?php if (is_pelanggan_logged_in()): ?>
-                            <button type="button" class="btn btn-whatsapp js-open-wa-modal" data-bs-toggle="modal"
+                            <button type="button" class="btn btn-gold js-open-wa-modal" data-bs-toggle="modal"
                                 data-bs-target="#waPengajuanModal" data-produk-id="<?= esc($produk['id']); ?>"
                                 data-kode="<?= esc($produk['kode_produk']); ?>"
                                 data-harga-pokok="<?= esc($produk['harga_pokok']); ?>"
-                                data-nama="<?= esc($produk['nama_produk']); ?>">Ajukan via WhatsApp</button>
+                                data-nama="<?= esc($produk['nama_produk']); ?>">Ajukan Pembelian</button>
                         <?php else: ?>
                             <a href="<?= base_url('/login?redirect=' . urlencode('/produk/' . $produk['kode_produk'])); ?>"
                                 class="btn btn-whatsapp">Masuk untuk Memesan</a>
@@ -97,8 +97,7 @@
                         <span class="tenor-info-chip"><span class="tenor-info-label">Periode</span>Bulanan /
                             Mingguan</span>
                     </div>
-                    <p class="small text-muted-mg mt-3 mb-0">Pilih tenor dan periode angsuran saat membuka form Ajukan
-                        via WhatsApp.</p>
+                    <p class="small text-muted-mg mt-3 mb-0">Pilih tenor dan periode angsuran di form pemesanan.</p>
                 </div>
             </div>
         </div>

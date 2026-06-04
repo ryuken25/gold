@@ -257,6 +257,96 @@ class WhatsAppTemplateService
         ]);
     }
 
+    /**
+     * Pesan konfirmasi pesanan (manual, dikirim admin ke pelanggan).
+     */
+    public function buildKonfirmasiPesananMessage(array $data): string
+    {
+        $lines = [
+            'Halo ' . ($data['nama'] ?? 'Pelanggan') . ',',
+            '',
+            'Pesanan Anda di ' . ($data['nama_toko'] ?? 'MahenGold')
+                . (!empty($data['kode_pesanan']) ? ' (No. ' . $data['kode_pesanan'] . ')' : '')
+                . ' sudah kami terima dan verifikasi.',
+            '',
+            'DETAIL PESANAN',
+            'Produk: ' . ($data['nama_produk'] ?? '-') . (!empty($data['kode_produk']) ? ' (' . $data['kode_produk'] . ')' : ''),
+            'Metode: ' . ucfirst((string) ($data['metode_pembayaran'] ?? '-')),
+        ];
+
+        if (($data['metode_pembayaran'] ?? '') === 'kredit') {
+            $lines[] = 'Tenor: ' . ($data['tenor_bulan'] ?? '-') . ' bulan (' . ucfirst((string) ($data['periode_angsuran'] ?? '-')) . ')';
+            if (!empty($data['total_harga_kredit'])) {
+                $lines[] = 'Total Harga Kredit: ' . format_rupiah($data['total_harga_kredit']);
+            }
+            if (!empty($data['nominal_angsuran'])) {
+                $lines[] = 'Estimasi Angsuran: ' . format_rupiah($data['nominal_angsuran']) . ' / ' . ($data['periode_label'] ?? 'bulan');
+            }
+        }
+
+        if (!empty($data['waktu_sesi'])) {
+            $lines[] = '';
+            $lines[] = 'Jadwal Kedatangan: ' . format_tanggal($data['waktu_sesi'], 'd M Y H:i');
+        }
+
+        $lines[] = '';
+        $lines[] = 'Terima kasih telah mempercayai ' . ($data['nama_toko'] ?? 'MahenGold') . '.';
+
+        return trim(implode("\n", $lines));
+    }
+
+    /**
+     * Pesan rincian tenor & angsuran untuk pesanan kredit (manual).
+     */
+    public function buildInfoTenorMessage(array $data): string
+    {
+        return trim(implode("\n", [
+            'Halo ' . ($data['nama'] ?? 'Pelanggan') . ',',
+            '',
+            'Berikut rincian kredit untuk pesanan ' . ($data['kode_pesanan'] ?? '') . ':',
+            '',
+            'Produk: ' . ($data['nama_produk'] ?? '-'),
+            'Harga Pokok: ' . format_rupiah($data['harga_pokok'] ?? 0),
+            'Margin: ' . format_angka($data['margin_persen'] ?? 0, 0) . '%',
+            'Total Harga Kredit: ' . format_rupiah($data['total_harga_kredit'] ?? 0),
+            'Tenor: ' . ($data['tenor_bulan'] ?? '-') . ' bulan',
+            'Periode: ' . ucfirst((string) ($data['periode_angsuran'] ?? '-')),
+            'Jumlah Periode: ' . ($data['jumlah_periode'] ?? '-'),
+            'Estimasi Angsuran: ' . format_rupiah($data['nominal_angsuran'] ?? 0) . ' / ' . ($data['periode_label'] ?? 'bulan'),
+            '',
+            'Pembayaran angsuran dilakukan sesuai arahan admin MahenGold. Terima kasih.',
+        ]));
+    }
+
+    /**
+     * Bangun preview konfirmasi pesanan + URL WA ke nomor pelanggan,
+     * TANPA menulis log (log ditulis saat admin menandai sudah dikirim).
+     */
+    public function konfirmasiPesananLink(array $data): array
+    {
+        $message = $this->buildKonfirmasiPesananMessage($data);
+        $nomor   = wa_number_normalize((string) ($data['no_telepon'] ?? ''));
+
+        return [
+            'message' => $message,
+            'wa_url'  => $this->buildWaUrl($nomor !== '' ? $nomor : $this->getStoreWaNumber(), $message),
+        ];
+    }
+
+    /**
+     * Bangun preview info tenor/angsuran + URL WA ke nomor pelanggan (tanpa log).
+     */
+    public function infoTenorLink(array $data): array
+    {
+        $message = $this->buildInfoTenorMessage($data);
+        $nomor   = wa_number_normalize((string) ($data['no_telepon'] ?? ''));
+
+        return [
+            'message' => $message,
+            'wa_url'  => $this->buildWaUrl($nomor !== '' ? $nomor : $this->getStoreWaNumber(), $message),
+        ];
+    }
+
     public function buildWaUrl(string $nomor, string $pesan): string
     {
         return 'https://wa.me/' . wa_number_normalize($nomor) . '?text=' . rawurlencode($pesan);

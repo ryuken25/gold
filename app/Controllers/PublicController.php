@@ -2,11 +2,12 @@
 
 namespace App\Controllers;
 
+use App\Models\PengajuanAktivitasModel;
 use App\Models\PengajuanModel;
 use App\Models\PengaturanSistemModel;
 use App\Models\ProdukEmasModel;
 use App\Services\CreditCalculatorService;
-use App\Services\WhatsAppTemplateService;
+use App\Services\EmailNotificationService;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class PublicController extends BaseController
@@ -17,15 +18,12 @@ class PublicController extends BaseController
 
     protected CreditCalculatorService $calculator;
 
-    protected WhatsAppTemplateService $whatsAppService;
-
     public function initController($request, $response, $logger)
     {
         parent::initController($request, $response, $logger);
         $this->produkModel = new ProdukEmasModel();
         $this->pengaturanModel = new PengaturanSistemModel();
         $this->calculator = new CreditCalculatorService();
-        $this->whatsAppService = new WhatsAppTemplateService();
     }
 
     public function index(): string
@@ -95,9 +93,6 @@ class PublicController extends BaseController
         $produkId = (int) $this->request->getGet('produk_id');
         $tenor = (int) ($this->request->getGet('tenor_bulan') ?? 12);
         $periode = (string) ($this->request->getGet('periode_angsuran') ?? 'bulanan');
-        $metode = $this->request->getGet('metode_pembayaran') === 'cash' ? 'cash' : 'kredit';
-        $nama = trim((string) $this->request->getGet('nama'));
-        $alamat = trim((string) $this->request->getGet('alamat'));
 
         $produk = $this->produkModel->find($produkId);
         if (!$produk) {
@@ -107,30 +102,11 @@ class PublicController extends BaseController
         $marginDefault = (float) $this->pengaturanModel->getPengaturan()['margin_default'];
         $kalkulasi = $this->calculator->calculate($produk['harga_pokok'], $marginDefault, $tenor, $periode);
 
-        // Pratinjau saja: bangun pesan tanpa menulis ke whatsapp_logs.
-        $preview = null;
-        if ($nama !== '' && $alamat !== '') {
-            $preview = $this->whatsAppService->previewLink(array_merge($kalkulasi, [
-                'nama' => $nama,
-                'alamat' => $alamat,
-                'kode_produk' => $produk['kode_produk'],
-                'nama_produk' => $produk['nama_produk'],
-                'jenis_emas' => $produk['jenis_emas'],
-                'kadar' => $produk['kadar'],
-                'berat_gram' => $produk['berat_gram'],
-                'harga_pokok' => $produk['harga_pokok'],
-                'produk_id' => $produk['id'],
-            ]), $metode);
-        }
-
-        return $this->response->setJSON([
-            'kalkulasi' => $kalkulasi,
-            'preview_message' => $preview['message'] ?? null,
-            'wa_url' => $preview['wa_url'] ?? null,
-        ]);
+        // Hanya kalkulasi angsuran untuk live update ringkasan pesanan (tanpa WA).
+        return $this->response->setJSON(['kalkulasi' => $kalkulasi]);
     }
 
-    public function waPengajuan()
+    public function ajukanPesanan()
     {
         if (!is_pelanggan_logged_in()) {
             if ($this->request->isAJAX()) {
@@ -150,7 +126,9 @@ class PublicController extends BaseController
             'produk_id'         => 'required|integer',
             'metode_pembayaran' => 'required|in_list[cash,kredit]',
             'nama'              => 'required|min_length[3]|max_length[150]',
+            'no_telepon'        => 'required|min_length[8]|max_length[20]|regex_match[/^[0-9+\-\s]+$/]',
             'alamat'            => 'required|min_length[5]',
+            'waktu_sesi'        => 'required',
         ];
 
         if ($metode === 'kredit') {
@@ -164,6 +142,16 @@ class PublicController extends BaseController
             return $this->request->isAJAX()
                 ? $this->response->setStatusCode(422)->setJSON($payload)
                 : redirect()->back()->withInput()->with('error', implode(' ', $payload['errors']));
+        }
+
+        // Validasi Jadwal Kedatangan (min H+1, jam operasional 09:00-17:00).
+        $waktuTs  = strtotime((string) $this->request->getPost('waktu_sesi'));
+        $errSesi  = $this->validasiWaktuSesi($waktuTs);
+        if ($errSesi !== null) {
+            $payload = ['errors' => ['waktu_sesi' => $errSesi], 'csrf' => csrf_hash()];
+            return $this->request->isAJAX()
+                ? $this->response->setStatusCode(422)->setJSON($payload)
+                : redirect()->back()->withInput()->with('error', $errSesi);
         }
 
         $produk = $this->produkModel->find((int) $this->request->getPost('produk_id'));
@@ -198,16 +186,36 @@ class PublicController extends BaseController
             }
         }
 
+        // No. WhatsApp dari form (fallback profil), disimpan ter-normalisasi.
+        $noTeleponInput = trim((string) $this->request->getPost('no_telepon'));
+        $noTelepon = wa_number_normalize($noTeleponInput !== '' ? $noTeleponInput : (string) (current_pelanggan()['no_telepon'] ?? ''));
+
+        $pengajuanModel = new PengajuanModel();
+        $kode = $pengajuanModel->generateKodePesanan();
+
         $marginDefault  = (float) $this->pengaturanModel->getPengaturan()['margin_default'];
         $pengajuanData  = [
+            'kode_pesanan'      => $kode,
             'user_id'           => current_pelanggan()['id'],
-            'no_telepon'        => current_pelanggan()['no_telepon'] ?? null,
+            'no_telepon'        => $noTelepon,
             'produk_emas_id'    => $produk['id'],
             'metode_pembayaran' => $metode,
             'nama'              => $this->request->getPost('nama'),
             'alamat'            => $this->request->getPost('alamat'),
             'foto_ktp'          => $namaFile,
+            'waktu_sesi'        => date('Y-m-d H:i:s', $waktuTs),
             'status'            => 'baru',
+        ];
+
+        // Payload untuk email notifikasi (dilengkapi simulasi bila kredit).
+        $emailPayload = [
+            'user_id'           => current_pelanggan()['id'],
+            'nama'              => $pengajuanData['nama'],
+            'kode_pesanan'      => $kode,
+            'nama_produk'       => $produk['nama_produk'],
+            'kode_produk'       => $produk['kode_produk'],
+            'metode_pembayaran' => $metode,
+            'waktu_sesi'        => $pengajuanData['waktu_sesi'],
         ];
 
         if ($metode === 'kredit') {
@@ -221,41 +229,66 @@ class PublicController extends BaseController
                 (string) $pengajuanData['periode_angsuran']
             );
 
-            (new PengajuanModel())->insert($pengajuanData);
+            $emailPayload += [
+                'tenor_bulan'        => $pengajuanData['tenor_bulan'],
+                'periode_angsuran'   => $pengajuanData['periode_angsuran'],
+                'total_harga_kredit' => $kalkulasi['total_harga_kredit'],
+                'nominal_angsuran'   => $kalkulasi['nominal_angsuran'],
+                'periode_label'      => $kalkulasi['periode_label'],
+            ];
+        }
 
-            $result = $this->whatsAppService->createPengajuanLink(array_merge($kalkulasi, [
-                'nama'        => $pengajuanData['nama'],
-                'alamat'      => $pengajuanData['alamat'],
-                'kode_produk' => $produk['kode_produk'],
-                'nama_produk' => $produk['nama_produk'],
-                'jenis_emas'  => $produk['jenis_emas'],
-                'kadar'       => $produk['kadar'],
-                'berat_gram'  => $produk['berat_gram'],
-                'harga_pokok' => $produk['harga_pokok'],
-                'produk_id'   => $produk['id'],
-            ]));
-        } else {
-            (new PengajuanModel())->insert($pengajuanData);
+        $pengajuanId = $pengajuanModel->insert($pengajuanData);
 
-            $result = $this->whatsAppService->createPembelianCashLink([
-                'nama'        => $pengajuanData['nama'],
-                'alamat'      => $pengajuanData['alamat'],
-                'kode_produk' => $produk['kode_produk'],
-                'nama_produk' => $produk['nama_produk'],
-                'jenis_emas'  => $produk['jenis_emas'],
-                'kadar'       => $produk['kadar'],
-                'berat_gram'  => $produk['berat_gram'],
-                'harga_pokok' => $produk['harga_pokok'],
-                'produk_id'   => $produk['id'],
+        if (!$pengajuanId) {
+            return $this->gagalUpload('Pesanan gagal disimpan. Silakan coba lagi.');
+        }
+
+        $emailPayload['pengajuan_id'] = $pengajuanId;
+
+        // Catat aktivitas & kirim email (email tidak boleh menggagalkan alur).
+        (new PengajuanAktivitasModel())->log((int) $pengajuanId, 'dibuat', 'Pesanan dibuat oleh pelanggan', 'pelanggan');
+
+        try {
+            (new EmailNotificationService())->kirimPesananDibuat($emailPayload);
+        } catch (\Throwable $e) {
+            log_message('error', 'Email pesanan_dibuat gagal: ' . $e->getMessage());
+        }
+
+        $pesanSukses = 'Pesanan ' . $kode . ' berhasil dibuat dan menunggu verifikasi admin.';
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success'      => true,
+                'kode_pesanan' => $kode,
+                'message'      => $pesanSukses,
+                'redirect'     => base_url('/akun/pesanan'),
+                'csrf'         => csrf_hash(),
             ]);
         }
 
-        if ($this->request->isAJAX()) {
-            $result['csrf'] = csrf_hash();
-            return $this->response->setJSON($result);
+        return redirect()->to('/akun/pesanan')->with('success', $pesanSukses);
+    }
+
+    /**
+     * Validasi waktu sesi kedatangan. Kembalikan pesan error atau null bila valid.
+     */
+    protected function validasiWaktuSesi($timestamp): ?string
+    {
+        if (!$timestamp) {
+            return 'Jadwal kedatangan tidak valid.';
         }
 
-        return redirect()->to($result['wa_url']);
+        if ($timestamp < strtotime('+1 day', strtotime('today'))) {
+            return 'Jadwal kedatangan minimal mulai besok.';
+        }
+
+        $menit = ((int) date('G', $timestamp)) * 60 + (int) date('i', $timestamp);
+        if ($menit < 540 || $menit > 1020) {
+            return 'Pilih jam kedatangan antara 09:00 dan 17:00.';
+        }
+
+        return null;
     }
 
     /**

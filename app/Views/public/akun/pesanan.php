@@ -9,7 +9,7 @@
             <p class="text-muted-mg mb-0">Daftar pengajuan dan pesanan yang pernah Anda buat.</p>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 align-items-start">
             <div class="col-lg-3">
                 <?= $this->include('public/akun/_nav'); ?>
             </div>

@@ -10,7 +10,7 @@
             <p class="text-muted-mg mb-0">Perbarui data pribadi dan password akun Anda.</p>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 align-items-start">
             <div class="col-lg-3">
                 <?= $this->include('public/akun/_nav'); ?>
             </div>
@@ -37,6 +37,7 @@
                                     <?php if (isset($errors['email'])): ?>
                                         <div class="invalid-feedback"><?= esc($errors['email']); ?></div>
                                     <?php endif; ?>
+                                    <div class="form-text">Dipakai untuk notifikasi pesanan &amp; pengingat sesi kedatangan.</div>
                                 </div>
                                 <div class="mb-4">
                                     <label class="form-label">Nomor Telepon</label>

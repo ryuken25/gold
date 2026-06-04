@@ -20,6 +20,7 @@
             <table class="table table-modern align-middle">
                 <thead>
                     <tr>
+                        <th>Kode</th>
                         <th>Tanggal</th>
                         <th>Pelanggan</th>
                         <th>Produk</th>
@@ -32,6 +33,7 @@
                 <tbody>
                     <?php foreach ($pengajuan as $row): ?>
                         <tr>
+                            <td><span class="fw-semibold"><?= esc($row['kode_pesanan'] ?? '-'); ?></span></td>
                             <td><?= esc(format_tanggal($row['created_at'], 'd M Y H:i')); ?></td>
                             <td>
                                 <span class="fw-semibold d-block"><?= esc($row['nama']); ?></span>

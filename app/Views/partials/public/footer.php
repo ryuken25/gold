@@ -13,7 +13,7 @@
                         <span class="brand-subtext">Premium Credit System</span>
                     </div>
                 </div>
-                <p class="mb-4">Katalog emas modern dengan pengajuan cepat melalui WhatsApp untuk pelanggan MahenGold.
+                <p class="mb-4">Katalog emas modern dengan pengajuan cepat langsung dari sistem MahenGold.
                 </p>
                 <a class="btn btn-whatsapp px-4" href="https://wa.me/<?= esc($waNumber); ?>" target="_blank"
                     rel="noopener">Hubungi WhatsApp</a>
