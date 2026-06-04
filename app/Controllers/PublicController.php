@@ -95,6 +95,7 @@ class PublicController extends BaseController
         $produkId = (int) $this->request->getGet('produk_id');
         $tenor = (int) ($this->request->getGet('tenor_bulan') ?? 12);
         $periode = (string) ($this->request->getGet('periode_angsuran') ?? 'bulanan');
+        $metode = $this->request->getGet('metode_pembayaran') === 'cash' ? 'cash' : 'kredit';
         $nama = trim((string) $this->request->getGet('nama'));
         $alamat = trim((string) $this->request->getGet('alamat'));
 
@@ -106,9 +107,10 @@ class PublicController extends BaseController
         $marginDefault = (float) $this->pengaturanModel->getPengaturan()['margin_default'];
         $kalkulasi = $this->calculator->calculate($produk['harga_pokok'], $marginDefault, $tenor, $periode);
 
-        $message = null;
+        // Pratinjau saja: bangun pesan tanpa menulis ke whatsapp_logs.
+        $preview = null;
         if ($nama !== '' && $alamat !== '') {
-            $message = $this->whatsAppService->createPengajuanLink(array_merge($kalkulasi, [
+            $preview = $this->whatsAppService->previewLink(array_merge($kalkulasi, [
                 'nama' => $nama,
                 'alamat' => $alamat,
                 'kode_produk' => $produk['kode_produk'],
@@ -118,13 +120,13 @@ class PublicController extends BaseController
                 'berat_gram' => $produk['berat_gram'],
                 'harga_pokok' => $produk['harga_pokok'],
                 'produk_id' => $produk['id'],
-            ]));
+            ]), $metode);
         }
 
         return $this->response->setJSON([
             'kalkulasi' => $kalkulasi,
-            'preview_message' => $message['message'] ?? null,
-            'wa_url' => $message['wa_url'] ?? null,
+            'preview_message' => $preview['message'] ?? null,
+            'wa_url' => $preview['wa_url'] ?? null,
         ]);
     }
 
@@ -135,6 +137,7 @@ class PublicController extends BaseController
                 return $this->response->setStatusCode(401)->setJSON([
                     'message' => 'Silakan masuk terlebih dahulu untuk memesan.',
                     'redirect' => base_url('/login'),
+                    'csrf' => csrf_hash(),
                 ]);
             }
 
@@ -157,7 +160,7 @@ class PublicController extends BaseController
         }
 
         if (!$this->validate($rules)) {
-            $payload = ['errors' => $this->validator->getErrors()];
+            $payload = ['errors' => $this->validator->getErrors(), 'csrf' => csrf_hash()];
             return $this->request->isAJAX()
                 ? $this->response->setStatusCode(422)->setJSON($payload)
                 : redirect()->back()->withInput()->with('error', implode(' ', $payload['errors']));
@@ -165,7 +168,9 @@ class PublicController extends BaseController
 
         $produk = $this->produkModel->find((int) $this->request->getPost('produk_id'));
         if (!$produk) {
-            return $this->response->setStatusCode(404)->setJSON(['message' => 'Produk tidak ditemukan.']);
+            return $this->request->isAJAX()
+                ? $this->response->setStatusCode(404)->setJSON(['message' => 'Produk tidak ditemukan.', 'csrf' => csrf_hash()])
+                : redirect()->back()->withInput()->with('error', 'Produk tidak ditemukan.');
         }
 
         $namaFile = null;
@@ -173,12 +178,23 @@ class PublicController extends BaseController
             $file = $this->request->getFile('foto_ktp');
             if ($file && $file->isValid() && !$file->hasMoved()) {
                 $ktpDir = WRITEPATH . 'uploads/ktp/';
-                if (!is_dir($ktpDir)) {
-                    mkdir($ktpDir, 0755, true);
-                    file_put_contents($ktpDir . 'index.html', '');
+                if (!is_dir($ktpDir) && !@mkdir($ktpDir, 0755, true) && !is_dir($ktpDir)) {
+                    return $this->gagalUpload('Gagal menyiapkan folder upload KTP. Hubungi admin.');
                 }
-                $namaFile = $file->getRandomName();
-                $file->move($ktpDir, $namaFile);
+                if (!is_file($ktpDir . 'index.html')) {
+                    @file_put_contents($ktpDir . 'index.html', '');
+                }
+                try {
+                    $namaFile = $file->getRandomName();
+                    $file->move($ktpDir, $namaFile);
+                } catch (\Throwable $e) {
+                    $namaFile = null;
+                }
+            }
+
+            // Untuk kredit, KTP wajib benar-benar tersimpan sebelum lanjut.
+            if ($namaFile === null || !is_file(WRITEPATH . 'uploads/ktp/' . $namaFile)) {
+                return $this->gagalUpload('Foto KTP gagal diunggah. Coba lagi dengan file JPG/PNG maksimal 3 MB.');
             }
         }
 
@@ -235,9 +251,25 @@ class PublicController extends BaseController
         }
 
         if ($this->request->isAJAX()) {
+            $result['csrf'] = csrf_hash();
             return $this->response->setJSON($result);
         }
 
         return redirect()->to($result['wa_url']);
+    }
+
+    /**
+     * Respons kegagalan upload KTP: JSON untuk AJAX, redirect untuk non-AJAX.
+     */
+    protected function gagalUpload(string $pesan): ResponseInterface
+    {
+        if ($this->request->isAJAX()) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'errors' => ['foto_ktp' => $pesan],
+                'csrf'   => csrf_hash(),
+            ]);
+        }
+
+        return redirect()->back()->withInput()->with('error', $pesan);
     }
 }

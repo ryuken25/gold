@@ -32,6 +32,7 @@
                                         <th>#</th>
                                         <th>Produk</th>
                                         <th>Metode</th>
+                                        <th>KTP</th>
                                         <th>Status</th>
                                         <th>Tanggal</th>
                                     </tr>
@@ -48,6 +49,15 @@
                                                 <span class="badge bg-<?= $p['metode_pembayaran'] === 'kredit' ? 'warning' : 'info'; ?>">
                                                     <?= esc(ucfirst($p['metode_pembayaran'])); ?>
                                                 </span>
+                                            </td>
+                                            <td>
+                                                <?php if (!empty($p['foto_ktp'])): ?>
+                                                    <a href="<?= base_url('/akun/pesanan/' . $p['id'] . '/ktp'); ?>"
+                                                        target="_blank" rel="noopener" class="text-success fw-semibold text-decoration-none"
+                                                        title="Lihat KTP terunggah">&#10003; Lihat</a>
+                                                <?php else: ?>
+                                                    <span class="text-muted-mg">-</span>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <span class="badge bg-<?= status_badge_class($p['status']); ?>">

@@ -15,40 +15,88 @@ class WhatsAppTemplateService
         $this->pengaturanModel ??= new PengaturanSistemModel();
     }
 
-    public function createPengajuanLink(array $payload): array
+    /**
+     * Susun isi pesan pengajuan kredit (tanpa menyimpan log).
+     */
+    public function buildPengajuanMessage(array $payload): string
     {
-        $message = trim(implode("\n", [
+        return trim(implode("\n", [
             'Halo Admin MahenGold, saya ingin mengajukan kredit emas.',
             '',
             'DATA PELANGGAN',
-            'Nama: ' . $payload['nama'],
-            'Alamat: ' . $payload['alamat'],
+            'Nama: ' . ($payload['nama'] ?? '-'),
+            'Alamat: ' . ($payload['alamat'] ?? '-'),
             'Nomor WhatsApp: mengikuti nomor pengirim chat ini',
             '',
             'DETAIL PRODUK',
-            'Kode Produk: ' . $payload['kode_produk'],
-            'Produk: ' . $payload['nama_produk'],
-            'Jenis/Kadar: ' . $payload['jenis_emas'] . ' / ' . $payload['kadar'],
-            'Berat: ' . format_angka($payload['berat_gram'], 2) . ' gram',
-            'Harga Pokok: ' . format_rupiah($payload['harga_pokok']),
+            'Kode Produk: ' . ($payload['kode_produk'] ?? '-'),
+            'Produk: ' . ($payload['nama_produk'] ?? '-'),
+            'Jenis/Kadar: ' . ($payload['jenis_emas'] ?? '-') . ' / ' . ($payload['kadar'] ?? '-'),
+            'Berat: ' . format_angka($payload['berat_gram'] ?? 0, 2) . ' gram',
+            'Harga Pokok: ' . format_rupiah($payload['harga_pokok'] ?? 0),
             '',
             'SIMULASI KREDIT FLAT RATE',
-            'Margin: ' . format_angka($payload['margin_persen'], 0) . '%',
-            'Total Harga Kredit: ' . format_rupiah($payload['total_harga_kredit']),
-            'Tenor: ' . $payload['tenor_bulan'] . ' bulan',
-            'Jenis Angsuran: ' . ucfirst($payload['periode_angsuran']),
-            'Jumlah Periode: ' . $payload['jumlah_periode'],
-            'Estimasi Angsuran: ' . format_rupiah($payload['nominal_angsuran']) . ' / ' . $payload['periode_label'],
+            'Margin: ' . format_angka($payload['margin_persen'] ?? 0, 0) . '%',
+            'Total Harga Kredit: ' . format_rupiah($payload['total_harga_kredit'] ?? 0),
+            'Tenor: ' . ($payload['tenor_bulan'] ?? '-') . ' bulan',
+            'Jenis Angsuran: ' . ucfirst((string) ($payload['periode_angsuran'] ?? '-')),
+            'Jumlah Periode: ' . ($payload['jumlah_periode'] ?? '-'),
+            'Estimasi Angsuran: ' . format_rupiah($payload['nominal_angsuran'] ?? 0) . ' / ' . ($payload['periode_label'] ?? 'bulan'),
             '',
             'Saya ingin bertanya lebih lanjut untuk proses pengajuan kredit emas ini.',
         ]));
+    }
 
+    /**
+     * Susun isi pesan pembelian tunai (tanpa menyimpan log).
+     */
+    public function buildPembelianCashMessage(array $payload): string
+    {
+        return trim(implode("\n", [
+            'Halo Admin MahenGold, saya ingin membeli emas secara tunai.',
+            '',
+            'DATA PEMBELI',
+            'Nama: ' . ($payload['nama'] ?? '-'),
+            'Alamat: ' . ($payload['alamat'] ?? '-'),
+            'Nomor WhatsApp: mengikuti nomor pengirim chat ini',
+            '',
+            'DETAIL PRODUK',
+            'Kode Produk: ' . ($payload['kode_produk'] ?? '-'),
+            'Produk: ' . ($payload['nama_produk'] ?? '-'),
+            'Jenis/Kadar: ' . ($payload['jenis_emas'] ?? '-') . ' / ' . ($payload['kadar'] ?? '-'),
+            'Berat: ' . format_angka($payload['berat_gram'] ?? 0, 2) . ' gram',
+            'Harga Pokok: ' . format_rupiah($payload['harga_pokok'] ?? 0),
+            '',
+            'Pembayaran: Tunai / Cash',
+            '',
+            'Saya ingin menyelesaikan pembelian emas ini. Mohon konfirmasi ketersediaan dan proses selanjutnya.',
+        ]));
+    }
+
+    /**
+     * Bangun preview pesan + URL WhatsApp TANPA menulis ke whatsapp_logs.
+     * Dipakai untuk pratinjau realtime di form (dipanggil tiap ketik).
+     */
+    public function previewLink(array $payload, string $metode = 'kredit'): array
+    {
+        $message = $metode === 'cash'
+            ? $this->buildPembelianCashMessage($payload)
+            : $this->buildPengajuanMessage($payload);
+
+        return [
+            'message' => $message,
+            'wa_url'  => $this->buildWaUrl($this->getStoreWaNumber(), $message),
+        ];
+    }
+
+    public function createPengajuanLink(array $payload): array
+    {
         return $this->buildAndLog([
             'tipe' => 'pengajuan_kredit',
             'target' => 'admin',
             'tujuan_nomor' => $this->getStoreWaNumber(),
             'nama_tujuan' => 'Admin MahenGold',
-            'pesan' => $message,
+            'pesan' => $this->buildPengajuanMessage($payload),
             'status' => 'dibuka',
             'related_type' => 'produk_emas',
             'related_id' => $payload['produk_id'] ?? null,
@@ -58,32 +106,12 @@ class WhatsAppTemplateService
 
     public function createPembelianCashLink(array $payload): array
     {
-        $message = trim(implode("\n", [
-            'Halo Admin MahenGold, saya ingin membeli emas secara tunai.',
-            '',
-            'DATA PEMBELI',
-            'Nama: ' . $payload['nama'],
-            'Alamat: ' . $payload['alamat'],
-            'Nomor WhatsApp: mengikuti nomor pengirim chat ini',
-            '',
-            'DETAIL PRODUK',
-            'Kode Produk: ' . $payload['kode_produk'],
-            'Produk: ' . $payload['nama_produk'],
-            'Jenis/Kadar: ' . $payload['jenis_emas'] . ' / ' . $payload['kadar'],
-            'Berat: ' . format_angka($payload['berat_gram'], 2) . ' gram',
-            'Harga Pokok: ' . format_rupiah($payload['harga_pokok']),
-            '',
-            'Pembayaran: Tunai / Cash',
-            '',
-            'Saya ingin menyelesaikan pembelian emas ini. Mohon konfirmasi ketersediaan dan proses selanjutnya.',
-        ]));
-
         return $this->buildAndLog([
             'tipe'         => 'info_transaksi',
             'target'       => 'admin',
             'tujuan_nomor' => $this->getStoreWaNumber(),
             'nama_tujuan'  => 'Admin MahenGold',
-            'pesan'        => $message,
+            'pesan'        => $this->buildPembelianCashMessage($payload),
             'status'       => 'dibuka',
             'related_type' => 'produk_emas',
             'related_id'   => $payload['produk_id'] ?? null,
@@ -236,14 +264,16 @@ class WhatsAppTemplateService
 
     public function getStoreWaNumber(): string
     {
-        $mode = env('WA_MODE', 'link');
-        $target = wa_number_normalize((string) env('WA_TARGET_NUMBER', ''));
-
-        if ($mode !== 'cloud_api' || $target !== '') {
-            return $target !== '' ? $target : '6282146575233';
+        // Prioritas: nomor WhatsApp toko yang diatur admin di Pengaturan,
+        // lalu fallback ke env WA_TARGET_NUMBER, lalu default.
+        $setting = wa_number_normalize((string) ($this->pengaturanModel->getPengaturan()['nomor_whatsapp_toko'] ?? ''));
+        if ($setting !== '') {
+            return $setting;
         }
 
-        return '6282146575233';
+        $target = wa_number_normalize((string) env('WA_TARGET_NUMBER', ''));
+
+        return $target !== '' ? $target : '6282146575233';
     }
 
     protected function buildAndLog(array $data): array

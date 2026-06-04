@@ -27,6 +27,7 @@ $routes->group('akun', ['namespace' => 'App\Controllers', 'filter' => 'customera
     $routes->post('profil', 'Customer\AkunController::updateProfil');
     $routes->post('password', 'Customer\AkunController::updatePassword');
     $routes->get('pesanan', 'Customer\AkunController::pesanan');
+    $routes->get('pesanan/(:num)/ktp', 'Customer\AkunController::ktp/$1');
     $routes->get('kredit/(:num)', 'Customer\AkunController::kreditDetail/$1');
 });
 
@@ -44,6 +45,11 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
 
     $routes->group('', ['filter' => 'adminauth'], static function (RouteCollection $routes) {
         $routes->get('dashboard', 'DashboardController::index');
+
+        $routes->get('pengajuan', 'PengajuanController::index');
+        $routes->get('pengajuan/(:num)', 'PengajuanController::show/$1');
+        $routes->post('pengajuan/(:num)/status', 'PengajuanController::updateStatus/$1');
+        $routes->get('pengajuan/(:num)/ktp', 'PengajuanController::ktp/$1');
 
         $routes->get('produk', 'ProdukController::index');
         $routes->get('produk/create', 'ProdukController::create');

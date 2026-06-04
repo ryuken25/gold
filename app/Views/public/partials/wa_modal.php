@@ -11,7 +11,7 @@
             </div>
             <div class="modal-body p-4">
                 <form id="waPengajuanForm" action="<?= base_url('/wa/pengajuan'); ?>" method="post"
-                    enctype="multipart/form-data">
+                    enctype="multipart/form-data" data-csrf-name="<?= csrf_token(); ?>">
                     <?= csrf_field(); ?>
                     <input type="hidden" name="produk_id" id="wa_produk_id">
 

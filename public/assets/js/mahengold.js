@@ -104,6 +104,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
+        // Perbarui token CSRF tersembunyi dari respons server agar submit
+        // berikutnya tidak ditolak (Config\Security::$regenerate = true).
+        const refreshCsrf = (token) => {
+            if (!token) return;
+            const name = form.dataset.csrfName;
+            if (!name) return;
+            const input = form.querySelector(`input[name="${name}"]`);
+            if (input) input.value = token;
+        };
+
         [tenorInput, periodeInput, namaInput, alamatInput].forEach((el) => el?.addEventListener('input', updatePreview));
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -112,17 +122,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 ktpInput.focus();
                 return;
             }
-            const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            const data = await response.json();
-            if (response.status === 401 && data.redirect) {
-                window.location.href = data.redirect;
-                return;
+            const submitBtn = document.querySelector('[form="waPengajuanForm"][type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            try {
+                const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                let data = {};
+                try { data = await response.json(); } catch (e) { data = {}; }
+                refreshCsrf(data.csrf);
+
+                if (response.status === 401 && data.redirect) {
+                    window.location.href = data.redirect;
+                    return;
+                }
+                if (!response.ok) {
+                    const messages = data.errors ? Object.values(data.errors) : [data.message || 'Terjadi kesalahan. Coba muat ulang halaman.'];
+                    alert(messages.join('\n'));
+                    return;
+                }
+                window.open(data.wa_url, '_blank', 'noopener');
+            } catch (e) {
+                alert('Gagal menghubungi server. Periksa koneksi lalu coba lagi.');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
             }
-            if (!response.ok) {
-                alert(Object.values(data.errors || { error: data.message || 'Validasi gagal.' }).join('\n'));
-                return;
-            }
-            window.open(data.wa_url, '_blank', 'noopener');
         });
 
         // Terapkan state awal
