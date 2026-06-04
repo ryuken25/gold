@@ -131,8 +131,9 @@ Login admin di: http://127.0.0.1:8080/admin/login
 - `/` — landing
 - `/katalog` — daftar produk
 - `/produk/{kode_produk}` — detail produk
-- `/simulasi` — simulasi kredit
-- `/wa/pengajuan` — pengajuan via WhatsApp
+- `/simulasi` — simulasi kredit (kalkulasi angsuran)
+- `/pesanan` — kirim pesanan (in-system, butuh login pelanggan)
+- `/akun/pesanan` — riwayat & status pesanan pelanggan
 
 ### Admin
 - `/admin/login`, `/admin/logout`
@@ -166,6 +167,57 @@ WA_TARGET_NUMBER=6282146575233
 
 Mode `link` menggunakan `wa.me/...` (tidak butuh token).
 Cloud API hanya placeholder; fallback otomatis ke template `wa.me` bila token belum diisi.
+
+Sejak revisi pesanan in-system, **pelanggan memesan langsung di sistem** (bukan via WhatsApp).
+WhatsApp kini hanya dipakai **manual oleh admin** dari halaman detail pengajuan
+(`/admin/pengajuan/{id}`) untuk konfirmasi pesanan & info tenor.
+
+---
+
+## Notifikasi Email & Reminder Sesi Kedatangan
+
+Sistem mengirim **email otomatis** (pengirim "Mahen Gold") pada 3 momen:
+1. **Pesanan dibuat** — pelanggan menerima ringkasan + status menunggu verifikasi.
+2. **Pesanan diverifikasi** — memuat Jadwal Kedatangan/Akad.
+3. **30 menit sebelum sesi** — pengingat otomatis lewat cron.
+
+### Konfigurasi SMTP (Gmail)
+
+Aktifkan 2FA di akun Gmail, buat **App Password** 16 karakter di
+https://myaccount.google.com/apppasswords, lalu isi di `.env`:
+
+```env
+email.fromEmail = 'mahengold.notif@gmail.com'
+email.fromName  = 'Mahen Gold'
+email.protocol  = smtp
+email.SMTPHost  = smtp.gmail.com
+email.SMTPUser  = 'mahengold.notif@gmail.com'
+email.SMTPPass  = 'xxxxxxxxxxxxxxxx'
+email.SMTPPort  = 587
+email.SMTPCrypto = tls
+email.mailType  = html
+email.SMTPTimeout = 30
+```
+
+Selama `email.SMTPHost` kosong, email tidak terkirim (tercatat `gagal` di tabel
+`email_logs`) **tetapi alur pesanan tetap berjalan normal**.
+
+### Cron Reminder (30 menit sebelum sesi)
+
+Jalankan command tiap 5 menit:
+
+```bash
+*/5 * * * * cd /path/ke/proyek && /usr/bin/php spark notif:reminder-sesi >> writable/logs/reminder.log 2>&1
+```
+
+Windows (XAMPP): buat **Task Scheduler** yang memanggil
+`php spark notif:reminder-sesi` tiap 5 menit, atau jalankan manual untuk uji:
+
+```bash
+php spark notif:reminder-sesi
+```
+
+Idempoten: flag `reminder_sesi_terkirim` mencegah email ganda.
 
 ---
 

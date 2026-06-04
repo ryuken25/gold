@@ -9,7 +9,7 @@
             <p class="text-muted-mg mb-0">Ringkasan pesanan dan kredit emas Anda.</p>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 align-items-start">
             <div class="col-lg-3">
                 <?= $this->include('public/akun/_nav'); ?>
             </div>

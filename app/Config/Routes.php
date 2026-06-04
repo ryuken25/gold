@@ -11,7 +11,7 @@ $routes->get('/', 'PublicController::index');
 $routes->get('katalog', 'PublicController::katalog');
 $routes->get('produk/(:segment)', 'PublicController::detail/$1');
 $routes->get('simulasi', 'PublicController::simulasi');
-$routes->post('wa/pengajuan', 'PublicController::waPengajuan');
+$routes->post('pesanan', 'PublicController::ajukanPesanan');
 
 // Customer Auth
 $routes->get('login', 'Customer\AuthController::login', ['namespace' => 'App\Controllers']);
@@ -49,6 +49,10 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
         $routes->get('pengajuan', 'PengajuanController::index');
         $routes->get('pengajuan/(:num)', 'PengajuanController::show/$1');
         $routes->post('pengajuan/(:num)/status', 'PengajuanController::updateStatus/$1');
+        $routes->post('pengajuan/(:num)/verifikasi', 'PengajuanController::verifikasi/$1');
+        $routes->post('pengajuan/(:num)/tolak', 'PengajuanController::tolak/$1');
+        $routes->post('pengajuan/(:num)/batalkan', 'PengajuanController::batalkan/$1');
+        $routes->post('pengajuan/(:num)/wa-terkirim', 'PengajuanController::waTerkirim/$1');
         $routes->get('pengajuan/(:num)/ktp', 'PengajuanController::ktp/$1');
 
         $routes->get('produk', 'ProdukController::index');

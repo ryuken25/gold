@@ -3,17 +3,20 @@
         <div class="modal-content border-0">
             <div class="modal-header border-0 p-4 pb-2">
                 <div class="pe-3">
-                    <span class="section-eyebrow d-block mb-2">Pengajuan</span>
+                    <span class="section-eyebrow d-block mb-2">Pemesanan</span>
                     <h5 class="modal-title fw-black mb-1">Ajukan Pembelian</h5>
-                    <p class="text-muted-mg mb-0">Pilih metode pembayaran lalu isi data diri Anda.</p>
+                    <p class="text-muted-mg mb-0">Pilih metode pembayaran lalu isi data diri Anda. Pesanan diproses
+                        langsung di sistem.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
             <div class="modal-body p-4">
-                <form id="waPengajuanForm" action="<?= base_url('/wa/pengajuan'); ?>" method="post"
+                <form id="waPengajuanForm" action="<?= base_url('/pesanan'); ?>" method="post"
                     enctype="multipart/form-data" data-csrf-name="<?= csrf_token(); ?>">
                     <?= csrf_field(); ?>
                     <input type="hidden" name="produk_id" id="wa_produk_id">
+
+                    <?php $waPelanggan = function_exists('current_pelanggan') ? current_pelanggan() : null; ?>
 
                     <?php // Pilihan metode pembayaran (toggle card) ?>
                     <div class="mb-4">
@@ -43,21 +46,32 @@
                     </div>
 
                     <div class="row g-3">
-                        <?php $waPelanggan = function_exists('current_pelanggan') ? current_pelanggan() : null; ?>
                         <div class="col-md-6">
                             <label class="form-label">Nama Lengkap</label>
                             <input type="text" class="form-control form-control-lg" name="nama" id="wa_nama"
                                 value="<?= esc($waPelanggan['nama'] ?? ''); ?>" autocomplete="name" required>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">No. WhatsApp</label>
+                            <input type="tel" class="form-control form-control-lg" name="no_telepon" id="wa_no_telepon"
+                                value="<?= esc($waPelanggan['no_telepon'] ?? ''); ?>" autocomplete="tel"
+                                placeholder="08xxxxxxxxxx" required>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Produk</label>
                             <input type="text" class="form-control form-control-lg" id="wa_produk_label" readonly>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Jadwal Kedatangan / Akad</label>
+                            <input type="datetime-local" class="form-control form-control-lg" name="waktu_sesi"
+                                id="wa_waktu_sesi" required>
+                            <div class="form-text">Pilih jam kedatangan ke toko (09:00–17:00). Bisa disesuaikan admin saat
+                                verifikasi.</div>
+                        </div>
                         <div class="col-12">
                             <label class="form-label">Alamat</label>
-                            <textarea class="form-control form-control-lg" name="alamat" id="wa_alamat" rows="3"
+                            <textarea class="form-control form-control-lg" name="alamat" id="wa_alamat" rows="2"
                                 required></textarea>
-                            <div class="form-text">Nomor WhatsApp akan mengikuti nomor pengirim chat ini.</div>
                         </div>
 
                         <?php // Field khusus kredit ?>
@@ -77,27 +91,6 @@
                             </select>
                         </div>
 
-                        <div class="col-12 wa-kredit-field">
-                            <div class="wa-summary p-3">
-                                <div class="simulation-row"><span>Total Kredit</span><strong
-                                        id="wa_total_kredit">-</strong></div>
-                                <div class="simulation-row"><span>Jumlah Periode</span><strong
-                                        id="wa_jumlah_periode">-</strong></div>
-                                <div class="simulation-row"><span>Estimasi Angsuran</span><strong
-                                        id="wa_nominal_angsuran">-</strong></div>
-                            </div>
-                        </div>
-
-                        <?php // Ringkasan cash ?>
-                        <div class="col-12 wa-cash-field" style="display:none;">
-                            <div class="wa-summary p-3">
-                                <div class="simulation-row"><span>Harga Pokok</span><strong
-                                        id="wa_harga_pokok_cash">-</strong></div>
-                                <p class="text-muted-mg small mb-0 mt-2">Pembayaran dilakukan sekaligus saat
-                                    transaksi.</p>
-                            </div>
-                        </div>
-
                         <?php // Upload KTP hanya untuk kredit ?>
                         <div class="col-12 wa-kredit-field" id="wa_ktp_wrapper">
                             <label class="form-label">Foto KTP <span class="text-danger">*</span></label>
@@ -107,16 +100,17 @@
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label">Preview Template WhatsApp</label>
-                            <textarea class="form-control font-monospace small" id="wa_preview" rows="10"
-                                readonly>Isi nama dan alamat untuk melihat preview pesan WhatsApp.</textarea>
+                            <label class="form-label">Ringkasan Pesanan</label>
+                            <textarea class="form-control font-monospace small" id="wa_preview" rows="8"
+                                readonly>Isi data untuk melihat ringkasan pesanan.</textarea>
                         </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer border-0 p-4 pt-3 justify-content-between">
-                <span class="small text-muted-mg">Admin memverifikasi pengajuan dan pembayaran secara manual.</span>
-                <button type="submit" form="waPengajuanForm" class="btn btn-whatsapp px-4">Buka WhatsApp</button>
+                <span class="small text-muted-mg">Pesanan akan diverifikasi admin di sistem. Pantau statusnya di menu
+                    Pesanan.</span>
+                <button type="submit" form="waPengajuanForm" class="btn btn-gold px-4">Kirim Pesanan</button>
             </div>
         </div>
     </div>

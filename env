@@ -50,6 +50,24 @@
 # database.tests.port = 3306
 
 #--------------------------------------------------------------------
+# EMAIL / SMTP GMAIL (Notifikasi MahenGold)
+#--------------------------------------------------------------------
+# Pakai Gmail App Password (bukan password biasa). Aktifkan 2FA di akun
+# Gmail lalu buat App Password 16 karakter di:
+#   https://myaccount.google.com/apppasswords
+# Untuk port 465 gunakan SMTPCrypto = ssl dan SMTPPort = 465.
+# email.fromEmail = 'mahengold.notif@gmail.com'
+# email.fromName  = 'Mahen Gold'
+# email.protocol  = smtp
+# email.SMTPHost  = smtp.gmail.com
+# email.SMTPUser  = 'mahengold.notif@gmail.com'
+# email.SMTPPass  = 'xxxxxxxxxxxxxxxx'
+# email.SMTPPort  = 587
+# email.SMTPCrypto = tls
+# email.mailType  = html
+# email.SMTPTimeout = 30
+
+#--------------------------------------------------------------------
 # ENCRYPTION
 #--------------------------------------------------------------------
 
