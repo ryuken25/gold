@@ -13,7 +13,7 @@ class AdminAuthFilter implements FilterInterface
         if (!session()->get('admin_user')) {
             session()->setFlashdata('error', 'Silakan login sebagai admin terlebih dahulu.');
 
-            return redirect()->to('/admin/login');
+            return redirect()->to('/login');
         }
     }
 

@@ -43,8 +43,7 @@ $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function (R
 
 $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static function (RouteCollection $routes) {
     $routes->get('/', 'DashboardController::index', ['filter' => 'adminauth']);
-    $routes->get('login', 'AuthController::login');
-    $routes->post('login', 'AuthController::attempt');
+    $routes->get('login', 'AuthController::login'); // redirect ke /login (login disatukan)
     $routes->post('logout', 'AuthController::logout', ['filter' => 'adminauth']);
 
     $routes->group('', ['filter' => 'adminauth'], static function (RouteCollection $routes) {

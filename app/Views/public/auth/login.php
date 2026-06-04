@@ -9,7 +9,7 @@
                     <div class="text-center mb-4">
                         <img src="<?= base_url('assets/images/mahengold/logo-mg.svg'); ?>" alt="MahenGold" width="60" height="60" class="mb-3">
                         <h2 class="fw-black mb-1">Masuk</h2>
-                        <p class="text-muted-mg mb-0">Login ke akun pelanggan MahenGold Anda.</p>
+                        <p class="text-muted-mg mb-0">Masuk ke akun MahenGold Anda.</p>
                     </div>
 
                     <form action="<?= base_url('/login'); ?>" method="post" novalidate>
