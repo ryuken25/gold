@@ -165,21 +165,23 @@ WA_MODE=link
 WA_TARGET_NUMBER=6282146575233
 ```
 
-Mode `link` menggunakan `wa.me/...` (tidak butuh token).
-Cloud API hanya placeholder; fallback otomatis ke template `wa.me` bila token belum diisi.
+Mode `link` menggunakan `wa.me/...` (**tidak butuh token/gateway**).
 
-Sejak revisi pesanan in-system, **pelanggan memesan langsung di sistem** (bukan via WhatsApp).
-WhatsApp kini hanya dipakai **manual oleh admin** dari halaman detail pengajuan
-(`/admin/pengajuan/{id}`) untuk konfirmasi pesanan & info tenor.
+WhatsApp dipakai **manual oleh admin**: klik tombol akan membuka chat ke nomor
+pelanggan dengan template terisi, lalu admin kirim sendiri. Tersedia di:
+- Detail pengajuan (`/admin/pengajuan/{id}`) — konfirmasi pesanan & info tenor.
+- Queue pembayaran (`/admin/pembayaran`) — tombol **Kirim WA** pada pembayaran
+  yang sudah terverifikasi (konfirmasi pembayaran ke pelanggan).
 
 ---
 
-## Notifikasi Email & Reminder Sesi Kedatangan
+## Notifikasi Email (SMTP)
 
 Sistem mengirim **email otomatis** (pengirim "Mahen Gold") pada 3 momen:
 1. **Pesanan dibuat** — pelanggan menerima ringkasan + status menunggu verifikasi.
-2. **Pesanan diverifikasi** — memuat Jadwal Kedatangan/Akad.
-3. **30 menit sebelum sesi** — pengingat otomatis lewat cron.
+2. **Pesanan diverifikasi** — konfirmasi disetujui + arahan pembayaran di `/akun`.
+3. **Pembayaran terverifikasi** — konfirmasi pembayaran (untuk kredit: sisa
+   piutang & status lunas).
 
 ### Konfigurasi SMTP (Gmail)
 
@@ -201,23 +203,6 @@ email.SMTPTimeout = 30
 
 Selama `email.SMTPHost` kosong, email tidak terkirim (tercatat `gagal` di tabel
 `email_logs`) **tetapi alur pesanan tetap berjalan normal**.
-
-### Cron Reminder (30 menit sebelum sesi)
-
-Jalankan command tiap 5 menit:
-
-```bash
-*/5 * * * * cd /path/ke/proyek && /usr/bin/php spark notif:reminder-sesi >> writable/logs/reminder.log 2>&1
-```
-
-Windows (XAMPP): buat **Task Scheduler** yang memanggil
-`php spark notif:reminder-sesi` tiap 5 menit, atau jalankan manual untuk uji:
-
-```bash
-php spark notif:reminder-sesi
-```
-
-Idempoten: flag `reminder_sesi_terkirim` mencegah email ganda.
 
 ---
 

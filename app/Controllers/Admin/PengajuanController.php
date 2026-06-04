@@ -314,12 +314,5 @@ class PengajuanController extends BaseAdminController
         } catch (\Throwable $e) {
             log_message('error', 'Email pesanan_diverifikasi gagal: ' . $e->getMessage());
         }
-
-        try {
-            $nomor = $pengajuan['no_telepon'] ?: ($pengajuan['telepon_user'] ?? '');
-            (new \App\Services\WhatsAppGatewayService())->send((string) $nomor, 'Pesanan ' . ($pengajuan['kode_pesanan'] ?? '') . ' Anda telah diverifikasi. Cek detail di akun MahenGold Anda.');
-        } catch (\Throwable $e) {
-            log_message('error', 'WA backup pesanan_diverifikasi gagal: ' . $e->getMessage());
-        }
     }
 }
