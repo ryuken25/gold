@@ -112,7 +112,7 @@ class AuthController extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        $this->userModel->insert([
+        $userId = $this->userModel->insert([
             'nama'          => $this->request->getPost('nama'),
             'email'         => $this->request->getPost('email'),
             'username'      => null,
@@ -121,6 +121,10 @@ class AuthController extends BaseController
             'role'          => 'pelanggan',
             'is_active'     => 1,
         ]);
+
+        if (!$userId) {
+            return redirect()->back()->withInput()->with('errors', ['Pendaftaran gagal, silakan coba lagi.']);
+        }
 
         return redirect()->to('/login')->with('success', 'Akun berhasil dibuat. Silakan masuk.');
     }
