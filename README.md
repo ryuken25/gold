@@ -7,7 +7,25 @@ Repository: https://github.com/ryuken25/gold
 
 ---
 
-## Cara Instalasi
+## Cara Tercepat — 1x Klik (XAMPP)
+
+Sudah pernah clone? Cukup jalankan satu file (otomatis: `git pull` + buat `.env`
++ start MySQL + buat DB + migrasi + seed + jalankan server):
+
+- **Windows**: klik dua kali **`setup-windows.bat`** (atau jalankan di CMD).
+- **Mac/Linux**: `bash setup-windows.sh`
+
+Reset penuh (hapus DB + isi ulang data demo): tambahkan `fresh` →
+`setup-windows.bat fresh` / `bash setup-windows.sh fresh`.
+
+> **Soal `.env`:** `.env` **tidak di-track git** (biar `git pull` tidak pernah
+> bentrok). File `.env` lokalmu aman — tidak akan diubah/replace. Saat pertama
+> kali, script menyalin `.env.example` → `.env` otomatis bila belum ada.
+> Jadi alurnya cukup: `git pull` lalu jalankan `setup-windows.*`.
+
+---
+
+## Cara Instalasi (Manual)
 
 ### 1. Prasyarat
 
@@ -40,7 +58,13 @@ composer install
 
 ### 4. Konfigurasi `.env`
 
-File `.env` sudah disertakan di repo (karena project full localhost, tidak ada credential production).
+`.env` **tidak di-track git** (supaya `git pull` tidak pernah bentrok). Salin
+dari `.env.example` (sudah berisi konfigurasi localhost siap pakai):
+
+- Windows (CMD): `copy .env.example .env`
+- PowerShell:    `Copy-Item .env.example .env`
+- Linux/macOS:   `cp .env.example .env`
+
 Edit bila perlu menyesuaikan database lokal Anda:
 
 ```env
@@ -50,12 +74,6 @@ database.default.username = root
 database.default.password =
 database.default.DBDriver  = MySQLi
 ```
-
-Jika belum ada `.env`, salin dari template:
-
-- Windows (CMD): `copy env .env`
-- PowerShell:    `Copy-Item env .env`
-- Linux/macOS:   `cp env .env`
 
 ### 5. Buat Database
 

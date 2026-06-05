@@ -10,7 +10,7 @@ echo.
 
 :: ================================================================
 :: 0. SMART UPDATE — pindah ke folder skrip, tarik update terbaru
-::    Jalankan "install.bat fresh" untuk rebuild DB + seed ulang.
+::    Jalankan "setup-windows.bat fresh" untuk rebuild DB + seed ulang.
 :: ================================================================
 cd /d "%~dp0"
 
@@ -26,6 +26,22 @@ echo [..] Menarik update terbaru ^(git pull^)...
 git pull --autostash --ff-only
 if errorlevel 1 (echo [WARN] git pull dilewati ^(perubahan lokal / non-fast-forward^). Lanjut dengan kode saat ini.) else (echo [OK] Kode terbaru ditarik.)
 :skip_pull
+
+:: ================================================================
+:: 0b. Pastikan .env ada (salin dari .env.example bila belum ada).
+::     .env TIDAK pernah diubah/replace -> aman dari konflik git pull.
+:: ================================================================
+if not exist ".env" (
+    if exist ".env.example" (
+        copy /Y ".env.example" ".env" >nul
+        echo [OK] .env dibuat dari .env.example.
+    ) else (
+        echo [ERROR] .env dan .env.example tidak ada.
+        pause & exit /b 1
+    )
+) else (
+    echo [OK] .env sudah ada ^(tidak diubah^).
+)
 
 :: ================================================================
 :: 1. DETEKSI PHP (XAMPP)
@@ -49,7 +65,7 @@ if not errorlevel 1 (
 echo [ERROR] PHP tidak ditemukan!
 echo.
 echo   Install XAMPP dari https://www.apachefriends.org/
-echo   lalu jalankan install.bat lagi.
+echo   lalu jalankan setup-windows.bat lagi.
 echo.
 pause & exit /b 1
 :php_found
@@ -132,13 +148,13 @@ echo.
 echo  [!] MySQL tidak bisa dijalankan otomatis.
 echo.
 echo      Solusi: Buka XAMPP Control Panel ^> klik START pada MySQL
-echo              kemudian jalankan install.bat lagi.
+echo              kemudian jalankan setup-windows.bat lagi.
 echo.
 pause & exit /b 1
 :mysql_ready
 
 :: ================================================================
-:: 4. SETUP .env (BASE URL)
+:: 4. Tentukan URL & mode (TANPA mengubah .env)
 :: ================================================================
 set "SCRIPT_DIR=%~dp0"
 if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
@@ -151,12 +167,6 @@ if not errorlevel 1 (
     set "BASE_URL=http://localhost/%FOLDER_NAME%/public/"
     set "USE_SPARK=0"
 )
-
-echo.
-echo [..] Mengatur app.baseURL = %BASE_URL%
-powershell -NoProfile -Command ^
-    "$url = '%BASE_URL%'; $c = Get-Content '.env' -Raw; $c = $c -replace 'app\.baseURL\s*=\s*''[^'']*''', (\"app.baseURL = '\" + $url + \"'\"); Set-Content '.env' $c -NoNewline -Encoding UTF8"
-echo [OK] .env diperbarui.
 
 :: ================================================================
 :: 5. COMPOSER INSTALL
@@ -185,7 +195,7 @@ if exist "vendor\autoload.php" (
         echo      1. Download dari https://getcomposer.org/download/
         echo         ^(pilih "Composer-Setup.exe"^)
         echo      2. Install, restart CMD
-        echo      3. Jalankan install.bat lagi
+        echo      3. Jalankan setup-windows.bat lagi
         echo.
         pause & exit /b 1
     )
