@@ -110,6 +110,11 @@ class PengajuanController extends BaseAdminController
             throw PageNotFoundException::forPageNotFound('Pengajuan tidak ditemukan.');
         }
 
+        if (!in_array($pengajuan['status'], ['baru', 'diproses'], true)) {
+            return redirect()->to('/admin/pengajuan/' . $id)
+                ->with('error', 'Pesanan sudah diproses/diverifikasi, tidak bisa ditolak.');
+        }
+
         if (!$this->validate(['alasan' => 'required|max_length[1000]'])) {
             return redirect()->to('/admin/pengajuan/' . $id)
                 ->with('error', 'Alasan penolakan wajib diisi.');

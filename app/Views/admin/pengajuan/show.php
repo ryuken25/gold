@@ -142,23 +142,25 @@ $relatif = static function ($datetime): string {
             <?php if ($statusFinal): ?>
                 <div class="alert alert-secondary">Pesanan sudah final (<?= esc($pengajuan['status']); ?>). Aksi tidak tersedia.</div>
             <?php else: ?>
-                <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/verifikasi'); ?>" method="post" class="mb-3">
-                    <?= csrf_field(); ?>
-                    <?php if ($pengajuan['metode_pembayaran'] === 'kredit'): ?>
-                        <div class="form-text mb-2">Menyetujui akan otomatis membuat kredit + jadwal angsuran untuk
-                            pelanggan.</div>
-                    <?php endif; ?>
-                    <button type="submit" class="btn btn-gold rounded-pill w-100" <?= $bisaVerifikasi ? '' : 'disabled'; ?>>
-                        Verifikasi Pesanan
-                    </button>
-                </form>
+                <?php if ($bisaVerifikasi): ?>
+                    <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/verifikasi'); ?>" method="post" class="mb-3">
+                        <?= csrf_field(); ?>
+                        <?php if ($pengajuan['metode_pembayaran'] === 'kredit'): ?>
+                            <div class="form-text mb-2">Menyetujui akan otomatis membuat kredit + jadwal angsuran untuk
+                                pelanggan.</div>
+                        <?php endif; ?>
+                        <button type="submit" class="btn btn-gold rounded-pill w-100">
+                            Verifikasi Pesanan
+                        </button>
+                    </form>
 
-                <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/tolak'); ?>" method="post" class="mb-3">
-                    <?= csrf_field(); ?>
-                    <label class="form-label">Alasan Penolakan</label>
-                    <textarea name="alasan" class="form-control mb-2" rows="2" placeholder="Wajib diisi saat menolak..."></textarea>
-                    <button type="submit" class="btn btn-outline-danger rounded-pill w-100">Tolak Pesanan</button>
-                </form>
+                    <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/tolak'); ?>" method="post" class="mb-3">
+                        <?= csrf_field(); ?>
+                        <label class="form-label">Alasan Penolakan</label>
+                        <textarea name="alasan" class="form-control mb-2" rows="2" placeholder="Wajib diisi saat menolak..."></textarea>
+                        <button type="submit" class="btn btn-outline-danger rounded-pill w-100">Tolak Pesanan</button>
+                    </form>
+                <?php endif; ?>
 
                 <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/batalkan'); ?>" method="post"
                     onsubmit="return confirm('Batalkan pesanan ini?');" class="mb-3">
