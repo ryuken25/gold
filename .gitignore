@@ -53,6 +53,10 @@ Proposal_*
 # Salin dari .env.example saat setup (setup-windows.* otomatis melakukannya).
 /.env
 
+# Composer yang diunduh otomatis oleh setup-windows.*
+/composer.phar
+/composer-setup.php
+
 #-------------------------
 # Temporary Files (CodeIgniter 4)
 #-------------------------

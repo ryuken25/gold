@@ -183,6 +183,14 @@ if exist "vendor\autoload.php" (
         composer install --no-dev --no-interaction --prefer-dist
         if not errorlevel 1 set "COMPOSER_OK=1"
     )
+    :: Belum ada composer & composer.phar -> unduh otomatis pakai PHP
+    if "!COMPOSER_OK!"=="0" if not exist "composer.phar" (
+        echo [..] Composer tidak ditemukan. Mengunduh Composer otomatis...
+        "%PHP_CMD%" -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+        "%PHP_CMD%" composer-setup.php --install-dir=. --filename=composer.phar
+        del composer-setup.php >nul 2>&1
+        if exist "composer.phar" ( echo [OK] Composer terunduh. ) else ( echo [WARN] Gagal mengunduh Composer. )
+    )
     if "!COMPOSER_OK!"=="0" if exist "composer.phar" (
         echo [..] Menjalankan: php composer.phar install
         "%PHP_CMD%" composer.phar install --no-dev --no-interaction --prefer-dist
@@ -190,12 +198,9 @@ if exist "vendor\autoload.php" (
     )
     if "!COMPOSER_OK!"=="0" (
         echo.
-        echo  [!] Composer tidak ditemukan!
-        echo.
-        echo      1. Download dari https://getcomposer.org/download/
-        echo         ^(pilih "Composer-Setup.exe"^)
-        echo      2. Install, restart CMD
-        echo      3. Jalankan setup-windows.bat lagi
+        echo  [!] Gagal install dependencies otomatis.
+        echo      Pastikan ada koneksi internet ^(untuk unduh Composer^), lalu
+        echo      jalankan setup-windows.bat lagi.
         echo.
         pause & exit /b 1
     )
