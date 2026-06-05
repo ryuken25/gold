@@ -6,8 +6,8 @@
         <div class="breadcrumb-mg"><a href="<?= base_url('/'); ?>">Beranda</a><span>/</span><span>Katalog</span></div>
         <span class="mg-badge px-3 py-2 mb-3">Katalog Publik</span>
         <h1 class="fw-black mb-3">Katalog Emas MahenGold</h1>
-        <p class="text-light-emphasis mb-0 col-lg-7">Pilih produk emas, cek informasi pembelian, lalu ajukan minat
-            melalui WhatsApp MahenGold.</p>
+        <p class="text-light-emphasis mb-0 col-lg-7">Pilih produk emas, cek informasi pembelian, lalu pesan langsung
+            di sistem MahenGold.</p>
     </div>
 </section>
 
@@ -77,14 +77,14 @@
                                 <a href="<?= base_url('/produk/' . $item['kode_produk']); ?>"
                                     class="btn btn-outline-gold">Detail</a>
                                 <?php if (is_pelanggan_logged_in()): ?>
-                                    <button type="button" class="btn btn-whatsapp js-open-wa-modal" data-bs-toggle="modal"
+                                    <button type="button" class="btn btn-gold js-open-wa-modal" data-bs-toggle="modal"
                                         data-bs-target="#waPengajuanModal" data-produk-id="<?= esc($item['id']); ?>"
                                         data-kode="<?= esc($item['kode_produk']); ?>" data-nama="<?= esc($item['nama_produk']); ?>"
                                         data-harga-pokok="<?= esc($item['harga_pokok']); ?>"
-                                        data-link="<?= base_url('/produk/' . $item['kode_produk']); ?>">Ajukan via WhatsApp</button>
+                                        data-link="<?= base_url('/produk/' . $item['kode_produk']); ?>">Pesan Sekarang</button>
                                 <?php else: ?>
                                     <a href="<?= base_url('/login?redirect=' . urlencode('/produk/' . $item['kode_produk'])); ?>"
-                                        class="btn btn-whatsapp">Masuk untuk Memesan</a>
+                                        class="btn btn-gold">Masuk untuk Memesan</a>
                                 <?php endif; ?>
                             </div>
                         </div>

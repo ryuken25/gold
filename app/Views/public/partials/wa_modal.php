@@ -52,7 +52,7 @@
                                 value="<?= esc($waPelanggan['nama'] ?? ''); ?>" autocomplete="name" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">No. WhatsApp</label>
+                            <label class="form-label">No. Telepon</label>
                             <input type="tel" class="form-control form-control-lg" name="no_telepon" id="wa_no_telepon"
                                 value="<?= esc($waPelanggan['no_telepon'] ?? ''); ?>" autocomplete="tel"
                                 placeholder="08xxxxxxxxxx" required>

@@ -1,4 +1,3 @@
-<?php $waNumber = $pengaturan['nomor_whatsapp_toko'] ?? '6282146575233'; ?>
 <footer class="public-footer section-padding" id="kontak">
     <div class="container-mg">
         <div class="row g-4 g-lg-5 align-items-start">
@@ -13,10 +12,9 @@
                         <span class="brand-subtext">Premium Credit System</span>
                     </div>
                 </div>
-                <p class="mb-4">Katalog emas modern dengan pengajuan cepat langsung dari sistem MahenGold.
+                <p class="mb-4">Katalog emas modern dengan pemesanan cepat langsung dari sistem MahenGold.
                 </p>
-                <a class="btn btn-whatsapp px-4" href="https://wa.me/<?= esc($waNumber); ?>" target="_blank"
-                    rel="noopener">Hubungi WhatsApp</a>
+                <a class="btn btn-gold px-4" href="<?= base_url('/katalog'); ?>">Pesan Sekarang</a>
             </div>
             <div class="col-6 col-lg-3">
                 <h6 class="fw-bold mb-3">Menu</h6>
@@ -30,9 +28,6 @@
             <div class="col-6 col-lg-3">
                 <h6 class="fw-bold mb-3">Kontak</h6>
                 <div class="d-grid gap-2">
-                    <span>WhatsApp:
-                        <?= esc($waNumber); ?>
-                    </span>
                     <span>MahenGold</span>
                     <span>Gold Credit Store</span>
                 </div>
