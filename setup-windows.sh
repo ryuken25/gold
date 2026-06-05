@@ -147,18 +147,35 @@ if [[ -f "vendor/autoload.php" ]]; then
 else
     info "Menginstall dependencies (composer)..."
     COMPOSER_OK=false
-    if command -v composer &>/dev/null; then
+
+    # 1) composer global
+    if ! $COMPOSER_OK && command -v composer &>/dev/null; then
         composer install --no-dev --no-interaction --prefer-dist && COMPOSER_OK=true || true
     fi
+
+    # 2) Belum ada composer & composer.phar -> unduh composer.phar otomatis
+    if ! $COMPOSER_OK && [[ ! -f "composer.phar" ]]; then
+        info "Composer tidak ditemukan. Mengunduh Composer otomatis..."
+        if command -v curl &>/dev/null; then
+            curl -sS https://getcomposer.org/installer | "$PHP_CMD" -- --install-dir=. --filename=composer.phar
+        else
+            "$PHP_CMD" -r "copy('https://getcomposer.org/installer','composer-setup.php');" \
+                && "$PHP_CMD" composer-setup.php --install-dir=. --filename=composer.phar
+            rm -f composer-setup.php
+        fi
+        [[ -f "composer.phar" ]] && ok "Composer terunduh (composer.phar)." || warn "Gagal mengunduh Composer."
+    fi
+
+    # 3) Pakai composer.phar
     if ! $COMPOSER_OK && [[ -f "composer.phar" ]]; then
         "$PHP_CMD" composer.phar install --no-dev --no-interaction --prefer-dist && COMPOSER_OK=true || true
     fi
+
     $COMPOSER_OK && [[ -f "vendor/autoload.php" ]] || {
         echo ""
-        echo "  Composer tidak ditemukan / gagal. Install Composer:"
-        echo "    curl -sS https://getcomposer.org/installer | php"
-        echo "    sudo mv composer.phar /usr/local/bin/composer"
-        echo "  lalu jalankan lagi: bash setup-windows.sh"
+        echo "  Gagal install dependencies otomatis."
+        echo "  Pastikan ada koneksi internet (untuk unduh Composer), lalu jalankan lagi:"
+        echo "    bash setup-windows.sh"
         fail "Composer gagal."
     }
     ok "Dependencies terinstall."
