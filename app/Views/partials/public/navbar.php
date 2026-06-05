@@ -1,4 +1,3 @@
-<?php $waNumber = $pengaturan['nomor_whatsapp_toko'] ?? '6282146575233'; ?>
 <nav class="public-navbar sticky-top" aria-label="Navigasi utama MahenGold">
     <div class="container-mg public-nav-inner">
         <button class="public-menu-toggle" type="button" data-public-drawer-toggle aria-label="Buka menu">
@@ -46,7 +45,7 @@
                 </div>
             <?php else: ?>
                 <a class="btn btn-outline-gold px-4 nav-cta" href="<?= base_url('/login'); ?>">Masuk</a>
-                <a class="btn btn-whatsapp px-4 nav-cta" href="<?= base_url('/register'); ?>">Daftar</a>
+                <a class="btn btn-gold px-4 nav-cta" href="<?= base_url('/register'); ?>">Daftar</a>
             <?php endif; ?>
         </div>
     </div>
@@ -91,7 +90,7 @@
             </form>
         <?php else: ?>
             <a class="btn btn-outline-gold w-100" href="<?= base_url('/login'); ?>">Masuk</a>
-            <a class="btn btn-whatsapp w-100" href="<?= base_url('/register'); ?>">Daftar</a>
+            <a class="btn btn-gold w-100" href="<?= base_url('/register'); ?>">Daftar</a>
         <?php endif; ?>
     </div>
 </aside>

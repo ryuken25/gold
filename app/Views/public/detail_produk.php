@@ -74,10 +74,10 @@
                                 data-bs-target="#waPengajuanModal" data-produk-id="<?= esc($produk['id']); ?>"
                                 data-kode="<?= esc($produk['kode_produk']); ?>"
                                 data-harga-pokok="<?= esc($produk['harga_pokok']); ?>"
-                                data-nama="<?= esc($produk['nama_produk']); ?>">Ajukan Pembelian</button>
+                                data-nama="<?= esc($produk['nama_produk']); ?>">Pesan Sekarang</button>
                         <?php else: ?>
                             <a href="<?= base_url('/login?redirect=' . urlencode('/produk/' . $produk['kode_produk'])); ?>"
-                                class="btn btn-whatsapp">Masuk untuk Memesan</a>
+                                class="btn btn-gold">Masuk untuk Memesan</a>
                         <?php endif; ?>
                     </div>
                     <div class="simulation-box p-3 p-lg-4 mb-4">

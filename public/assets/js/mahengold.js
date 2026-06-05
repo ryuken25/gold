@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
             if (noTeleponInput && noTeleponInput.value.trim().length < 8) {
-                alert('Nomor WhatsApp wajib diisi (minimal 8 digit).');
+                alert('Nomor telepon wajib diisi (minimal 8 digit).');
                 noTeleponInput.focus();
                 return;
             }
