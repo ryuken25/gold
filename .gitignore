@@ -49,6 +49,10 @@ tools/
 *.pdf
 Proposal_*
 
+# Env lokal: JANGAN di-track supaya `git pull` tidak pernah bentrok karena .env.
+# Salin dari .env.example saat setup (setup-windows.* otomatis melakukannya).
+/.env
+
 #-------------------------
 # Temporary Files (CodeIgniter 4)
 #-------------------------
