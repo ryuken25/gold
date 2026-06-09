@@ -23,6 +23,18 @@ Reset penuh (hapus DB + isi ulang data demo): tambahkan `fresh` →
 > kali, script menyalin `.env.example` → `.env` otomatis bila belum ada.
 > Jadi alurnya cukup: `git pull` lalu jalankan `setup-windows.*`.
 
+### Cara Update (Windows / PowerShell) — copy-paste aman
+
+```powershell
+Copy-Item .env .env.bak -Force; git checkout HEAD -- .env 2>$null; git pull; Move-Item .env.bak .env -Force; ./setup-windows.bat
+```
+
+Command ini: backup `.env` → bersihkan agar `git pull` tidak bentrok → pull →
+pulihkan `.env` lokalmu → jalankan setup (composer + MySQL + DB + migrasi +
+seed idempotent + serve). Aman dijalankan berulang; data demo tidak hilang dan
+`.env`-mu tidak tertimpa. (`setup-windows.bat` sendiri sebenarnya juga sudah
+melindungi `.env` saat pull, tapi command di atas tetap aman.)
+
 ---
 
 ## Cara Instalasi (Manual)
