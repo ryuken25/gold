@@ -93,6 +93,7 @@ class PublicController extends BaseController
         $produkId = (int) $this->request->getGet('produk_id');
         $tenor = (int) ($this->request->getGet('tenor_bulan') ?? 12);
         $periode = (string) ($this->request->getGet('periode_angsuran') ?? 'bulanan');
+        $uangMuka = (float) ($this->request->getGet('uang_muka') ?? 0);
 
         $produk = $this->produkModel->find($produkId);
         if (!$produk) {
@@ -100,9 +101,9 @@ class PublicController extends BaseController
         }
 
         $marginDefault = (float) $this->pengaturanModel->getPengaturan()['margin_default'];
-        $kalkulasi = $this->calculator->calculate($produk['harga_pokok'], $marginDefault, $tenor, $periode);
+        $kalkulasi = $this->calculator->calculate($produk['harga_pokok'], $marginDefault, $tenor, $periode, $uangMuka);
 
-        // Hanya kalkulasi angsuran untuk live update ringkasan pesanan (tanpa WA).
+        // Kalkulasi angsuran (termasuk uang_muka & sisa_pokok) untuk live update ringkasan.
         return $this->response->setJSON(['kalkulasi' => $kalkulasi]);
     }
 
@@ -133,6 +134,7 @@ class PublicController extends BaseController
         if ($metode === 'kredit') {
             $rules['tenor_bulan']      = 'required|in_list[6,10,12]';
             $rules['periode_angsuran'] = 'required|in_list[bulanan,mingguan]';
+            $rules['uang_muka']        = 'required|numeric';
             $rules['foto_ktp']         = 'uploaded[foto_ktp]|is_image[foto_ktp]|mime_in[foto_ktp,image/jpeg,image/jpg,image/png]|max_size[foto_ktp,3072]';
         }
 
@@ -148,6 +150,27 @@ class PublicController extends BaseController
             return $this->request->isAJAX()
                 ? $this->response->setStatusCode(404)->setJSON(['message' => 'Produk tidak ditemukan.', 'csrf' => csrf_hash()])
                 : redirect()->back()->withInput()->with('error', 'Produk tidak ditemukan.');
+        }
+
+        // Pra-validasi DP untuk kredit (sebelum upload KTP, hindari file yatim).
+        if ($metode === 'kredit') {
+            $pengaturan  = $this->pengaturanModel->getPengaturan();
+            $dpMinimal   = (int) ($pengaturan['dp_minimal'] ?? 0);
+            $uangMukaCek = (int) round((float) $this->request->getPost('uang_muka'));
+            $cek = $this->calculator->calculate(
+                $produk['harga_pokok'],
+                (float) $pengaturan['margin_default'],
+                (int) $this->request->getPost('tenor_bulan'),
+                (string) $this->request->getPost('periode_angsuran'),
+                $uangMukaCek
+            );
+            if ($uangMukaCek < $dpMinimal || $uangMukaCek >= $cek['total_harga_kredit']) {
+                $msg = 'Uang muka minimal ' . format_rupiah($dpMinimal)
+                    . ' dan harus lebih kecil dari total harga kredit (' . format_rupiah($cek['total_harga_kredit']) . ').';
+                return $this->request->isAJAX()
+                    ? $this->response->setStatusCode(422)->setJSON(['errors' => ['uang_muka' => $msg], 'csrf' => csrf_hash()])
+                    : redirect()->back()->withInput()->with('error', $msg);
+            }
         }
 
         $namaFile = null;
@@ -213,13 +236,18 @@ class PublicController extends BaseController
                 $produk['harga_pokok'],
                 $marginDefault,
                 $pengajuanData['tenor_bulan'],
-                (string) $pengajuanData['periode_angsuran']
+                (string) $pengajuanData['periode_angsuran'],
+                (int) round((float) $this->request->getPost('uang_muka'))
             );
+
+            $pengajuanData['uang_muka'] = $kalkulasi['uang_muka'];
 
             $emailPayload += [
                 'tenor_bulan'        => $pengajuanData['tenor_bulan'],
                 'periode_angsuran'   => $pengajuanData['periode_angsuran'],
                 'total_harga_kredit' => $kalkulasi['total_harga_kredit'],
+                'uang_muka'          => $kalkulasi['uang_muka'],
+                'sisa_pokok'         => $kalkulasi['sisa_pokok'],
                 'nominal_angsuran'   => $kalkulasi['nominal_angsuran'],
                 'periode_label'      => $kalkulasi['periode_label'],
             ];

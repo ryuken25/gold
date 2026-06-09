@@ -7,20 +7,28 @@ use DateTimeImmutable;
 
 class CreditCalculatorService
 {
-    public function calculate($hargaPokok, $marginPersen, int $tenorBulan, string $periodeAngsuran): array
+    public function calculate($hargaPokok, $marginPersen, int $tenorBulan, string $periodeAngsuran, $uangMuka = 0): array
     {
         $hargaPokok = (int) round((float) $hargaPokok);
         $marginPersen = round((float) $marginPersen, 2);
         $jumlahPeriode = $periodeAngsuran === 'mingguan' ? max(1, $tenorBulan * 4) : max(1, $tenorBulan);
         $marginNominal = (int) round($hargaPokok * $marginPersen / 100);
         $totalHargaKredit = $hargaPokok + $marginNominal;
-        $nominalAngsuran = (int) ceil($totalHargaKredit / $jumlahPeriode);
+
+        // Uang muka (DP) = nominal tetap (BUKAN persen), dibatasi 0..total.
+        $uangMuka  = max(0, min((int) round((float) $uangMuka), $totalHargaKredit));
+        $sisaPokok = $totalHargaKredit - $uangMuka;
+
+        // Angsuran dihitung dari sisa setelah DP.
+        $nominalAngsuran = (int) ceil($sisaPokok / $jumlahPeriode);
 
         return [
             'harga_pokok' => $hargaPokok,
             'margin_persen' => $marginPersen,
             'margin_nominal' => $marginNominal,
             'total_harga_kredit' => $totalHargaKredit,
+            'uang_muka' => $uangMuka,
+            'sisa_pokok' => $sisaPokok,
             'tenor_bulan' => $tenorBulan,
             'periode_angsuran' => $periodeAngsuran,
             'jumlah_periode' => $jumlahPeriode,
@@ -33,7 +41,8 @@ class CreditCalculatorService
     {
         $tanggal = new DateTimeImmutable($tanggalJatuhTempoPertama);
         $jadwal = [];
-        $sisa = (int) $kalkulasi['total_harga_kredit'];
+        // Jadwal mengangsur SISA setelah DP (fallback ke total bila tak ada).
+        $sisa = (int) ($kalkulasi['sisa_pokok'] ?? $kalkulasi['total_harga_kredit']);
 
         for ($i = 1; $i <= (int) $kalkulasi['jumlah_periode']; $i++) {
             if ($i > 1) {

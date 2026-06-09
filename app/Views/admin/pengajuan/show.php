@@ -78,6 +78,8 @@ $relatif = static function ($datetime): string {
                 <div class="mini-stats">
                     <div><span>Margin</span><strong><?= esc(format_angka($simulasi['margin_persen'], 0)); ?>%</strong></div>
                     <div><span>Total Harga Kredit</span><strong><?= esc(format_rupiah($simulasi['total_harga_kredit'])); ?></strong></div>
+                    <div><span>Uang Muka (DP)</span><strong><?= esc(format_rupiah($simulasi['uang_muka'])); ?></strong></div>
+                    <div><span>Sisa Diangsur</span><strong><?= esc(format_rupiah($simulasi['sisa_pokok'])); ?></strong></div>
                     <div><span>Jumlah Periode</span><strong><?= esc($simulasi['jumlah_periode']); ?> <?= esc($simulasi['periode_label']); ?></strong></div>
                     <div><span>Estimasi Angsuran</span><strong><?= esc(format_rupiah($simulasi['nominal_angsuran'])); ?> / <?= esc($simulasi['periode_label']); ?></strong></div>
                 </div>

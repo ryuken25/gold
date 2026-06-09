@@ -41,7 +41,8 @@ class CreditTransactionService
             $produk['harga_pokok'],
             $input['margin_persen'] ?? $marginDefault,
             (int) ($input['tenor_bulan'] ?? 12),
-            (string) ($input['periode_angsuran'] ?? 'bulanan')
+            (string) ($input['periode_angsuran'] ?? 'bulanan'),
+            $input['uang_muka'] ?? 0
         );
     }
 
@@ -66,7 +67,8 @@ class CreditTransactionService
             $produk['harga_pokok'],
             $input['margin_persen'] ?? $marginDefault,
             (int) $input['tenor_bulan'],
-            (string) $input['periode_angsuran']
+            (string) $input['periode_angsuran'],
+            $input['uang_muka'] ?? 0
         );
 
         $this->db->transStart();
@@ -80,12 +82,14 @@ class CreditTransactionService
             'margin_persen' => $kalkulasi['margin_persen'],
             'margin_nominal' => $kalkulasi['margin_nominal'],
             'total_harga_kredit' => $kalkulasi['total_harga_kredit'],
+            'uang_muka' => $kalkulasi['uang_muka'],
+            'sisa_pokok_kredit' => $kalkulasi['sisa_pokok'],
             'tenor_bulan' => $kalkulasi['tenor_bulan'],
             'periode_angsuran' => $kalkulasi['periode_angsuran'],
             'jumlah_periode' => $kalkulasi['jumlah_periode'],
             'nominal_angsuran' => $kalkulasi['nominal_angsuran'],
             'total_terbayar' => 0,
-            'sisa_piutang' => $kalkulasi['total_harga_kredit'],
+            'sisa_piutang' => $kalkulasi['sisa_pokok'],
             'status' => 'aktif',
             'catatan' => $input['catatan'] ?? null,
         ], true);
@@ -157,9 +161,10 @@ class CreditTransactionService
             $nasabah = $this->nasabahModel->find($nasabahId);
         }
 
-        $tenor   = (int) ($pengajuan['tenor_bulan'] ?: 12);
-        $periode = (string) ($pengajuan['periode_angsuran'] ?: 'bulanan');
-        $kalkulasi = $this->calculator->calculate($produk['harga_pokok'], $marginDefault, $tenor, $periode);
+        $tenor    = (int) ($pengajuan['tenor_bulan'] ?: 12);
+        $periode  = (string) ($pengajuan['periode_angsuran'] ?: 'bulanan');
+        $uangMuka = (int) ($pengajuan['uang_muka'] ?? 0);
+        $kalkulasi = $this->calculator->calculate($produk['harga_pokok'], $marginDefault, $tenor, $periode, $uangMuka);
 
         $tanggalKredit     = date('Y-m-d');
         $jatuhTempoPertama = $periode === 'mingguan'
@@ -178,12 +183,14 @@ class CreditTransactionService
             'margin_persen'        => $kalkulasi['margin_persen'],
             'margin_nominal'       => $kalkulasi['margin_nominal'],
             'total_harga_kredit'   => $kalkulasi['total_harga_kredit'],
+            'uang_muka'            => $kalkulasi['uang_muka'],
+            'sisa_pokok_kredit'    => $kalkulasi['sisa_pokok'],
             'tenor_bulan'          => $kalkulasi['tenor_bulan'],
             'periode_angsuran'     => $kalkulasi['periode_angsuran'],
             'jumlah_periode'       => $kalkulasi['jumlah_periode'],
             'nominal_angsuran'     => $kalkulasi['nominal_angsuran'],
             'total_terbayar'       => 0,
-            'sisa_piutang'         => $kalkulasi['total_harga_kredit'],
+            'sisa_piutang'         => $kalkulasi['sisa_pokok'],
             'status'               => 'aktif',
             'catatan'              => 'Auto dari pesanan ' . ($pengajuan['kode_pesanan'] ?? ''),
         ], true);

@@ -22,6 +22,8 @@ class KreditModel extends Model
         'margin_persen',
         'margin_nominal',
         'total_harga_kredit',
+        'uang_muka',
+        'sisa_pokok_kredit',
         'tenor_bulan',
         'periode_angsuran',
         'jumlah_periode',

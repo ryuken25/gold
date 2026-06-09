@@ -67,7 +67,8 @@
                         <div>
                             <p class="section-eyebrow mb-2">Estimasi Angsuran</p>
                             <h3 class="fw-black mb-2">Rincian Pengajuan</h3>
-                            <p class="text-muted-mg mb-0">Estimasi berdasarkan margin default toko.</p>
+                            <p class="text-muted-mg mb-0">Estimasi sebelum DP. Pilih uang muka (DP) di form pemesanan
+                                untuk melihat angsuran sebenarnya.</p>
                         </div>
                         <?php if (is_pelanggan_logged_in()): ?>
                             <button type="button" class="btn btn-gold js-open-wa-modal" data-bs-toggle="modal"

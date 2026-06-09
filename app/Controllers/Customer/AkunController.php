@@ -292,7 +292,13 @@ class AkunController extends BaseController
         if ($this->buktiModel()->where('pengajuan_id', $pengajuanId)->whereIn('status', ['menunggu', 'terverifikasi'])->countAllResults() > 0) {
             return $kembali->with('error', 'Bukti pembayaran sudah ada / sedang diproses.');
         }
-        if (!$this->validate($this->aturanBukti())) {
+        // Bukti wajib; info rekening pengirim opsional (bantu admin mencocokkan transfer).
+        $rules = array_merge($this->aturanBukti(), [
+            'nama_pengirim' => 'permit_empty|max_length[150]',
+            'no_rekening'   => 'permit_empty|max_length[50]',
+            'bank_pengirim' => 'permit_empty|max_length[50]',
+        ]);
+        if (!$this->validate($rules)) {
             return $kembali->with('error', implode(' ', $this->validator->getErrors()));
         }
 
@@ -303,12 +309,15 @@ class AkunController extends BaseController
 
         $bm  = $this->buktiModel();
         $bid = $bm->insert([
-            'tipe'         => 'cash',
-            'pengajuan_id' => $pengajuanId,
-            'user_id'      => $userId,
-            'nominal'      => $pengajuan['harga_pokok'] ?? 0,
-            'file_path'    => $nama,
-            'status'       => 'menunggu',
+            'tipe'          => 'cash',
+            'pengajuan_id'  => $pengajuanId,
+            'user_id'       => $userId,
+            'nominal'       => $pengajuan['harga_pokok'] ?? 0,
+            'nama_pengirim' => $this->request->getPost('nama_pengirim') ?: null,
+            'no_rekening'   => $this->request->getPost('no_rekening') ?: null,
+            'bank_pengirim' => $this->request->getPost('bank_pengirim') ?: null,
+            'file_path'     => $nama,
+            'status'        => 'menunggu',
         ], true);
         $bm->update($bid, ['kode' => generate_kode('BKT', $bid)]);
 

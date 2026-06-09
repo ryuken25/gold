@@ -16,6 +16,8 @@
                 <div><span>Produk</span><strong><?= esc($kredit['nama_produk']); ?></strong></div>
                 <div><span>Total Kredit</span><strong><?= esc(format_rupiah($kredit['total_harga_kredit'])); ?></strong>
                 </div>
+                <div><span>Uang Muka (DP)</span><strong><?= esc(format_rupiah($kredit['uang_muka'] ?? 0)); ?></strong></div>
+                <div><span>Sisa Pokok (dicicil)</span><strong><?= esc(format_rupiah($kredit['sisa_pokok_kredit'] ?? $kredit['total_harga_kredit'])); ?></strong></div>
                 <div><span>Total Terbayar</span><strong><?= esc(format_rupiah($kredit['total_terbayar'])); ?></strong>
                 </div>
                 <div><span>Sisa Piutang</span><strong><?= esc(format_rupiah($kredit['sisa_piutang'])); ?></strong></div>
