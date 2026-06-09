@@ -57,6 +57,10 @@ Proposal_*
 /composer.phar
 /composer-setup.php
 
+# Backup .env sementara dari setup-windows.* (saat git pull)
+/.env.local.bak
+/.env.bak
+
 #-------------------------
 # Temporary Files (CodeIgniter 4)
 #-------------------------
