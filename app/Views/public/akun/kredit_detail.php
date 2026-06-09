@@ -3,8 +3,11 @@
 <?= $this->section('content'); ?>
 <?php
 $total     = (float) $kredit['total_harga_kredit'];
+$uangMuka  = (float) ($kredit['uang_muka'] ?? 0);
+$sisaPokok = (float) ($kredit['sisa_pokok_kredit'] ?? $total);
 $terbayar  = (float) $kredit['total_terbayar'];
-$persen    = $total > 0 ? min(100, round($terbayar / $total * 100)) : 0;
+// Progress dihitung dari sisa pokok (yang benar-benar dicicil), bukan total kotor.
+$persen    = $sisaPokok > 0 ? min(100, round($terbayar / $sisaPokok * 100)) : 0;
 ?>
 <section class="section-padding bg-cream-soft akun-section">
     <div class="container-mg">
@@ -21,20 +24,26 @@ $persen    = $total > 0 ? min(100, round($terbayar / $total * 100)) : 0;
             </p>
         </div>
 
-        <div class="row g-4 mb-4">
-            <div class="col-md-4">
+        <div class="row g-3 g-lg-4 mb-4">
+            <div class="col-6 col-lg-3">
                 <div class="akun-stat feature-card p-4">
                     <span class="akun-stat-label">Total Harga Kredit</span>
                     <span class="akun-stat-value akun-stat-sm"><?= esc(format_rupiah($total)); ?></span>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-6 col-lg-3">
                 <div class="akun-stat feature-card p-4">
-                    <span class="akun-stat-label">Total Terbayar</span>
-                    <span class="akun-stat-value akun-stat-sm text-success"><?= esc(format_rupiah($terbayar)); ?></span>
+                    <span class="akun-stat-label">Uang Muka (DP)</span>
+                    <span class="akun-stat-value akun-stat-sm"><?= esc(format_rupiah($uangMuka)); ?></span>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-6 col-lg-3">
+                <div class="akun-stat feature-card p-4">
+                    <span class="akun-stat-label">Sisa Pokok (dicicil)</span>
+                    <span class="akun-stat-value akun-stat-sm"><?= esc(format_rupiah($sisaPokok)); ?></span>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
                 <div class="akun-stat feature-card p-4">
                     <span class="akun-stat-label">Sisa Piutang</span>
                     <span class="akun-stat-value akun-stat-sm"><?= esc(format_rupiah($kredit['sisa_piutang'])); ?></span>

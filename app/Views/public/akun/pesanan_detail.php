@@ -29,6 +29,10 @@
                         <div class="col-sm-6"><span class="text-muted-mg">Harga</span><br><strong><?= esc(format_rupiah($pengajuan['harga_pokok'] ?? 0)); ?></strong></div>
                         <div class="col-sm-6"><span class="text-muted-mg">Jenis / Kadar</span><br><strong><?= esc($pengajuan['jenis_emas'] ?? '-'); ?> / <?= esc($pengajuan['kadar'] ?? '-'); ?></strong></div>
                         <div class="col-sm-6"><span class="text-muted-mg">Tanggal</span><br><strong><?= esc(format_tanggal($pengajuan['created_at'], 'd M Y')); ?></strong></div>
+                        <?php if ($pengajuan['metode_pembayaran'] === 'kredit'): ?>
+                            <div class="col-sm-6"><span class="text-muted-mg">Tenor</span><br><strong><?= esc($pengajuan['tenor_bulan']); ?> bulan (<?= esc($pengajuan['periode_angsuran']); ?>)</strong></div>
+                            <div class="col-sm-6"><span class="text-muted-mg">Uang Muka (DP)</span><br><strong><?= esc(format_rupiah($pengajuan['uang_muka'] ?? 0)); ?></strong></div>
+                        <?php endif; ?>
                         <div class="col-12"><span class="text-muted-mg">Alamat</span><br><strong><?= nl2br(esc($pengajuan['alamat'])); ?></strong></div>
                     </div>
                 </div>
@@ -70,11 +74,30 @@
                                 <strong><?= esc(format_rupiah($pengajuan['harga_pokok'] ?? 0)); ?></strong>. Unggah bukti
                                 transfer/pembayaran Anda (JPG/PNG/PDF, maks 3 MB).</p>
                             <form action="<?= base_url('/akun/pesanan/' . $pengajuan['id'] . '/bukti'); ?>" method="post"
-                                enctype="multipart/form-data" class="d-flex gap-2 align-items-center flex-wrap">
+                                enctype="multipart/form-data">
                                 <?= csrf_field(); ?>
-                                <input type="file" name="bukti" class="form-control" accept="image/jpeg,image/png,application/pdf"
-                                    required style="max-width:280px;">
-                                <button class="btn btn-gold">Upload Bukti</button>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Nama Pengirim <span class="text-muted-mg">(opsional)</span></label>
+                                        <input type="text" name="nama_pengirim" class="form-control" maxlength="150"
+                                            value="<?= esc(old('nama_pengirim')); ?>" placeholder="Nama di rekening">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small">No. Rekening <span class="text-muted-mg">(opsional)</span></label>
+                                        <input type="text" name="no_rekening" class="form-control" maxlength="50"
+                                            value="<?= esc(old('no_rekening')); ?>" placeholder="mis. 1234567890">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Bank <span class="text-muted-mg">(opsional)</span></label>
+                                        <input type="text" name="bank_pengirim" class="form-control" maxlength="50"
+                                            value="<?= esc(old('bank_pengirim')); ?>" placeholder="mis. BCA / BRI">
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2 align-items-center flex-wrap">
+                                    <input type="file" name="bukti" class="form-control" accept="image/jpeg,image/png,application/pdf"
+                                        required style="max-width:280px;">
+                                    <button class="btn btn-gold">Upload Bukti</button>
+                                </div>
                             </form>
                         <?php endif; ?>
                     <?php endif; ?>

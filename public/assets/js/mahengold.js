@@ -38,9 +38,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const alamatInput = document.getElementById('wa_alamat');
         const noTeleponInput = document.getElementById('wa_no_telepon');
         const previewEl = document.getElementById('wa_preview');
+        const uangMukaInput = document.getElementById('wa_uang_muka');
+        const estTotal = document.getElementById('wa_est_total');
+        const estDp = document.getElementById('wa_est_dp');
+        const estSisa = document.getElementById('wa_est_sisa');
+        const estAngsuran = document.getElementById('wa_est_angsuran');
         const kreditFields = waModal.querySelectorAll('.wa-kredit-field');
         const ktpInput = document.getElementById('wa_foto_ktp');
         let currentHargaPokok = 0;
+        let lastKalkulasi = null;
 
         const getMetode = () => (waModal.querySelector('input[name="metode_pembayaran"]:checked')?.value || 'kredit');
 
@@ -51,9 +57,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        // Rakit ringkasan pesanan secara lokal (tanpa pesan WhatsApp).
+        // Rakit ringkasan pesanan + update blok estimasi live.
         const buildSummary = (kalkulasi) => {
             const metode = getMetode();
+            lastKalkulasi = metode === 'kredit' ? kalkulasi : null;
             const lines = [];
             lines.push(`Produk : ${produkLabel.value || '-'}`);
             lines.push(`Metode : ${metode === 'kredit' ? 'Kredit' : 'Cash'}`);
@@ -62,9 +69,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 lines.push(`Tenor  : ${tenorInput.value} bulan (${periodeInput.value})`);
                 if (kalkulasi) {
                     lines.push(`Total Harga Kredit : ${currency(kalkulasi.total_harga_kredit)}`);
+                    lines.push(`Uang Muka (DP)     : ${currency(kalkulasi.uang_muka)}`);
+                    lines.push(`Sisa Diangsur      : ${currency(kalkulasi.sisa_pokok)}`);
                     lines.push(`Jumlah Periode     : ${kalkulasi.jumlah_periode} ${kalkulasi.periode_label}`);
                     lines.push(`Estimasi Angsuran  : ${currency(kalkulasi.nominal_angsuran)} / ${kalkulasi.periode_label}`);
                 }
+                if (estTotal) estTotal.textContent = kalkulasi ? currency(kalkulasi.total_harga_kredit) : '-';
+                if (estDp) estDp.textContent = kalkulasi ? currency(kalkulasi.uang_muka) : '-';
+                if (estSisa) estSisa.textContent = kalkulasi ? currency(kalkulasi.sisa_pokok) : '-';
+                if (estAngsuran) estAngsuran.textContent = kalkulasi ? `${currency(kalkulasi.nominal_angsuran)} / ${kalkulasi.periode_label}` : '-';
             } else {
                 lines.push(`Harga Pokok : ${currency(currentHargaPokok)}`);
                 lines.push('Pembayaran dilakukan sekaligus saat transaksi.');
@@ -80,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     produk_id: produkIdInput.value,
                     tenor_bulan: tenorInput.value,
                     periode_angsuran: periodeInput.value,
+                    uang_muka: (uangMukaInput && uangMukaInput.value) || 0,
                 });
                 const response = await fetch(`${window.location.origin}/simulasi?${params.toString()}`);
                 const data = await response.json();
@@ -123,13 +137,32 @@ document.addEventListener('DOMContentLoaded', () => {
             if (input) input.value = token;
         };
 
-        [tenorInput, periodeInput].forEach((el) => el?.addEventListener('input', updatePreview));
+        // Chip cepat DP: isi field lalu refresh estimasi.
+        waModal.querySelectorAll('.wa-dp-chip').forEach((chip) => {
+            chip.addEventListener('click', () => {
+                if (uangMukaInput) uangMukaInput.value = chip.dataset.dp || '0';
+                updatePreview();
+            });
+        });
+
+        [tenorInput, periodeInput, uangMukaInput].forEach((el) => el?.addEventListener('input', updatePreview));
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
             if (noTeleponInput && noTeleponInput.value.trim().length < 8) {
                 alert('Nomor telepon wajib diisi (minimal 8 digit).');
                 noTeleponInput.focus();
                 return;
+            }
+            if (getMetode() === 'kredit' && uangMukaInput) {
+                const dpMin = parseFloat(uangMukaInput.min || '0') || 0;
+                const dp = parseFloat(uangMukaInput.value || '0') || 0;
+                const total = lastKalkulasi ? Number(lastKalkulasi.total_harga_kredit) : null;
+                if (dp < dpMin) { alert('Uang muka minimal ' + currency(dpMin) + '.'); uangMukaInput.focus(); return; }
+                if (total !== null && dp >= total) {
+                    alert('Uang muka harus lebih kecil dari total harga kredit (' + currency(total) + ').');
+                    uangMukaInput.focus();
+                    return;
+                }
             }
             if (getMetode() === 'kredit' && ktpInput && !ktpInput.files.length) {
                 alert('Foto KTP wajib diunggah untuk pengajuan kredit.');

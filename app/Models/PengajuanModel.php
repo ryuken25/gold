@@ -23,6 +23,7 @@ class PengajuanModel extends Model
         'alamat',
         'tenor_bulan',
         'periode_angsuran',
+        'uang_muka',
         'foto_ktp',
         'status',
         'pembayaran_status',

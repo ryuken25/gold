@@ -256,7 +256,8 @@ class PengajuanController extends BaseAdminController
             (float) $pengajuan['harga_pokok'],
             $marginDefault,
             (int) $pengajuan['tenor_bulan'],
-            (string) ($pengajuan['periode_angsuran'] ?? 'bulanan')
+            (string) ($pengajuan['periode_angsuran'] ?? 'bulanan'),
+            (int) ($pengajuan['uang_muka'] ?? 0)
         );
     }
 

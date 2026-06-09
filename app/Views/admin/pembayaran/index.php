@@ -64,6 +64,11 @@
                                     <?= esc($r['kode_kredit'] ?? '-'); ?> · Angsuran ke-<?= esc($r['angsuran_ke'] ?? '?'); ?>
                                 <?php else: ?>
                                     Pesanan <?= esc($r['kode_pesanan'] ?? '-'); ?>
+                                    <?php if (!empty($r['no_rekening']) || !empty($r['nama_pengirim'])): ?>
+                                        <div class="small text-muted-mg">Transfer:
+                                            <?= esc($r['nama_pengirim'] ?? ''); ?><?= !empty($r['bank_pengirim']) ? ' · ' . esc($r['bank_pengirim']) : ''; ?><?= !empty($r['no_rekening']) ? ' · ' . esc($r['no_rekening']) : ''; ?>
+                                        </div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </td>
                             <td><?= esc(format_rupiah($r['nominal'])); ?></td>
