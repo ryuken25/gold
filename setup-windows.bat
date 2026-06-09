@@ -23,8 +23,12 @@ if errorlevel 1 goto :skip_pull
 git rev-parse --is-inside-work-tree >nul 2>&1
 if errorlevel 1 goto :skip_pull
 echo [..] Menarik update terbaru ^(git pull^)...
+:: Lindungi .env lokal: backup, bersihkan agar pull tidak bentrok, lalu pulihkan.
+if exist ".env" copy /Y ".env" ".env.local.bak" >nul
+git checkout -- .env >nul 2>&1
 git pull --autostash --ff-only
 if errorlevel 1 (echo [WARN] git pull dilewati ^(perubahan lokal / non-fast-forward^). Lanjut dengan kode saat ini.) else (echo [OK] Kode terbaru ditarik.)
+if exist ".env.local.bak" ( copy /Y ".env.local.bak" ".env" >nul & del ".env.local.bak" >nul & echo [OK] .env lokal dipertahankan. )
 :skip_pull
 
 :: ================================================================
@@ -249,31 +253,13 @@ echo [OK] Migrasi selesai.
 :: 8. SEEDER (hanya jika database masih kosong)
 :: ================================================================
 echo.
-echo [..] Memeriksa data awal...
-"%MYSQL_CMD%" -u root -D mahengold_demo -N -e "SELECT COUNT(*) FROM users;" >"%TEMP%\mg_check.txt" 2>nul
-set "ROW_COUNT=0"
-set /p ROW_COUNT=<"%TEMP%\mg_check.txt"
-del "%TEMP%\mg_check.txt" >nul 2>&1
-
-:: Bersihkan whitespace
-set "ROW_COUNT=%ROW_COUNT: =%"
-if "%ROW_COUNT%"=="" set "ROW_COUNT=0"
-
-if "%ROW_COUNT%"=="0" (
-    echo [..] Database kosong. Mengisi data demo...
-    "%PHP_CMD%" spark db:seed DatabaseSeeder 2>&1
-    if errorlevel 1 (
-        echo [WARN] Seeder gagal.
-    ) else (
-        echo [OK] Data demo berhasil diisi.
-        echo.
-        echo      Login admin:
-        echo        Email    : admin@mahengold.test
-        echo        Username : admin
-        echo        Password : admin123
-    )
+echo [..] Memastikan data demo (seeder idempotent, aman dijalankan berulang)...
+"%PHP_CMD%" spark db:seed DatabaseSeeder 2>&1
+if errorlevel 1 (
+    echo [WARN] Seeder dilewati / gagal. Cek error di atas.
 ) else (
-    echo [OK] Data sudah ada ^(skip seeder^).
+    echo [OK] Data demo siap.
+    echo      Login admin: admin@mahengold.test  /  admin123
 )
 
 :: ================================================================

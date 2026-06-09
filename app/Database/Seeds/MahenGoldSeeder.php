@@ -45,6 +45,12 @@ class MahenGoldSeeder extends Seeder
         $this->pengaturanModel = new PengaturanSistemModel();
         $this->calculator = new CreditCalculatorService();
 
+        // Idempotent: kalau admin sudah ada, data demo dianggap sudah ter-seed.
+        // Aman dijalankan berkali-kali (tidak duplikat, tidak menghapus data).
+        if ($this->userModel->where('email', 'admin@mahengold.test')->first()) {
+            return;
+        }
+
         $adminId = $this->userModel->insert([
             'nama' => 'Administrator MahenGold',
             'email' => 'admin@mahengold.test',

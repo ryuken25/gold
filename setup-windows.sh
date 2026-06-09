@@ -30,8 +30,12 @@ $FRESH && warn "Mode FRESH aktif: database akan dibuat ulang & di-seed ulang."
 
 if command -v git &>/dev/null && git rev-parse --is-inside-work-tree &>/dev/null; then
     info "Menarik update terbaru (git pull)..."
+    # Lindungi .env lokal: backup, bersihkan agar pull tidak bentrok, lalu pulihkan.
+    [[ -f .env ]] && cp .env .env.local.bak
+    git checkout -- .env 2>/dev/null || true
     if git pull --autostash --ff-only; then ok "Kode terbaru ditarik."
     else warn "git pull dilewati (perubahan lokal / non-fast-forward). Lanjut dengan kode saat ini."; fi
+    [[ -f .env.local.bak ]] && { cp .env.local.bak .env; rm -f .env.local.bak; ok ".env lokal dipertahankan."; }
 fi
 
 # ================================================================
@@ -203,22 +207,14 @@ info "Menjalankan migrasi database..."
 ok "Migrasi selesai."
 
 # ================================================================
-# 8. Seeder (hanya bila tabel users masih kosong)
+# 8. Seeder (idempotent — aman dijalankan berulang)
 # ================================================================
 echo ""
-info "Memeriksa data awal..."
-ROW_COUNT="$(mysql_exec -D "$DB_NAME" -N -e "SELECT COUNT(*) FROM users;" 2>/dev/null || echo 0)"
-ROW_COUNT="${ROW_COUNT//[^0-9]/}"; ROW_COUNT="${ROW_COUNT:-0}"
-if [[ "$ROW_COUNT" == "0" ]]; then
-    info "Database kosong. Mengisi data demo..."
-    if "$PHP_CMD" spark db:seed DatabaseSeeder; then
-        ok "Data demo terisi."
-        echo "     Login admin -> Email: admin@mahengold.test  |  Password: admin123"
-    else
-        warn "Seeder gagal (lanjut)."
-    fi
+info "Memastikan data demo (seeder idempotent)..."
+if "$PHP_CMD" spark db:seed DatabaseSeeder; then
+    ok "Data demo siap. Login: admin@mahengold.test / admin123"
 else
-    ok "Data sudah ada (skip seeder)."
+    warn "Seeder dilewati / gagal."
 fi
 
 # ================================================================
