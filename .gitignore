@@ -61,6 +61,9 @@ Proposal_*
 /.env.local.bak
 /.env.bak
 
+# .env khusus mac (berisi credential lokal) — JANGAN di-push
+/.env.mac
+
 #-------------------------
 # Temporary Files (CodeIgniter 4)
 #-------------------------

@@ -13,10 +13,30 @@ Sudah pernah clone? Cukup jalankan satu file (otomatis: `git pull` + buat `.env`
 + start MySQL + buat DB + migrasi + seed + jalankan server):
 
 - **Windows**: klik dua kali **`setup-windows.bat`** (atau jalankan di CMD).
-- **Mac/Linux**: `bash setup-windows.sh`
+- **macOS**: `bash setup-mac.sh` (auto-fix host DB → `127.0.0.1`)
+- **Linux**: `bash setup-windows.sh`
 
 Reset penuh (hapus DB + isi ulang data demo): tambahkan `fresh` →
-`setup-windows.bat fresh` / `bash setup-windows.sh fresh`.
+`setup-windows.bat fresh` / `bash setup-mac.sh fresh`.
+
+### macOS — 1 baris (copy-paste)
+
+**Pertama kali (clone):**
+
+```bash
+git clone https://github.com/ryuken25/gold.git && cd gold && bash setup-mac.sh
+```
+
+**Update (sudah pernah clone, di dalam folder gold):**
+
+```bash
+cp -f .env .env.bak 2>/dev/null; git checkout -- .env 2>/dev/null; git pull; [ -f .env.bak ] && mv -f .env.bak .env; bash setup-mac.sh
+```
+
+> macOS sering error `Database Exception` karena `.env` pakai `hostname = localhost`
+> (socket). `setup-mac.sh` otomatis mengubahnya ke `127.0.0.1` (TCP) supaya
+> koneksi ke MySQL XAMPP berhasil. Bila ada file `.env.mac` (credential lokal,
+> tidak di-push), script memakai itu lebih dulu.
 
 > **Soal `.env`:** `.env` **tidak di-track git** (biar `git pull` tidak pernah
 > bentrok). File `.env` lokalmu aman — tidak akan diubah/replace. Saat pertama
