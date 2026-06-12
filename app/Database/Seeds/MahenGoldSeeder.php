@@ -45,39 +45,60 @@ class MahenGoldSeeder extends Seeder
         $this->pengaturanModel = new PengaturanSistemModel();
         $this->calculator = new CreditCalculatorService();
 
-        // Idempotent: kalau admin sudah ada, data demo dianggap sudah ter-seed.
-        // Aman dijalankan berkali-kali (tidak duplikat, tidak menghapus data).
-        if ($this->userModel->where('email', 'admin@mahengold.test')->first()) {
-            return;
+        // ---- Idempotent per-item: aman dijalankan berkali-kali, dan SELALU
+        //      memastikan admin + produk demo ada (top-up bila hilang/parsial).
+
+        // 1. Admin (buat bila belum ada).
+        $admin = $this->userModel->where('email', 'admin@mahengold.test')->first();
+        $adminId = $admin
+            ? (int) $admin['id']
+            : (int) $this->userModel->insert([
+                'nama' => 'Administrator MahenGold',
+                'email' => 'admin@mahengold.test',
+                'username' => 'admin',
+                'password_hash' => password_hash('admin123', PASSWORD_DEFAULT),
+                'role' => 'admin',
+                'is_active' => 1,
+            ], true);
+
+        // 2. Pengaturan (sekali, bila tabel kosong).
+        if ($this->pengaturanModel->countAllResults() === 0) {
+            $this->pengaturanModel->insert([
+                'nama_toko' => 'MahenGold',
+                'nomor_whatsapp_toko' => '6282146575233',
+                'margin_default' => 10.00,
+                'logo_text' => 'MG',
+                'alamat_toko' => 'Denpasar, Bali',
+            ]);
         }
 
-        $adminId = $this->userModel->insert([
-            'nama' => 'Administrator MahenGold',
-            'email' => 'admin@mahengold.test',
-            'username' => 'admin',
-            'password_hash' => password_hash('admin123', PASSWORD_DEFAULT),
-            'role' => 'admin',
-            'is_active' => 1,
-        ], true);
-
-        $this->pengaturanModel->insert([
-            'nama_toko' => 'MahenGold',
-            'nomor_whatsapp_toko' => '6282146575233',
-            'margin_default' => 10.00,
-            'logo_text' => 'MG',
-            'alamat_toko' => 'Denpasar, Bali',
-        ]);
-
-        $produkIds = [];
+        // 3. Produk demo — SELALU dipastikan ada (insert per kode bila belum ada).
         foreach ([
             ['kode_produk' => 'MGD-001', 'nama_produk' => 'Cincin Emas 1 Gram', 'jenis_emas' => 'Perhiasan', 'kadar' => '22K', 'berat_gram' => 1.00, 'harga_pokok' => 1500000, 'stok' => 5],
             ['kode_produk' => 'MGD-002', 'nama_produk' => 'Kalung Emas 2 Gram', 'jenis_emas' => 'Perhiasan', 'kadar' => '22K', 'berat_gram' => 2.00, 'harga_pokok' => 3200000, 'stok' => 3],
             ['kode_produk' => 'MGD-003', 'nama_produk' => 'Anting Emas 0.8 Gram', 'jenis_emas' => 'Perhiasan', 'kadar' => '22K', 'berat_gram' => 0.80, 'harga_pokok' => 1250000, 'stok' => 8],
         ] as $produk) {
+            if ($this->produkModel->where('kode_produk', $produk['kode_produk'])->first()) {
+                continue;
+            }
             $produk['status'] = 'aktif';
             $produk['deskripsi'] = 'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.';
             $produk['gambar_url'] = null;
-            $produkIds[] = $this->produkModel->insert($produk, true);
+            $this->produkModel->insert($produk);
+        }
+
+        // 4. Data transaksi demo (nasabah + kredit) — hanya bila belum ada kredit.
+        if ($this->kreditModel->countAllResults() > 0) {
+            return;
+        }
+
+        $produkIds = [];
+        foreach (['MGD-001', 'MGD-002', 'MGD-003'] as $kode) {
+            $row = $this->produkModel->where('kode_produk', $kode)->first();
+            if (!$row) {
+                return; // produk tidak lengkap; lewati transaksi demo
+            }
+            $produkIds[] = (int) $row['id'];
         }
 
         $nasabahIds = [];
@@ -86,9 +107,15 @@ class MahenGoldSeeder extends Seeder
             ['nama' => 'Kadek Surya', 'no_telepon' => '6289876543210', 'alamat' => 'Badung'],
             ['nama' => 'Ni Putu Sari', 'no_telepon' => '6281112223334', 'alamat' => 'Gianyar'],
         ] as $index => $nasabah) {
-            $nasabah['kode_nasabah'] = generate_kode('NSB', $index + 1);
+            $kode = generate_kode('NSB', $index + 1);
+            $existing = $this->nasabahModel->where('kode_nasabah', $kode)->first();
+            if ($existing) {
+                $nasabahIds[] = (int) $existing['id'];
+                continue;
+            }
+            $nasabah['kode_nasabah'] = $kode;
             $nasabah['catatan'] = 'Data nasabah dummy demo MahenGold.';
-            $nasabahIds[] = $this->nasabahModel->insert($nasabah, true);
+            $nasabahIds[] = (int) $this->nasabahModel->insert($nasabah, true);
         }
 
         $today = new DateTimeImmutable('today');
