@@ -123,9 +123,15 @@ class MahenGoldSeeder extends Seeder
 
         $today = new DateTimeImmutable('today');
 
-        $this->seedCredit($adminId, $nasabahIds[0], $produkIds[0], $today->sub(new DateInterval('P70D'))->format('Y-m-d'), $today->sub(new DateInterval('P40D'))->format('Y-m-d'), 12, 'bulanan', 2, 0, 'aktif');
-        $this->seedCredit($adminId, $nasabahIds[1], $produkIds[1], $today->sub(new DateInterval('P35D'))->format('Y-m-d'), $today->sub(new DateInterval('P21D'))->format('Y-m-d'), 10, 'mingguan', 5, 0, 'aktif');
-        $this->seedCredit($adminId, $nasabahIds[2], $produkIds[2], $today->sub(new DateInterval('P210D'))->format('Y-m-d'), $today->sub(new DateInterval('P180D'))->format('Y-m-d'), 6, 'bulanan', 6, 0, 'lunas');
+        // Transaksi demo bersifat opsional — kalau gagal, JANGAN menggagalkan
+        // seeder (produk & admin yang penting harus tetap tersimpan).
+        try {
+            $this->seedCredit($adminId, $nasabahIds[0], $produkIds[0], $today->sub(new DateInterval('P70D'))->format('Y-m-d'), $today->sub(new DateInterval('P40D'))->format('Y-m-d'), 12, 'bulanan', 2, 0, 'aktif');
+            $this->seedCredit($adminId, $nasabahIds[1], $produkIds[1], $today->sub(new DateInterval('P35D'))->format('Y-m-d'), $today->sub(new DateInterval('P21D'))->format('Y-m-d'), 10, 'mingguan', 5, 0, 'aktif');
+            $this->seedCredit($adminId, $nasabahIds[2], $produkIds[2], $today->sub(new DateInterval('P210D'))->format('Y-m-d'), $today->sub(new DateInterval('P180D'))->format('Y-m-d'), 6, 'bulanan', 6, 0, 'lunas');
+        } catch (\Throwable $e) {
+            log_message('error', 'Seed transaksi demo gagal (produk & admin tetap ada): ' . $e->getMessage());
+        }
     }
 
     protected function seedCredit(

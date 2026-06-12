@@ -177,10 +177,23 @@ info "Menjalankan migrasi..."
 ok "Migrasi selesai."
 
 info "Memastikan data demo (seeder idempotent)..."
-if "$PHP_CMD" spark db:seed DatabaseSeeder; then
-    ok "Data demo siap. Login: admin@mahengold.test / admin123"
+"$PHP_CMD" spark db:seed DatabaseSeeder || warn "Seeder exit non-zero (cek pesan di atas)."
+
+# Verifikasi: hitung produk aktif lewat koneksi yang SAMA dengan aplikasi.
+count_produk() { mysql_exec -D "$DB_NAME" -N -B -e "SELECT COUNT(*) FROM produk_emas WHERE status='aktif' AND deleted_at IS NULL;" 2>/dev/null | tr -dc '0-9'; }
+PRODUK_COUNT="$(count_produk)"; PRODUK_COUNT="${PRODUK_COUNT:-0}"
+if [[ "$PRODUK_COUNT" -gt 0 ]]; then
+    ok "Produk aktif di database: ${PRODUK_COUNT}. Login: admin@mahengold.test / admin123"
 else
-    warn "Seeder dilewati / gagal."
+    warn "Produk masih 0 — menjalankan ulang seeder (verbose)..."
+    "$PHP_CMD" spark db:seed MahenGoldSeeder || true
+    PRODUK_COUNT="$(count_produk)"; PRODUK_COUNT="${PRODUK_COUNT:-0}"
+    if [[ "$PRODUK_COUNT" -gt 0 ]]; then
+        ok "Produk aktif sekarang: ${PRODUK_COUNT}."
+    else
+        warn "Produk TETAP 0. Kemungkinan migrasi belum lengkap atau DB yang dibaca app berbeda."
+        warn "Jalankan reset penuh:  bash setup-mac.sh fresh"
+    fi
 fi
 
 chmod -R 755 writable/ 2>/dev/null || true
