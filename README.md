@@ -33,6 +33,13 @@ git clone https://github.com/ryuken25/gold.git && cd gold && bash setup-mac.sh
 cp -f .env .env.bak 2>/dev/null; git checkout -- .env 2>/dev/null; git pull; [ -f .env.bak ] && mv -f .env.bak .env; bash setup-mac.sh
 ```
 
+**Produk masih kosong / `git pull` nyangkut?** Paksa samakan kode dengan remote
+lalu reset penuh DB (`.env` lokal tetap aman karena tidak di-track):
+
+```bash
+git fetch origin && git reset --hard origin/main; bash setup-mac.sh fresh
+```
+
 > macOS sering error `Database Exception` karena `.env` pakai `hostname = localhost`
 > (socket). `setup-mac.sh` otomatis mengubahnya ke `127.0.0.1` (TCP) supaya
 > koneksi ke MySQL XAMPP berhasil. Bila ada file `.env.mac` (credential lokal,
