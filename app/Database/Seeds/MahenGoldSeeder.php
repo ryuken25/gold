@@ -77,6 +77,9 @@ class MahenGoldSeeder extends Seeder
             ['kode_produk' => 'MGD-001', 'nama_produk' => 'Cincin Emas 1 Gram', 'jenis_emas' => 'Perhiasan', 'kadar' => '22K', 'berat_gram' => 1.00, 'harga_pokok' => 1500000, 'stok' => 5],
             ['kode_produk' => 'MGD-002', 'nama_produk' => 'Kalung Emas 2 Gram', 'jenis_emas' => 'Perhiasan', 'kadar' => '22K', 'berat_gram' => 2.00, 'harga_pokok' => 3200000, 'stok' => 3],
             ['kode_produk' => 'MGD-003', 'nama_produk' => 'Anting Emas 0.8 Gram', 'jenis_emas' => 'Perhiasan', 'kadar' => '22K', 'berat_gram' => 0.80, 'harga_pokok' => 1250000, 'stok' => 8],
+            ['kode_produk' => 'MGD-004', 'nama_produk' => 'Gelang Emas 3 Gram', 'jenis_emas' => 'Perhiasan', 'kadar' => '22K', 'berat_gram' => 3.00, 'harga_pokok' => 4800000, 'stok' => 4],
+            ['kode_produk' => 'MGD-005', 'nama_produk' => 'Logam Mulia 5 Gram', 'jenis_emas' => 'Logam Mulia', 'kadar' => '24K', 'berat_gram' => 5.00, 'harga_pokok' => 7500000, 'stok' => 6],
+            ['kode_produk' => 'MGD-006', 'nama_produk' => 'Liontin Emas 1.5 Gram', 'jenis_emas' => 'Perhiasan', 'kadar' => '22K', 'berat_gram' => 1.50, 'harga_pokok' => 2300000, 'stok' => 7],
         ] as $produk) {
             if ($this->produkModel->where('kode_produk', $produk['kode_produk'])->first()) {
                 continue;
