@@ -256,11 +256,25 @@ echo.
 echo [..] Memastikan data demo (seeder idempotent, aman dijalankan berulang)...
 "%PHP_CMD%" spark db:seed DatabaseSeeder 2>&1
 if errorlevel 1 (
-    echo [WARN] Seeder dilewati / gagal. Cek error di atas.
+    echo [WARN] Seeder exit non-zero. Cek error di atas.
 ) else (
     echo [OK] Data demo siap.
     echo      Login admin: admin@mahengold.test  /  admin123
 )
+
+:: ---- Verifikasi produk + fallback: impor SQL dump bila masih 0 ----
+set "PRODUK=0"
+for /f "usebackq delims=" %%C in (`""%MYSQL_CMD%" -u root -N -B -e "SELECT COUNT(*) FROM mahengold_demo.produk_emas WHERE status='aktif';" 2^>nul`) do set "PRODUK=%%C"
+if not "!PRODUK!"=="0" goto :produk_ok
+echo [WARN] Produk masih 0 - mencoba impor database\mahengold_demo.sql ^(fallback^)...
+if exist "database\mahengold_demo.sql" (
+    "%MYSQL_CMD%" -u root mahengold_demo < "database\mahengold_demo.sql" 2>nul
+    for /f "usebackq delims=" %%C in (`""%MYSQL_CMD%" -u root -N -B -e "SELECT COUNT(*) FROM mahengold_demo.produk_emas WHERE status='aktif';" 2^>nul`) do set "PRODUK=%%C"
+) else (
+    echo [WARN] File database\mahengold_demo.sql tidak ditemukan.
+)
+:produk_ok
+echo [OK] Produk aktif di database: !PRODUK!
 
 :: ================================================================
 :: 9. PERMISSIONS writable/

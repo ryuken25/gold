@@ -188,11 +188,16 @@ else
     warn "Produk masih 0 — menjalankan ulang seeder (verbose)..."
     "$PHP_CMD" spark db:seed MahenGoldSeeder || true
     PRODUK_COUNT="$(count_produk)"; PRODUK_COUNT="${PRODUK_COUNT:-0}"
+    if [[ "$PRODUK_COUNT" -eq 0 && -f database/mahengold_demo.sql ]]; then
+        warn "Masih 0 — impor database/mahengold_demo.sql (fallback anti-gagal)..."
+        mysql_exec "$DB_NAME" < database/mahengold_demo.sql 2>/dev/null || warn "Impor SQL dump gagal."
+        PRODUK_COUNT="$(count_produk)"; PRODUK_COUNT="${PRODUK_COUNT:-0}"
+    fi
     if [[ "$PRODUK_COUNT" -gt 0 ]]; then
         ok "Produk aktif sekarang: ${PRODUK_COUNT}."
     else
-        warn "Produk TETAP 0. Kemungkinan migrasi belum lengkap atau DB yang dibaca app berbeda."
-        warn "Jalankan reset penuh:  bash setup-mac.sh fresh"
+        warn "Produk TETAP 0. Kemungkinan MySQL pakai password atau DB yang dibaca app berbeda."
+        warn "Coba reset penuh:  bash setup-mac.sh fresh"
     fi
 fi
 

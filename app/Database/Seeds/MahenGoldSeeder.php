@@ -72,7 +72,8 @@ class MahenGoldSeeder extends Seeder
             ]);
         }
 
-        // 3. Produk demo — SELALU dipastikan ada (insert per kode bila belum ada).
+        // 3. Produk demo — AUTO-REFRESH tiap seed: 6 produk dipastikan ada DAN
+        //    aktif (di-restore bila sempat dihapus/nonaktif), data disamakan.
         foreach ([
             ['kode_produk' => 'MGD-001', 'nama_produk' => 'Cincin Emas 1 Gram', 'jenis_emas' => 'Perhiasan', 'kadar' => '22K', 'berat_gram' => 1.00, 'harga_pokok' => 1500000, 'stok' => 5],
             ['kode_produk' => 'MGD-002', 'nama_produk' => 'Kalung Emas 2 Gram', 'jenis_emas' => 'Perhiasan', 'kadar' => '22K', 'berat_gram' => 2.00, 'harga_pokok' => 3200000, 'stok' => 3],
@@ -81,11 +82,18 @@ class MahenGoldSeeder extends Seeder
             ['kode_produk' => 'MGD-005', 'nama_produk' => 'Logam Mulia 5 Gram', 'jenis_emas' => 'Logam Mulia', 'kadar' => '24K', 'berat_gram' => 5.00, 'harga_pokok' => 7500000, 'stok' => 6],
             ['kode_produk' => 'MGD-006', 'nama_produk' => 'Liontin Emas 1.5 Gram', 'jenis_emas' => 'Perhiasan', 'kadar' => '22K', 'berat_gram' => 1.50, 'harga_pokok' => 2300000, 'stok' => 7],
         ] as $produk) {
-            if ($this->produkModel->where('kode_produk', $produk['kode_produk'])->first()) {
-                continue;
-            }
             $produk['status'] = 'aktif';
             $produk['deskripsi'] = 'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.';
+
+            // withDeleted() supaya produk yang ter-soft-delete pun ketemu & dipulihkan.
+            $existing = $this->produkModel->withDeleted()->where('kode_produk', $produk['kode_produk'])->first();
+            if ($existing) {
+                $this->produkModel->update($existing['id'], $produk);
+                if (!empty($existing['deleted_at'])) {
+                    $this->produkModel->builder()->where('id', $existing['id'])->update(['deleted_at' => null]);
+                }
+                continue;
+            }
             $produk['gambar_url'] = null;
             $this->produkModel->insert($produk);
         }

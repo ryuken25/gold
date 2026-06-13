@@ -19,6 +19,12 @@ Sudah pernah clone? Cukup jalankan satu file (otomatis: `git pull` + buat `.env`
 Reset penuh (hapus DB + isi ulang data demo): tambahkan `fresh` →
 `setup-windows.bat fresh` / `bash setup-mac.sh fresh`.
 
+> **Produk dijamin muncul (anti-gagal).** Tiap setup, seeder meng-_auto-refresh_
+> 6 produk demo (otomatis aktif lagi walau sempat dihapus/nonaktif). Bila karena
+> suatu hal produk tetap 0, setup otomatis meng-**impor** snapshot database
+> [`database/mahengold_demo.sql`](database/mahengold_demo.sql) sebagai fallback.
+> Jadi di Windows maupun macOS cukup jalankan satu file — produk pasti ada.
+
 ### macOS — 1 baris (copy-paste)
 
 **Pertama kali (clone):**
