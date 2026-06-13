@@ -49,7 +49,7 @@ class PembayaranController extends BaseAdminController
         if (in_array($status, ['menunggu', 'terverifikasi', 'ditolak'], true)) {
             $builder->where('bp.status', $status);
         }
-        if (in_array($tipe, ['cash', 'cicilan'], true)) {
+        if (in_array($tipe, ['cash', 'cicilan', 'dp'], true)) {
             $builder->where('bp.tipe', $tipe);
         }
         if ($q !== '') {
@@ -97,6 +97,13 @@ class PembayaranController extends BaseAdminController
                     'metode_pembayaran'  => 'transfer',
                     'keterangan'         => 'Verifikasi bukti ' . $bukti['kode'],
                 ], (int) current_admin()['id']);
+            } elseif ($bukti['tipe'] === 'dp') {
+                // DP: tandai uang muka diterima. Status pesanan tetap (cicilan berjalan).
+                if ($bukti['pengajuan_id']) {
+                    (new PengajuanModel())->update($bukti['pengajuan_id'], [
+                        'pembayaran_status' => 'terverifikasi',
+                    ]);
+                }
             } else {
                 // Cash: tandai pengajuan selesai.
                 if ($bukti['pengajuan_id']) {
@@ -141,7 +148,7 @@ class PembayaranController extends BaseAdminController
             'diverifikasi_pada' => date('Y-m-d H:i:s'),
         ]);
 
-        if ($bukti['tipe'] === 'cash' && $bukti['pengajuan_id']) {
+        if (in_array($bukti['tipe'], ['cash', 'dp'], true) && $bukti['pengajuan_id']) {
             (new PengajuanModel())->update($bukti['pengajuan_id'], ['pembayaran_status' => 'belum']);
         }
 
@@ -234,6 +241,20 @@ class PembayaranController extends BaseAdminController
                 'Nominal: ' . format_rupiah($bukti['nominal']),
                 'Sisa Piutang: ' . format_rupiah($kredit['sisa_piutang'] ?? 0),
                 (($kredit['status'] ?? '') === 'lunas' ? "\nKredit Anda telah LUNAS. Terima kasih!" : ''),
+                '',
+                'Terima kasih, ' . $toko . '.',
+            ]));
+        } elseif ($bukti['tipe'] === 'dp') {
+            $pengajuan = $bukti['pengajuan_id'] ? (new PengajuanModel())->find($bukti['pengajuan_id']) : null;
+            if ($nomor === '' && $pengajuan) {
+                $nomor = $pengajuan['no_telepon'] ?? '';
+            }
+            $pesan = trim(implode("\n", [
+                'Halo ' . $nama . ',',
+                '',
+                'Pembayaran UANG MUKA (DP) pesanan ' . ($pengajuan['kode_pesanan'] ?? '') . ' sudah kami TERIMA & VERIFIKASI.',
+                'Nominal DP: ' . format_rupiah($bukti['nominal']),
+                'Selanjutnya silakan lanjut pembayaran angsuran sesuai jadwal.',
                 '',
                 'Terima kasih, ' . $toko . '.',
             ]));

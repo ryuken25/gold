@@ -49,8 +49,57 @@
                             <?= $pengajuan['catatan'] ? esc($pengajuan['catatan']) : ''; ?></div>
 
                     <?php elseif ($pengajuan['metode_pembayaran'] === 'kredit'): ?>
-                        <p class="text-muted-mg">Pesanan kredit Anda sudah disetujui. Jadwal angsuran &amp; upload bukti per
-                            angsuran ada di halaman detail kredit.</p>
+                        <?php $dp = (int) round((float) ($pengajuan['uang_muka'] ?? 0)); ?>
+
+                        <?php // ---- Bayar Uang Muka (DP) dulu ---- ?>
+                        <?php if ($dp > 0): ?>
+                            <div class="mb-4">
+                                <h6 class="fw-bold mb-2">1. Uang Muka (DP) — <?= esc(format_rupiah($dp)); ?></h6>
+                                <?php if ($buktiDp && $buktiDp['status'] === 'terverifikasi'): ?>
+                                    <div class="alert alert-success mb-1">Bukti DP terverifikasi. Terima kasih!</div>
+                                    <a href="<?= base_url('/akun/bukti/' . $buktiDp['id']); ?>" target="_blank" rel="noopener" class="small">Lihat bukti DP</a>
+                                <?php elseif ($buktiDp && $buktiDp['status'] === 'menunggu'): ?>
+                                    <div class="alert alert-warning mb-1">Bukti DP sedang menunggu verifikasi admin.</div>
+                                    <a href="<?= base_url('/akun/bukti/' . $buktiDp['id']); ?>" target="_blank" rel="noopener" class="small">Lihat bukti DP</a>
+                                <?php else: ?>
+                                    <?php if ($buktiDp && $buktiDp['status'] === 'ditolak'): ?>
+                                        <div class="alert alert-danger">Bukti DP ditolak<?= $buktiDp['catatan_admin'] ? ': ' . esc($buktiDp['catatan_admin']) : ''; ?>. Silakan unggah ulang.</div>
+                                    <?php endif; ?>
+                                    <p class="text-muted-mg">Bayar uang muka <strong><?= esc(format_rupiah($dp)); ?></strong> lalu unggah
+                                        bukti transfer Anda (JPG/PNG/PDF, maks 3 MB).</p>
+                                    <form action="<?= base_url('/akun/pesanan/' . $pengajuan['id'] . '/bukti-dp'); ?>" method="post"
+                                        enctype="multipart/form-data">
+                                        <?= csrf_field(); ?>
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Nama Pengirim <span class="text-muted-mg">(opsional)</span></label>
+                                                <input type="text" name="nama_pengirim" class="form-control" maxlength="150"
+                                                    value="<?= esc(old('nama_pengirim')); ?>" placeholder="Nama di rekening">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small">No. Rekening <span class="text-muted-mg">(opsional)</span></label>
+                                                <input type="text" name="no_rekening" class="form-control" maxlength="50"
+                                                    value="<?= esc(old('no_rekening')); ?>" placeholder="mis. 1234567890">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Bank <span class="text-muted-mg">(opsional)</span></label>
+                                                <input type="text" name="bank_pengirim" class="form-control" maxlength="50"
+                                                    value="<?= esc(old('bank_pengirim')); ?>" placeholder="mis. BCA / BRI">
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                                            <input type="file" name="bukti" class="form-control" accept="image/jpeg,image/png,application/pdf"
+                                                required style="max-width:280px;">
+                                            <button class="btn btn-gold">Upload Bukti DP</button>
+                                        </div>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php // ---- Cicilan angsuran ---- ?>
+                        <h6 class="fw-bold mb-2"><?= $dp > 0 ? '2. ' : ''; ?>Angsuran</h6>
+                        <p class="text-muted-mg">Jadwal angsuran &amp; upload bukti per angsuran ada di halaman detail kredit.</p>
                         <?php if ($kredit): ?>
                             <a href="<?= base_url('/akun/kredit/' . $kredit['id']); ?>" class="btn btn-gold">Lihat Jadwal &amp; Bayar Angsuran</a>
                         <?php else: ?>

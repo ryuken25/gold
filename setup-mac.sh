@@ -173,7 +173,7 @@ ok "Database OK."
 # ================================================================
 echo ""
 info "Menjalankan migrasi..."
-"$PHP_CMD" spark migrate -n || fail "Migrasi gagal. Cek error di atas."
+"$PHP_CMD" spark migrate || fail "Migrasi gagal. Cek error di atas."
 ok "Migrasi selesai."
 
 info "Memastikan data demo (seeder idempotent)..."

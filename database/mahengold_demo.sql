@@ -20,7 +20,7 @@ DROP TABLE IF EXISTS `bukti_pembayaran`;
 CREATE TABLE `bukti_pembayaran` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `kode` varchar(50) DEFAULT NULL,
-  `tipe` enum('cash','cicilan') NOT NULL,
+  `tipe` enum('cash','cicilan','dp') NOT NULL,
   `pengajuan_id` int(10) unsigned DEFAULT NULL,
   `kredit_id` int(10) unsigned DEFAULT NULL,
   `jadwal_angsuran_id` int(10) unsigned DEFAULT NULL,
@@ -50,7 +50,7 @@ CREATE TABLE `bukti_pembayaran` (
   CONSTRAINT `bukti_pembayaran_kredit_id_foreign` FOREIGN KEY (`kredit_id`) REFERENCES `kredit` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `bukti_pembayaran_pengajuan_id_foreign` FOREIGN KEY (`pengajuan_id`) REFERENCES `pengajuan` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `bukti_pembayaran_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -84,7 +84,7 @@ CREATE TABLE `email_logs` (
   PRIMARY KEY (`id`),
   KEY `related_type_related_id` (`related_type`,`related_id`),
   KEY `tipe` (`tipe`)
-) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -93,6 +93,7 @@ CREATE TABLE `email_logs` (
 
 LOCK TABLES `email_logs` WRITE;
 /*!40000 ALTER TABLE `email_logs` DISABLE KEYS */;
+INSERT INTO `email_logs` (`id`, `tipe`, `tujuan_email`, `nama_tujuan`, `subjek`, `body`, `status`, `error`, `related_type`, `related_id`, `created_at`) VALUES (33,'pembayaran_terverifikasi','dptest@mahengold.test','DP Tester','Pembayaran BKT-0002 terverifikasi','<!doctype html><html lang=\"id\"><body style=\"margin:0;padding:0;background:#f4eee1;font-family:Arial,Helvetica,sans-serif;color:#2b2b2b;\"><div style=\"max-width:560px;margin:0 auto;padding:24px 16px;\"><div style=\"background:#1c1a17;border-radius:14px 14px 0 0;padding:22px 24px;text-align:center;\"><span style=\"color:#C9A24B;font-size:22px;font-weight:800;letter-spacing:1px;\">MahenGold</span><div style=\"color:#9c9385;font-size:11px;letter-spacing:2px;margin-top:4px;\">PENJUALAN &amp; KREDIT EMAS</div></div><div style=\"background:#ffffff;padding:24px;border:1px solid #ece3d2;border-top:0;\"><h2 style=\"margin:0 0 10px;color:#1c1a17;font-size:18px;\">Pembayaran BKT-0002 terverifikasi</h2><p style=\"margin:0 0 16px;color:#4a4538;font-size:14px;\">Halo DP Tester, pembayaran Anda sudah kami verifikasi.</p><table style=\"width:100%;border-collapse:collapse;font-size:14px;\"><tr><td style=\"padding:6px 0;color:#7a7263;width:42%;vertical-align:top;\">Kode Bukti</td><td style=\"padding:6px 0;color:#1c1a17;font-weight:600;\">BKT-0002</td></tr><tr><td style=\"padding:6px 0;color:#7a7263;width:42%;vertical-align:top;\">Nomor Pesanan</td><td style=\"padding:6px 0;color:#1c1a17;font-weight:600;\">PSN-DPTEST</td></tr><tr><td style=\"padding:6px 0;color:#7a7263;width:42%;vertical-align:top;\">Nominal</td><td style=\"padding:6px 0;color:#1c1a17;font-weight:600;\">Rp 200.000</td></tr></table><p style=\"margin:16px 0 0;\">Pembayaran Anda telah kami verifikasi dan pesanan dinyatakan <strong>selesai</strong>. Terima kasih.</p></div><div style=\"background:#1c1a17;border-radius:0 0 14px 14px;padding:16px 24px;color:#9c9385;font-size:12px;text-align:center;\">Jl. Emas Mulia No. 1, Denpasar, Bali<br>WhatsApp: 6282146575233<br><span style=\"color:#6f6757;\">Email otomatis — mohon tidak membalas pesan ini.</span></div></div></body></html>','terkirim',NULL,'pengajuan',1,'2026-06-13 17:12:43');
 /*!40000 ALTER TABLE `email_logs` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -197,7 +198,7 @@ CREATE TABLE `migrations` (
   `time` int(11) NOT NULL,
   `batch` int(11) unsigned NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -206,7 +207,7 @@ CREATE TABLE `migrations` (
 
 LOCK TABLES `migrations` WRITE;
 /*!40000 ALTER TABLE `migrations` DISABLE KEYS */;
-INSERT INTO `migrations` (`id`, `version`, `class`, `group`, `namespace`, `time`, `batch`) VALUES (17,'2026-04-26-080000','App\\Database\\Migrations\\CreateUsersTable','default','App',1777207161,1),(18,'2026-04-26-080100','App\\Database\\Migrations\\CreateProdukEmasTable','default','App',1777207161,1),(19,'2026-04-26-080200','App\\Database\\Migrations\\CreateNasabahTable','default','App',1777207161,1),(20,'2026-04-26-080300','App\\Database\\Migrations\\CreateKreditTable','default','App',1777207162,1),(21,'2026-04-26-080400','App\\Database\\Migrations\\CreateJadwalAngsuranTable','default','App',1777207162,1),(22,'2026-04-26-080500','App\\Database\\Migrations\\CreatePembayaranAngsuranTable','default','App',1777207162,1),(23,'2026-04-26-080600','App\\Database\\Migrations\\CreateWhatsappLogsTable','default','App',1777207162,1),(24,'2026-04-26-080700','App\\Database\\Migrations\\CreatePengaturanSistemTable','default','App',1777207162,1),(25,'2026-05-29-000001','App\\Database\\Migrations\\AlterUsersAddPelangganRole','default','App',1780036641,2),(26,'2026-05-29-000002','App\\Database\\Migrations\\CreatePengajuanTable','default','App',1780036641,2),(27,'2026-06-02-000001','App\\Database\\Migrations\\AddUserIdToNasabahTable','default','App',1780563383,3),(28,'2026-06-04-000001','App\\Database\\Migrations\\MakeUsernameNullable','default','App',1780563383,3),(29,'2026-06-04-100001','App\\Database\\Migrations\\AddPesananFieldsToPengajuan','default','App',1780567671,4),(30,'2026-06-04-100002','App\\Database\\Migrations\\AlterWhatsappLogsTipeAddKonfirmasiPesanan','default','App',1780567671,4),(31,'2026-06-04-100003','App\\Database\\Migrations\\CreatePengajuanAktivitasTable','default','App',1780567671,4),(32,'2026-06-04-100004','App\\Database\\Migrations\\CreateEmailLogsTable','default','App',1780567671,4),(33,'2026-06-04-110001','App\\Database\\Migrations\\AddPembayaranStatusToPengajuan','default','App',1780583383,5),(34,'2026-06-04-110002','App\\Database\\Migrations\\AddPengajuanIdToKredit','default','App',1780583383,5),(35,'2026-06-04-110003','App\\Database\\Migrations\\CreateBuktiPembayaranTable','default','App',1780583383,5),(36,'2026-06-04-110004','App\\Database\\Migrations\\DropWaktuSesiFromPengajuan','default','App',1780583383,5),(37,'2026-06-09-100001','App\\Database\\Migrations\\AddUangMukaToPengajuanDanKredit','default','App',1780999444,6),(38,'2026-06-09-100002','App\\Database\\Migrations\\AddRekeningToBuktiPembayaran','default','App',1780999444,6);
+INSERT INTO `migrations` (`id`, `version`, `class`, `group`, `namespace`, `time`, `batch`) VALUES (17,'2026-04-26-080000','App\\Database\\Migrations\\CreateUsersTable','default','App',1777207161,1),(18,'2026-04-26-080100','App\\Database\\Migrations\\CreateProdukEmasTable','default','App',1777207161,1),(19,'2026-04-26-080200','App\\Database\\Migrations\\CreateNasabahTable','default','App',1777207161,1),(20,'2026-04-26-080300','App\\Database\\Migrations\\CreateKreditTable','default','App',1777207162,1),(21,'2026-04-26-080400','App\\Database\\Migrations\\CreateJadwalAngsuranTable','default','App',1777207162,1),(22,'2026-04-26-080500','App\\Database\\Migrations\\CreatePembayaranAngsuranTable','default','App',1777207162,1),(23,'2026-04-26-080600','App\\Database\\Migrations\\CreateWhatsappLogsTable','default','App',1777207162,1),(24,'2026-04-26-080700','App\\Database\\Migrations\\CreatePengaturanSistemTable','default','App',1777207162,1),(25,'2026-05-29-000001','App\\Database\\Migrations\\AlterUsersAddPelangganRole','default','App',1780036641,2),(26,'2026-05-29-000002','App\\Database\\Migrations\\CreatePengajuanTable','default','App',1780036641,2),(27,'2026-06-02-000001','App\\Database\\Migrations\\AddUserIdToNasabahTable','default','App',1780563383,3),(28,'2026-06-04-000001','App\\Database\\Migrations\\MakeUsernameNullable','default','App',1780563383,3),(29,'2026-06-04-100001','App\\Database\\Migrations\\AddPesananFieldsToPengajuan','default','App',1780567671,4),(30,'2026-06-04-100002','App\\Database\\Migrations\\AlterWhatsappLogsTipeAddKonfirmasiPesanan','default','App',1780567671,4),(31,'2026-06-04-100003','App\\Database\\Migrations\\CreatePengajuanAktivitasTable','default','App',1780567671,4),(32,'2026-06-04-100004','App\\Database\\Migrations\\CreateEmailLogsTable','default','App',1780567671,4),(33,'2026-06-04-110001','App\\Database\\Migrations\\AddPembayaranStatusToPengajuan','default','App',1780583383,5),(34,'2026-06-04-110002','App\\Database\\Migrations\\AddPengajuanIdToKredit','default','App',1780583383,5),(35,'2026-06-04-110003','App\\Database\\Migrations\\CreateBuktiPembayaranTable','default','App',1780583383,5),(36,'2026-06-04-110004','App\\Database\\Migrations\\DropWaktuSesiFromPengajuan','default','App',1780583383,5),(37,'2026-06-09-100001','App\\Database\\Migrations\\AddUangMukaToPengajuanDanKredit','default','App',1780999444,6),(38,'2026-06-09-100002','App\\Database\\Migrations\\AddRekeningToBuktiPembayaran','default','App',1780999444,6),(39,'2026-06-13-100001','App\\Database\\Migrations\\AddDpTipeToBuktiPembayaran','default','App',1781341767,7);
 /*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -318,7 +319,7 @@ CREATE TABLE `pengajuan` (
   KEY `user_id` (`user_id`),
   CONSTRAINT `pengajuan_produk_emas_id_foreign` FOREIGN KEY (`produk_emas_id`) REFERENCES `produk_emas` (`id`) ON DELETE CASCADE,
   CONSTRAINT `pengajuan_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -423,7 +424,7 @@ CREATE TABLE `produk_emas` (
 
 LOCK TABLES `produk_emas` WRITE;
 /*!40000 ALTER TABLE `produk_emas` DISABLE KEYS */;
-INSERT INTO `produk_emas` (`id`, `kode_produk`, `nama_produk`, `jenis_emas`, `kadar`, `berat_gram`, `harga_pokok`, `stok`, `deskripsi`, `gambar_url`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES (1,'MGD-001','Cincin Emas 1 Gram','Perhiasan','22K',1.00,1500000.00,5,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:28:21','2026-06-13 12:40:45',NULL),(2,'MGD-002','Kalung Emas 2 Gram','Perhiasan','22K',2.00,3200000.00,3,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:28:21','2026-06-13 12:40:45',NULL),(3,'MGD-003','Anting Emas 0.8 Gram','Perhiasan','22K',0.80,1250000.00,8,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:28:21','2026-06-13 12:40:45',NULL),(4,'MGD-004','Gelang Emas 3 Gram','Perhiasan','22K',3.00,4800000.00,4,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:38:05','2026-06-13 12:40:45',NULL),(5,'MGD-005','Logam Mulia 5 Gram','Logam Mulia','24K',5.00,7500000.00,6,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:38:05','2026-06-13 12:40:45',NULL),(6,'MGD-006','Liontin Emas 1.5 Gram','Perhiasan','22K',1.50,2300000.00,7,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:38:05','2026-06-13 12:40:45',NULL);
+INSERT INTO `produk_emas` (`id`, `kode_produk`, `nama_produk`, `jenis_emas`, `kadar`, `berat_gram`, `harga_pokok`, `stok`, `deskripsi`, `gambar_url`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES (1,'MGD-001','Cincin Emas 1 Gram','Perhiasan','22K',1.00,1500000.00,5,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:28:21','2026-06-13 17:13:08',NULL),(2,'MGD-002','Kalung Emas 2 Gram','Perhiasan','22K',2.00,3200000.00,3,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:28:21','2026-06-13 17:13:08',NULL),(3,'MGD-003','Anting Emas 0.8 Gram','Perhiasan','22K',0.80,1250000.00,8,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:28:21','2026-06-13 17:13:08',NULL),(4,'MGD-004','Gelang Emas 3 Gram','Perhiasan','22K',3.00,4800000.00,4,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:38:05','2026-06-13 17:13:08',NULL),(5,'MGD-005','Logam Mulia 5 Gram','Logam Mulia','24K',5.00,7500000.00,6,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:38:05','2026-06-13 17:13:08',NULL),(6,'MGD-006','Liontin Emas 1.5 Gram','Perhiasan','22K',1.50,2300000.00,7,'Produk emas premium MahenGold untuk kebutuhan investasi dan perhiasan.',NULL,'aktif','2026-06-12 21:38:05','2026-06-13 17:13:08',NULL);
 /*!40000 ALTER TABLE `produk_emas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -448,7 +449,7 @@ CREATE TABLE `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -501,4 +502,4 @@ UNLOCK TABLES;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-13 12:40:54
+-- Dump completed on 2026-06-13 17:13:08

@@ -33,7 +33,7 @@ class PengaturanSistemModel extends Model
             'nama_toko'           => 'MahenGold',
             'nomor_whatsapp_toko' => wa_number_normalize((string) env('WA_TARGET_NUMBER', '6282146575233')),
             'margin_default'      => 10.00,
-            'dp_minimal'          => 0,
+            'dp_minimal'          => 200000,
             'logo_text'           => 'MG',
             'alamat_toko'         => 'Jl. Emas Mulia No. 1, Denpasar, Bali',
         ];

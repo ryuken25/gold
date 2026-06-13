@@ -29,6 +29,7 @@ $routes->group('akun', ['namespace' => 'App\Controllers', 'filter' => 'customera
     $routes->get('pesanan', 'Customer\AkunController::pesanan');
     $routes->get('pesanan/(:num)/ktp', 'Customer\AkunController::ktp/$1');
     $routes->post('pesanan/(:num)/bukti', 'Customer\AkunController::uploadBuktiCash/$1');
+    $routes->post('pesanan/(:num)/bukti-dp', 'Customer\AkunController::uploadBuktiDP/$1');
     $routes->get('pesanan/(:num)', 'Customer\AkunController::pesananDetail/$1');
     $routes->get('kredit/(:num)', 'Customer\AkunController::kreditDetail/$1');
     $routes->post('kredit/(:num)/bukti/(:num)', 'Customer\AkunController::uploadBuktiAngsuran/$1/$2');
