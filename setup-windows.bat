@@ -242,7 +242,7 @@ echo [OK] Database OK.
 :: ================================================================
 echo.
 echo [..] Menjalankan migrasi database...
-"%PHP_CMD%" spark migrate -n 2>&1
+"%PHP_CMD%" spark migrate 2>&1
 if errorlevel 1 (
     echo [ERROR] Migrasi gagal. Cek error di atas.
     pause & exit /b 1

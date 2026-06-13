@@ -134,7 +134,7 @@ class PublicController extends BaseController
         if ($metode === 'kredit') {
             $rules['tenor_bulan']      = 'required|in_list[6,10,12]';
             $rules['periode_angsuran'] = 'required|in_list[bulanan,mingguan]';
-            $rules['uang_muka']        = 'required|numeric';
+            $rules['uang_muka']        = 'permit_empty|numeric'; // DP tetap, ditentukan server
             $rules['foto_ktp']         = 'uploaded[foto_ktp]|is_image[foto_ktp]|mime_in[foto_ktp,image/jpeg,image/jpg,image/png]|max_size[foto_ktp,3072]';
         }
 
@@ -155,8 +155,8 @@ class PublicController extends BaseController
         // Pra-validasi DP untuk kredit (sebelum upload KTP, hindari file yatim).
         if ($metode === 'kredit') {
             $pengaturan  = $this->pengaturanModel->getPengaturan();
-            $dpMinimal   = (int) ($pengaturan['dp_minimal'] ?? 0);
-            $uangMukaCek = (int) round((float) $this->request->getPost('uang_muka'));
+            // DP tetap (nominal dari pengaturan) — abaikan input user.
+            $uangMukaCek = (int) ($pengaturan['dp_minimal'] ?? 0);
             $cek = $this->calculator->calculate(
                 $produk['harga_pokok'],
                 (float) $pengaturan['margin_default'],
@@ -164,9 +164,9 @@ class PublicController extends BaseController
                 (string) $this->request->getPost('periode_angsuran'),
                 $uangMukaCek
             );
-            if ($uangMukaCek < $dpMinimal || $uangMukaCek >= $cek['total_harga_kredit']) {
-                $msg = 'Uang muka minimal ' . format_rupiah($dpMinimal)
-                    . ' dan harus lebih kecil dari total harga kredit (' . format_rupiah($cek['total_harga_kredit']) . ').';
+            if ($uangMukaCek >= $cek['total_harga_kredit']) {
+                $msg = 'Total harga kredit (' . format_rupiah($cek['total_harga_kredit'])
+                    . ') terlalu kecil untuk DP tetap ' . format_rupiah($uangMukaCek) . '.';
                 return $this->request->isAJAX()
                     ? $this->response->setStatusCode(422)->setJSON(['errors' => ['uang_muka' => $msg], 'csrf' => csrf_hash()])
                     : redirect()->back()->withInput()->with('error', $msg);
@@ -237,7 +237,7 @@ class PublicController extends BaseController
                 $marginDefault,
                 $pengajuanData['tenor_bulan'],
                 (string) $pengajuanData['periode_angsuran'],
-                (int) round((float) $this->request->getPost('uang_muka'))
+                (int) ($this->pengaturanModel->getPengaturan()['dp_minimal'] ?? 0) // DP tetap
             );
 
             $pengajuanData['uang_muka'] = $kalkulasi['uang_muka'];

@@ -327,6 +327,70 @@ class AkunController extends BaseController
     }
 
     /**
+     * Upload bukti pembayaran Uang Muka (DP) untuk pesanan kredit (sekali per pengajuan).
+     */
+    public function uploadBuktiDP(int $pengajuanId)
+    {
+        $userId = (int) current_pelanggan()['id'];
+
+        $pengajuan = (new PengajuanModel())
+            ->where('id', $pengajuanId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$pengajuan) {
+            throw PageNotFoundException::forPageNotFound('Pesanan tidak ditemukan.');
+        }
+
+        $kembali = redirect()->to('/akun/pesanan/' . $pengajuanId);
+
+        if ($pengajuan['metode_pembayaran'] !== 'kredit' || $pengajuan['status'] !== 'disetujui') {
+            return $kembali->with('error', 'Pesanan belum bisa membayar DP.');
+        }
+
+        $dp = (int) round((float) ($pengajuan['uang_muka'] ?? 0));
+        if ($dp <= 0) {
+            return $kembali->with('error', 'Pesanan ini tidak memerlukan uang muka.');
+        }
+        if ($this->buktiModel()->where('pengajuan_id', $pengajuanId)->where('tipe', 'dp')->whereIn('status', ['menunggu', 'terverifikasi'])->countAllResults() > 0) {
+            return $kembali->with('error', 'Bukti DP sudah ada / sedang diproses.');
+        }
+
+        // Bukti wajib; info rekening pengirim opsional (bantu admin mencocokkan transfer).
+        $rules = array_merge($this->aturanBukti(), [
+            'nama_pengirim' => 'permit_empty|max_length[150]',
+            'no_rekening'   => 'permit_empty|max_length[50]',
+            'bank_pengirim' => 'permit_empty|max_length[50]',
+        ]);
+        if (!$this->validate($rules)) {
+            return $kembali->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        $nama = $this->simpanBukti($this->request->getFile('bukti'));
+        if (!$nama) {
+            return $kembali->with('error', 'Gagal mengunggah bukti. Gunakan JPG/PNG/PDF maks 3 MB.');
+        }
+
+        $bm  = $this->buktiModel();
+        $bid = $bm->insert([
+            'tipe'          => 'dp',
+            'pengajuan_id'  => $pengajuanId,
+            'user_id'       => $userId,
+            'nominal'       => $dp,
+            'nama_pengirim' => $this->request->getPost('nama_pengirim') ?: null,
+            'no_rekening'   => $this->request->getPost('no_rekening') ?: null,
+            'bank_pengirim' => $this->request->getPost('bank_pengirim') ?: null,
+            'file_path'     => $nama,
+            'status'        => 'menunggu',
+        ], true);
+        $bm->update($bid, ['kode' => generate_kode('BKT', $bid)]);
+
+        (new PengajuanModel())->update($pengajuanId, ['pembayaran_status' => 'menunggu']);
+
+        return $kembali->with('success', 'Bukti pembayaran DP terkirim, menunggu verifikasi admin.');
+    }
+
+    /**
      * Detail satu pesanan pelanggan + status/aksi pembayaran.
      */
     public function pesananDetail(int $id): string
@@ -344,8 +408,9 @@ class AkunController extends BaseController
             throw PageNotFoundException::forPageNotFound('Pesanan tidak ditemukan.');
         }
 
-        $bukti  = $this->buktiModel()->where('pengajuan_id', $id)->orderBy('id', 'DESC')->first();
-        $kredit = $pengajuan['metode_pembayaran'] === 'kredit'
+        $bukti   = $this->buktiModel()->where('pengajuan_id', $id)->where('tipe !=', 'dp')->orderBy('id', 'DESC')->first();
+        $buktiDp = $this->buktiModel()->where('pengajuan_id', $id)->where('tipe', 'dp')->orderBy('id', 'DESC')->first();
+        $kredit  = $pengajuan['metode_pembayaran'] === 'kredit'
             ? (new KreditModel())->where('pengajuan_id', $id)->first()
             : null;
 
@@ -355,6 +420,7 @@ class AkunController extends BaseController
             'pelanggan'  => current_pelanggan(),
             'pengajuan'  => $pengajuan,
             'bukti'      => $bukti,
+            'buktiDp'    => $buktiDp,
             'kredit'     => $kredit,
             'activeTab'  => 'pesanan',
         ]);

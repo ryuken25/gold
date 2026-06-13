@@ -17,6 +17,7 @@
             <select name="tipe" class="form-select form-select-sm">
                 <option value="">Semua</option>
                 <option value="cash" <?= $f['tipe'] === 'cash' ? 'selected' : ''; ?>>Cash</option>
+                <option value="dp" <?= $f['tipe'] === 'dp' ? 'selected' : ''; ?>>Uang Muka (DP)</option>
                 <option value="cicilan" <?= $f['tipe'] === 'cicilan' ? 'selected' : ''; ?>>Cicilan</option>
             </select>
         </div>
@@ -57,13 +58,17 @@
                     <?php foreach ($rows as $r): ?>
                         <tr>
                             <td><?= esc($r['kode']); ?></td>
-                            <td><span class="badge text-bg-<?= $r['tipe'] === 'cicilan' ? 'warning' : 'info'; ?>"><?= ucfirst($r['tipe']); ?></span></td>
+                            <?php
+                                $tipeBadge = ['cicilan' => 'warning', 'dp' => 'primary', 'cash' => 'info'][$r['tipe']] ?? 'info';
+                                $tipeLabel = $r['tipe'] === 'dp' ? 'DP' : ucfirst($r['tipe']);
+                            ?>
+                            <td><span class="badge text-bg-<?= $tipeBadge; ?>"><?= esc($tipeLabel); ?></span></td>
                             <td><?= esc($r['nama_user'] ?? $r['nama_nasabah'] ?? '-'); ?></td>
                             <td>
                                 <?php if ($r['tipe'] === 'cicilan'): ?>
                                     <?= esc($r['kode_kredit'] ?? '-'); ?> · Angsuran ke-<?= esc($r['angsuran_ke'] ?? '?'); ?>
                                 <?php else: ?>
-                                    Pesanan <?= esc($r['kode_pesanan'] ?? '-'); ?>
+                                    Pesanan <?= esc($r['kode_pesanan'] ?? '-'); ?><?= $r['tipe'] === 'dp' ? ' · Uang Muka' : ''; ?>
                                     <?php if (!empty($r['no_rekening']) || !empty($r['nama_pengirim'])): ?>
                                         <div class="small text-muted-mg">Transfer:
                                             <?= esc($r['nama_pengirim'] ?? ''); ?><?= !empty($r['bank_pengirim']) ? ' · ' . esc($r['bank_pengirim']) : ''; ?><?= !empty($r['no_rekening']) ? ' · ' . esc($r['no_rekening']) : ''; ?>

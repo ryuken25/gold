@@ -84,19 +84,15 @@
                             </select>
                         </div>
 
-                        <?php // Uang muka (DP) — nominal tetap ?>
+                        <?php // Uang muka (DP) — nominal TETAP (tidak bisa diubah) ?>
+                        <?php $dpTetap = (int) ($pengaturan['dp_minimal'] ?? 0); ?>
                         <div class="col-12 wa-kredit-field">
                             <label class="form-label">Uang Muka (DP)</label>
-                            <input type="number" class="form-control form-control-lg" name="uang_muka" id="wa_uang_muka"
-                                min="<?= esc($pengaturan['dp_minimal'] ?? 0); ?>" step="50000" value="0"
-                                placeholder="mis. 300000" inputmode="numeric">
-                            <div class="wa-dp-chips mt-2 d-flex flex-wrap gap-2">
-                                <?php foreach ([100000, 200000, 300000, 500000] as $dp): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-gold wa-dp-chip"
-                                        data-dp="<?= $dp; ?>">Rp <?= number_format($dp, 0, ',', '.'); ?></button>
-                                <?php endforeach; ?>
-                            </div>
-                            <div class="form-text">Nominal tetap (bukan persen). Sisa setelah DP yang akan dicicil.</div>
+                            <input type="text" class="form-control form-control-lg"
+                                value="Rp <?= number_format($dpTetap, 0, ',', '.'); ?>" readonly>
+                            <input type="hidden" name="uang_muka" id="wa_uang_muka" value="<?= $dpTetap; ?>">
+                            <div class="form-text">DP <strong>tetap Rp <?= number_format($dpTetap, 0, ',', '.'); ?></strong>
+                                (bukan persen). Sisa setelah DP yang akan dicicil sesuai tenor.</div>
                         </div>
 
                         <?php // Estimasi live (khusus kredit) ?>
