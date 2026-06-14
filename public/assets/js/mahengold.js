@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const estAngsuran = document.getElementById('wa_est_angsuran');
         const kreditFields = waModal.querySelectorAll('.wa-kredit-field');
         const ktpInput = document.getElementById('wa_foto_ktp');
+        const buktiDpInput = document.getElementById('wa_bukti_dp');
         let currentHargaPokok = 0;
         let lastKalkulasi = null;
 
@@ -107,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isKredit = getMetode() === 'kredit';
             kreditFields.forEach((el) => { el.style.display = isKredit ? '' : 'none'; });
             if (ktpInput) ktpInput.required = isKredit;
+            if (buktiDpInput) buktiDpInput.required = isKredit;
             syncMetodeCards();
             updatePreview();
         };
@@ -167,6 +169,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (getMetode() === 'kredit' && ktpInput && !ktpInput.files.length) {
                 alert('Foto KTP wajib diunggah untuk pengajuan kredit.');
                 ktpInput.focus();
+                return;
+            }
+            if (getMetode() === 'kredit' && buktiDpInput && !buktiDpInput.files.length) {
+                alert('Bukti pembayaran Uang Muka (DP) wajib diunggah untuk pengajuan kredit.');
+                buktiDpInput.focus();
                 return;
             }
             const submitBtn = document.querySelector('[form="waPengajuanForm"][type="submit"]');

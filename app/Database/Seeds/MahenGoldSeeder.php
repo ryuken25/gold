@@ -2,13 +2,17 @@
 
 namespace App\Database\Seeds;
 
+use App\Models\BuktiPembayaranModel;
 use App\Models\JadwalAngsuranModel;
 use App\Models\KreditModel;
 use App\Models\NasabahModel;
 use App\Models\PembayaranAngsuranModel;
+use App\Models\PengajuanAktivitasModel;
+use App\Models\PengajuanModel;
 use App\Models\PengaturanSistemModel;
 use App\Models\ProdukEmasModel;
 use App\Models\UserModel;
+use App\Services\CreditTransactionService;
 use App\Services\CreditCalculatorService;
 use CodeIgniter\Database\Seeder;
 use DateInterval;
@@ -98,48 +102,296 @@ class MahenGoldSeeder extends Seeder
             $this->produkModel->insert($produk);
         }
 
-        // 4. Data transaksi demo (nasabah + kredit) — hanya bila belum ada kredit.
-        if ($this->kreditModel->countAllResults() > 0) {
+        // 4. Data transaksi demo (nasabah + kredit sisi admin) — hanya bila
+        //    belum ada kredit sama sekali. Opsional: jangan gagalkan seeder.
+        if ($this->kreditModel->countAllResults() === 0) {
+            $produkIds = [];
+            foreach (['MGD-001', 'MGD-002', 'MGD-003'] as $kode) {
+                $row = $this->produkModel->where('kode_produk', $kode)->first();
+                if ($row) {
+                    $produkIds[] = (int) $row['id'];
+                }
+            }
+
+            if (count($produkIds) === 3) {
+                $nasabahIds = [];
+                foreach ([
+                    ['nama' => 'Ayu Lestari', 'no_telepon' => '6281234567890', 'alamat' => 'Denpasar'],
+                    ['nama' => 'Kadek Surya', 'no_telepon' => '6289876543210', 'alamat' => 'Badung'],
+                    ['nama' => 'Ni Putu Sari', 'no_telepon' => '6281112223334', 'alamat' => 'Gianyar'],
+                ] as $index => $nasabah) {
+                    $kode = generate_kode('NSB', $index + 1);
+                    $existing = $this->nasabahModel->where('kode_nasabah', $kode)->first();
+                    if ($existing) {
+                        $nasabahIds[] = (int) $existing['id'];
+                        continue;
+                    }
+                    $nasabah['kode_nasabah'] = $kode;
+                    $nasabah['catatan'] = 'Data nasabah dummy demo MahenGold.';
+                    $nasabahIds[] = (int) $this->nasabahModel->insert($nasabah, true);
+                }
+
+                $today = new DateTimeImmutable('today');
+
+                try {
+                    $this->seedCredit($adminId, $nasabahIds[0], $produkIds[0], $today->sub(new DateInterval('P70D'))->format('Y-m-d'), $today->sub(new DateInterval('P40D'))->format('Y-m-d'), 12, 'bulanan', 2, 0, 'aktif');
+                    $this->seedCredit($adminId, $nasabahIds[1], $produkIds[1], $today->sub(new DateInterval('P35D'))->format('Y-m-d'), $today->sub(new DateInterval('P21D'))->format('Y-m-d'), 10, 'mingguan', 5, 0, 'aktif');
+                    $this->seedCredit($adminId, $nasabahIds[2], $produkIds[2], $today->sub(new DateInterval('P210D'))->format('Y-m-d'), $today->sub(new DateInterval('P180D'))->format('Y-m-d'), 6, 'bulanan', 6, 0, 'lunas');
+                } catch (\Throwable $e) {
+                    log_message('error', 'Seed transaksi demo gagal (produk & admin tetap ada): ' . $e->getMessage());
+                }
+            }
+        }
+
+        // 5. Demo PESANAN pelanggan + bukti pembayaran (cash & DP) supaya alur
+        //    upload bukti + verifikasi admin langsung tampil di data demo.
+        //    Idempotent: hanya dibuat sekali (lihat guard di dalam method).
+        try {
+            $this->seedPesananDemo($adminId);
+        } catch (\Throwable $e) {
+            log_message('error', 'Seed pesanan/DP demo gagal (data inti tetap ada): ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Buat akun pelanggan demo + beberapa pesanan yang mencakup semua state
+     * alur bukti pembayaran: pengajuan baru, DP menunggu (pending), DP
+     * terverifikasi, dan cash menunggu. Plus file gambar bukti/KTP demo.
+     */
+    protected function seedPesananDemo(int $adminId): void
+    {
+        $pengajuanModel = new PengajuanModel();
+        $buktiModel     = new BuktiPembayaranModel();
+        $aktivitasModel = new PengajuanAktivitasModel();
+
+        // Pelanggan demo (kredensial dipakai juga oleh generator laporan BAB IV).
+        $pelanggan = $this->userModel->where('email', 'demo.pelanggan@mahengold.test')->first();
+        $userId = $pelanggan
+            ? (int) $pelanggan['id']
+            : (int) $this->userModel->insert([
+                'nama'          => 'Putu Demo Pelanggan',
+                'email'         => 'demo.pelanggan@mahengold.test',
+                'username'      => null,
+                'no_telepon'    => '6281200000001',
+                'password_hash' => password_hash('demo1234', PASSWORD_DEFAULT),
+                'role'          => 'pelanggan',
+                'is_active'     => 1,
+            ], true);
+
+        // Guard idempotent: kalau pelanggan demo sudah punya pesanan, lewati.
+        if ($pengajuanModel->where('user_id', $userId)->countAllResults() > 0) {
             return;
         }
 
-        $produkIds = [];
-        foreach (['MGD-001', 'MGD-002', 'MGD-003'] as $kode) {
-            $row = $this->produkModel->where('kode_produk', $kode)->first();
-            if (!$row) {
-                return; // produk tidak lengkap; lewati transaksi demo
-            }
-            $produkIds[] = (int) $row['id'];
+        $prod = function (string $kode): ?array {
+            return $this->produkModel->where('kode_produk', $kode)->first();
+        };
+        $alamat = 'Jl. Tunjung Sari No. 12, Denpasar, Bali';
+        $telp   = '6281200000001';
+        $dp     = (int) ($this->pengaturanModel->getPengaturan()['dp_minimal'] ?? 200000);
+
+        // File gambar demo (KTP + bukti) supaya tombol "Lihat" tidak 404.
+        $ktpFile = 'demo_ktp.png';
+        $this->writeDemoImage(WRITEPATH . 'uploads/ktp/' . $ktpFile, 'KTP DEMO', 'Putu Demo Pelanggan');
+
+        // --- A. Pesanan KREDIT status "baru" + DP bukti MENUNGGU ------------
+        //     (bukti DP diunggah saat pengajuan; belum diverifikasi admin)
+        if ($p = $prod('MGD-001')) {
+            $id = (int) $pengajuanModel->insert([
+                'kode_pesanan'      => 'MG-DEMO-001',
+                'user_id'           => $userId,
+                'produk_emas_id'    => (int) $p['id'],
+                'metode_pembayaran' => 'kredit',
+                'nama'              => 'Putu Demo Pelanggan',
+                'no_telepon'        => $telp,
+                'alamat'            => $alamat,
+                'tenor_bulan'       => 12,
+                'periode_angsuran'  => 'bulanan',
+                'uang_muka'         => $dp,
+                'foto_ktp'          => $ktpFile,
+                'status'            => 'baru',
+                'pembayaran_status' => 'menunggu',
+            ], true);
+            $aktivitasModel->log($id, 'dibuat', 'Pesanan dibuat oleh pelanggan', 'pelanggan');
+
+            $file = 'demo_bukti_dp_baru.png';
+            $this->writeDemoImage(WRITEPATH . 'uploads/bukti/' . $file, 'BUKTI DP - MENUNGGU (BARU)', 'MG-DEMO-001');
+            $bid = (int) $buktiModel->insert([
+                'tipe'          => 'dp',
+                'pengajuan_id'  => $id,
+                'user_id'       => $userId,
+                'nominal'       => $dp,
+                'nama_pengirim' => 'Putu Demo Pelanggan',
+                'no_rekening'   => '1234567890',
+                'bank_pengirim' => 'BCA',
+                'file_path'     => $file,
+                'status'        => 'menunggu',
+            ], true);
+            $buktiModel->update($bid, ['kode' => generate_kode('BKT', $bid)]);
         }
 
-        $nasabahIds = [];
-        foreach ([
-            ['nama' => 'Ayu Lestari', 'no_telepon' => '6281234567890', 'alamat' => 'Denpasar'],
-            ['nama' => 'Kadek Surya', 'no_telepon' => '6289876543210', 'alamat' => 'Badung'],
-            ['nama' => 'Ni Putu Sari', 'no_telepon' => '6281112223334', 'alamat' => 'Gianyar'],
-        ] as $index => $nasabah) {
-            $kode = generate_kode('NSB', $index + 1);
-            $existing = $this->nasabahModel->where('kode_nasabah', $kode)->first();
-            if ($existing) {
-                $nasabahIds[] = (int) $existing['id'];
-                continue;
-            }
-            $nasabah['kode_nasabah'] = $kode;
-            $nasabah['catatan'] = 'Data nasabah dummy demo MahenGold.';
-            $nasabahIds[] = (int) $this->nasabahModel->insert($nasabah, true);
+        // --- B. Pesanan KREDIT disetujui + DP bukti MENUNGGU (pending) ------
+        if ($p = $prod('MGD-003')) {
+            $id = (int) $pengajuanModel->insert([
+                'kode_pesanan'      => 'MG-DEMO-002',
+                'user_id'           => $userId,
+                'produk_emas_id'    => (int) $p['id'],
+                'metode_pembayaran' => 'kredit',
+                'nama'              => 'Putu Demo Pelanggan',
+                'no_telepon'        => $telp,
+                'alamat'            => $alamat,
+                'tenor_bulan'       => 6,
+                'periode_angsuran'  => 'bulanan',
+                'uang_muka'         => $dp,
+                'foto_ktp'          => $ktpFile,
+                'status'            => 'disetujui',
+                'pembayaran_status' => 'menunggu',
+            ], true);
+            $aktivitasModel->log($id, 'dibuat', 'Pesanan dibuat oleh pelanggan', 'pelanggan');
+            $aktivitasModel->log($id, 'diverifikasi', 'Pesanan disetujui admin.', 'Administrator MahenGold');
+            $this->buatKreditDariPengajuan($pengajuanModel, $aktivitasModel, $id);
+
+            $file = 'demo_bukti_dp_pending.png';
+            $this->writeDemoImage(WRITEPATH . 'uploads/bukti/' . $file, 'BUKTI DP - MENUNGGU', 'MG-DEMO-002');
+            $bid = (int) $buktiModel->insert([
+                'tipe'          => 'dp',
+                'pengajuan_id'  => $id,
+                'user_id'       => $userId,
+                'nominal'       => $dp,
+                'nama_pengirim' => 'Putu Demo Pelanggan',
+                'no_rekening'   => '1234567890',
+                'bank_pengirim' => 'BCA',
+                'file_path'     => $file,
+                'status'        => 'menunggu',
+            ], true);
+            $buktiModel->update($bid, ['kode' => generate_kode('BKT', $bid)]);
         }
 
-        $today = new DateTimeImmutable('today');
+        // --- C. Pesanan KREDIT disetujui + DP bukti TERVERIFIKASI -----------
+        if ($p = $prod('MGD-002')) {
+            $id = (int) $pengajuanModel->insert([
+                'kode_pesanan'      => 'MG-DEMO-003',
+                'user_id'           => $userId,
+                'produk_emas_id'    => (int) $p['id'],
+                'metode_pembayaran' => 'kredit',
+                'nama'              => 'Putu Demo Pelanggan',
+                'no_telepon'        => $telp,
+                'alamat'            => $alamat,
+                'tenor_bulan'       => 10,
+                'periode_angsuran'  => 'mingguan',
+                'uang_muka'         => $dp,
+                'foto_ktp'          => $ktpFile,
+                'status'            => 'disetujui',
+                'pembayaran_status' => 'terverifikasi',
+            ], true);
+            $aktivitasModel->log($id, 'dibuat', 'Pesanan dibuat oleh pelanggan', 'pelanggan');
+            $aktivitasModel->log($id, 'diverifikasi', 'Pesanan disetujui admin.', 'Administrator MahenGold');
+            $this->buatKreditDariPengajuan($pengajuanModel, $aktivitasModel, $id);
 
-        // Transaksi demo bersifat opsional — kalau gagal, JANGAN menggagalkan
-        // seeder (produk & admin yang penting harus tetap tersimpan).
-        try {
-            $this->seedCredit($adminId, $nasabahIds[0], $produkIds[0], $today->sub(new DateInterval('P70D'))->format('Y-m-d'), $today->sub(new DateInterval('P40D'))->format('Y-m-d'), 12, 'bulanan', 2, 0, 'aktif');
-            $this->seedCredit($adminId, $nasabahIds[1], $produkIds[1], $today->sub(new DateInterval('P35D'))->format('Y-m-d'), $today->sub(new DateInterval('P21D'))->format('Y-m-d'), 10, 'mingguan', 5, 0, 'aktif');
-            $this->seedCredit($adminId, $nasabahIds[2], $produkIds[2], $today->sub(new DateInterval('P210D'))->format('Y-m-d'), $today->sub(new DateInterval('P180D'))->format('Y-m-d'), 6, 'bulanan', 6, 0, 'lunas');
-        } catch (\Throwable $e) {
-            log_message('error', 'Seed transaksi demo gagal (produk & admin tetap ada): ' . $e->getMessage());
+            $file = 'demo_bukti_dp_verified.png';
+            $this->writeDemoImage(WRITEPATH . 'uploads/bukti/' . $file, 'BUKTI DP - TERVERIFIKASI', 'MG-DEMO-003');
+            $bid = (int) $buktiModel->insert([
+                'tipe'              => 'dp',
+                'pengajuan_id'      => $id,
+                'user_id'           => $userId,
+                'nominal'           => $dp,
+                'nama_pengirim'     => 'Putu Demo Pelanggan',
+                'no_rekening'       => '1234567890',
+                'bank_pengirim'     => 'BCA',
+                'file_path'         => $file,
+                'status'            => 'terverifikasi',
+                'diverifikasi_oleh' => $adminId,
+                'diverifikasi_pada' => date('Y-m-d H:i:s'),
+            ], true);
+            $buktiModel->update($bid, ['kode' => generate_kode('BKT', $bid)]);
         }
+
+        // --- D. Pesanan CASH disetujui + bukti cash MENUNGGU ----------------
+        if ($p = $prod('MGD-006')) {
+            $id = (int) $pengajuanModel->insert([
+                'kode_pesanan'      => 'MG-DEMO-004',
+                'user_id'           => $userId,
+                'produk_emas_id'    => (int) $p['id'],
+                'metode_pembayaran' => 'cash',
+                'nama'              => 'Putu Demo Pelanggan',
+                'no_telepon'        => $telp,
+                'alamat'            => $alamat,
+                'status'            => 'disetujui',
+                'pembayaran_status' => 'menunggu',
+            ], true);
+            $aktivitasModel->log($id, 'dibuat', 'Pesanan dibuat oleh pelanggan', 'pelanggan');
+            $aktivitasModel->log($id, 'diverifikasi', 'Pesanan disetujui admin.', 'Administrator MahenGold');
+
+            $file = 'demo_bukti_cash.png';
+            $this->writeDemoImage(WRITEPATH . 'uploads/bukti/' . $file, 'BUKTI CASH - MENUNGGU', 'MG-DEMO-004');
+            $bid = (int) $buktiModel->insert([
+                'tipe'          => 'cash',
+                'pengajuan_id'  => $id,
+                'user_id'       => $userId,
+                'nominal'       => (int) $p['harga_pokok'],
+                'nama_pengirim' => 'Putu Demo Pelanggan',
+                'no_rekening'   => '1234567890',
+                'bank_pengirim' => 'BCA',
+                'file_path'     => $file,
+                'status'        => 'menunggu',
+            ], true);
+            $buktiModel->update($bid, ['kode' => generate_kode('BKT', $bid)]);
+        }
+    }
+
+    /**
+     * Bentuk kredit + jadwal angsuran otomatis dari sebuah pengajuan (meniru
+     * aksi admin "verifikasi"). Aman bila pengajuan tidak ditemukan.
+     */
+    protected function buatKreditDariPengajuan(PengajuanModel $pengajuanModel, PengajuanAktivitasModel $aktivitasModel, int $pengajuanId): void
+    {
+        $pengajuan = $pengajuanModel->find($pengajuanId);
+        if (!$pengajuan) {
+            return;
+        }
+        $hasil = (new CreditTransactionService())->createFromPengajuan($pengajuan, 10.00);
+        if (!empty($hasil['kredit'])) {
+            $aktivitasModel->log($pengajuanId, 'kredit_dibuat', 'Kredit otomatis dibuat: ' . $hasil['kredit']['kode_kredit'], 'Administrator MahenGold');
+        }
+    }
+
+    /**
+     * Tulis gambar bukti/KTP demo sederhana (GD) ke writable/uploads. Bila GD
+     * tidak tersedia, fallback ke PNG minimal 1x1. Idempotent (skip bila ada).
+     */
+    protected function writeDemoImage(string $path, string $judul, string $sub): void
+    {
+        if (is_file($path)) {
+            return;
+        }
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        if (!is_file($dir . '/index.html')) {
+            @file_put_contents($dir . '/index.html', '');
+        }
+
+        if (function_exists('imagecreatetruecolor')) {
+            $img  = imagecreatetruecolor(640, 400);
+            $bg   = imagecolorallocate($img, 28, 26, 23);
+            $gold = imagecolorallocate($img, 201, 162, 75);
+            $soft = imagecolorallocate($img, 156, 147, 133);
+            imagefilledrectangle($img, 0, 0, 640, 400, $bg);
+            imagefilledrectangle($img, 0, 0, 640, 64, imagecolorallocate($img, 18, 17, 15));
+            imagestring($img, 5, 24, 24, 'MahenGold', $gold);
+            imagestring($img, 4, 24, 150, $judul, $gold);
+            imagestring($img, 3, 24, 185, 'Ref: ' . $sub, $soft);
+            imagestring($img, 2, 24, 360, 'Gambar contoh data demo (bukan transaksi nyata).', $soft);
+            imagepng($img, $path);
+            imagedestroy($img);
+            return;
+        }
+
+        // Fallback: PNG 1x1 valid.
+        @file_put_contents($path, base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+        ));
     }
 
     protected function seedCredit(

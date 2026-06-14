@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\BuktiPembayaranModel;
 use App\Models\PengajuanAktivitasModel;
 use App\Models\PengajuanModel;
 use App\Models\PengaturanSistemModel;
@@ -136,6 +137,11 @@ class PublicController extends BaseController
             $rules['periode_angsuran'] = 'required|in_list[bulanan,mingguan]';
             $rules['uang_muka']        = 'permit_empty|numeric'; // DP tetap, ditentukan server
             $rules['foto_ktp']         = 'uploaded[foto_ktp]|is_image[foto_ktp]|mime_in[foto_ktp,image/jpeg,image/jpg,image/png]|max_size[foto_ktp,3072]';
+            // Bukti pembayaran DP wajib diunggah langsung di form pengajuan.
+            $rules['bukti_dp']         = 'uploaded[bukti_dp]|max_size[bukti_dp,3072]|ext_in[bukti_dp,jpg,jpeg,png,pdf]|mime_in[bukti_dp,image/jpeg,image/jpg,image/png,application/pdf]';
+            $rules['nama_pengirim']    = 'permit_empty|max_length[150]';
+            $rules['no_rekening']      = 'permit_empty|max_length[50]';
+            $rules['bank_pengirim']    = 'permit_empty|max_length[50]';
         }
 
         if (!$this->validate($rules)) {
@@ -195,6 +201,31 @@ class PublicController extends BaseController
             // Untuk kredit, KTP wajib benar-benar tersimpan sebelum lanjut.
             if ($namaFile === null || !is_file(WRITEPATH . 'uploads/ktp/' . $namaFile)) {
                 return $this->gagalUpload('Foto KTP gagal diunggah. Coba lagi dengan file JPG/PNG maksimal 3 MB.');
+            }
+        }
+
+        // Bukti pembayaran DP — disimpan sekarang juga (sebelum insert) agar
+        // tidak ada pesanan kredit tanpa bukti DP.
+        $buktiDpFile = null;
+        if ($metode === 'kredit') {
+            $bukti = $this->request->getFile('bukti_dp');
+            if ($bukti && $bukti->isValid() && !$bukti->hasMoved()) {
+                $buktiDir = WRITEPATH . 'uploads/bukti/';
+                if (!is_dir($buktiDir) && !@mkdir($buktiDir, 0755, true) && !is_dir($buktiDir)) {
+                    return $this->gagalUpload('Gagal menyiapkan folder upload bukti. Hubungi admin.', 'bukti_dp');
+                }
+                if (!is_file($buktiDir . 'index.html')) {
+                    @file_put_contents($buktiDir . 'index.html', '');
+                }
+                try {
+                    $buktiDpFile = $bukti->getRandomName();
+                    $bukti->move($buktiDir, $buktiDpFile);
+                } catch (\Throwable $e) {
+                    $buktiDpFile = null;
+                }
+            }
+            if ($buktiDpFile === null || !is_file(WRITEPATH . 'uploads/bukti/' . $buktiDpFile)) {
+                return $this->gagalUpload('Bukti pembayaran DP gagal diunggah. Coba lagi dengan file JPG/PNG/PDF maksimal 3 MB.', 'bukti_dp');
             }
         }
 
@@ -264,13 +295,35 @@ class PublicController extends BaseController
         // Catat aktivitas & kirim email (email tidak boleh menggagalkan alur).
         (new PengajuanAktivitasModel())->log((int) $pengajuanId, 'dibuat', 'Pesanan dibuat oleh pelanggan', 'pelanggan');
 
+        // Simpan bukti pembayaran DP (kredit) => status menunggu verifikasi admin.
+        if ($metode === 'kredit' && $buktiDpFile !== null) {
+            $buktiModel = new BuktiPembayaranModel();
+            $buktiId = $buktiModel->insert([
+                'tipe'          => 'dp',
+                'pengajuan_id'  => (int) $pengajuanId,
+                'user_id'       => current_pelanggan()['id'],
+                'nominal'       => (int) ($pengajuanData['uang_muka'] ?? 0),
+                'nama_pengirim' => $this->request->getPost('nama_pengirim') ?: null,
+                'no_rekening'   => $this->request->getPost('no_rekening') ?: null,
+                'bank_pengirim' => $this->request->getPost('bank_pengirim') ?: null,
+                'file_path'     => $buktiDpFile,
+                'status'        => 'menunggu',
+            ], true);
+            if ($buktiId) {
+                $buktiModel->update($buktiId, ['kode' => generate_kode('BKT', $buktiId)]);
+                $pengajuanModel->update($pengajuanId, ['pembayaran_status' => 'menunggu']);
+            }
+        }
+
         try {
             (new EmailNotificationService())->kirimPesananDibuat($emailPayload);
         } catch (\Throwable $e) {
             log_message('error', 'Email pesanan_dibuat gagal: ' . $e->getMessage());
         }
 
-        $pesanSukses = 'Pesanan ' . $kode . ' berhasil dibuat dan menunggu verifikasi admin.';
+        $pesanSukses = $metode === 'kredit'
+            ? 'Pesanan ' . $kode . ' berhasil dibuat. Bukti DP Anda menunggu verifikasi admin.'
+            : 'Pesanan ' . $kode . ' berhasil dibuat dan menunggu verifikasi admin.';
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([
@@ -288,11 +341,11 @@ class PublicController extends BaseController
     /**
      * Respons kegagalan upload KTP: JSON untuk AJAX, redirect untuk non-AJAX.
      */
-    protected function gagalUpload(string $pesan): ResponseInterface
+    protected function gagalUpload(string $pesan, string $field = 'foto_ktp'): ResponseInterface
     {
         if ($this->request->isAJAX()) {
             return $this->response->setStatusCode(422)->setJSON([
-                'errors' => ['foto_ktp' => $pesan],
+                'errors' => [$field => $pesan],
                 'csrf'   => csrf_hash(),
             ]);
         }
