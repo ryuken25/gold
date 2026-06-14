@@ -117,6 +117,33 @@
                             <div class="form-text">Format JPG/PNG, maks. 3 MB. Wajib untuk pengajuan kredit.</div>
                         </div>
 
+                        <?php // Upload bukti pembayaran Uang Muka (DP) — wajib untuk kredit ?>
+                        <div class="col-12 wa-kredit-field" id="wa_bukti_dp_wrapper">
+                            <label class="form-label">Bukti Pembayaran Uang Muka (DP) <span class="text-danger">*</span></label>
+                            <input type="file" class="form-control form-control-lg" name="bukti_dp" id="wa_bukti_dp"
+                                accept="image/jpeg,image/png,application/pdf">
+                            <div class="form-text">Transfer DP <strong>Rp <?= number_format($dpTetap, 0, ',', '.'); ?></strong>
+                                lebih dulu, lalu unggah buktinya (JPG/PNG/PDF, maks. 3 MB). Akan diverifikasi admin
+                                (status menunggu sampai disetujui).</div>
+                        </div>
+                        <div class="row g-2 wa-kredit-field">
+                            <div class="col-md-4">
+                                <label class="form-label small">Nama Pengirim <span class="text-muted-mg">(opsional)</span></label>
+                                <input type="text" name="nama_pengirim" class="form-control" maxlength="150"
+                                    value="<?= esc(old('nama_pengirim')); ?>" placeholder="Nama di rekening">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">No. Rekening <span class="text-muted-mg">(opsional)</span></label>
+                                <input type="text" name="no_rekening" class="form-control" maxlength="50"
+                                    value="<?= esc(old('no_rekening')); ?>" placeholder="mis. 1234567890">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Bank <span class="text-muted-mg">(opsional)</span></label>
+                                <input type="text" name="bank_pengirim" class="form-control" maxlength="50"
+                                    value="<?= esc(old('bank_pengirim')); ?>" placeholder="mis. BCA / BRI">
+                            </div>
+                        </div>
+
                         <div class="col-12">
                             <label class="form-label">Ringkasan Pesanan</label>
                             <textarea class="form-control font-monospace small" id="wa_preview" rows="8"
