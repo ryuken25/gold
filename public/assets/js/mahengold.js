@@ -45,7 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const estAngsuran = document.getElementById('wa_est_angsuran');
         const kreditFields = waModal.querySelectorAll('.wa-kredit-field');
         const ktpInput = document.getElementById('wa_foto_ktp');
-        const buktiDpInput = document.getElementById('wa_bukti_dp');
+        const buktiInput = document.getElementById('wa_bukti');
+        const buktiLabel = document.getElementById('wa_bukti_label');
+        const buktiHelp = document.getElementById('wa_bukti_help');
         let currentHargaPokok = 0;
         let lastKalkulasi = null;
 
@@ -108,7 +110,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const isKredit = getMetode() === 'kredit';
             kreditFields.forEach((el) => { el.style.display = isKredit ? '' : 'none'; });
             if (ktpInput) ktpInput.required = isKredit;
-            if (buktiDpInput) buktiDpInput.required = isKredit;
+            if (buktiInput) buktiInput.required = true;
+            if (buktiLabel) {
+                buktiLabel.firstChild.textContent = isKredit
+                    ? 'Bukti Pembayaran Uang Muka (DP) '
+                    : 'Bukti Pembayaran Lunas ';
+            }
+            if (buktiHelp) {
+                buktiHelp.innerHTML = isKredit
+                    ? `Transfer DP <strong>Rp ${currency(200000).replace('Rp ', '')}</strong> lebih dulu, lalu unggah buktinya (JPG/PNG/PDF, maks. 3 MB).`
+                    : 'Unggah bukti pembayaran lunas (JPG/PNG/PDF, maks. 3 MB). Pesanan akan diverifikasi admin.';
+            }
             syncMetodeCards();
             updatePreview();
         };
@@ -171,9 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 ktpInput.focus();
                 return;
             }
-            if (getMetode() === 'kredit' && buktiDpInput && !buktiDpInput.files.length) {
-                alert('Bukti pembayaran Uang Muka (DP) wajib diunggah untuk pengajuan kredit.');
-                buktiDpInput.focus();
+            if (buktiInput && !buktiInput.files.length) {
+                alert('Bukti pembayaran wajib diunggah.');
+                buktiInput.focus();
                 return;
             }
             const submitBtn = document.querySelector('[form="waPengajuanForm"][type="submit"]');

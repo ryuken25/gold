@@ -137,12 +137,12 @@ class PublicController extends BaseController
             $rules['periode_angsuran'] = 'required|in_list[bulanan,mingguan]';
             $rules['uang_muka']        = 'permit_empty|numeric'; // DP tetap, ditentukan server
             $rules['foto_ktp']         = 'uploaded[foto_ktp]|is_image[foto_ktp]|mime_in[foto_ktp,image/jpeg,image/jpg,image/png]|max_size[foto_ktp,3072]';
-            // Bukti pembayaran DP wajib diunggah langsung di form pengajuan.
-            $rules['bukti_dp']         = 'uploaded[bukti_dp]|max_size[bukti_dp,3072]|ext_in[bukti_dp,jpg,jpeg,png,pdf]|mime_in[bukti_dp,image/jpeg,image/jpg,image/png,application/pdf]';
-            $rules['nama_pengirim']    = 'permit_empty|max_length[150]';
-            $rules['no_rekening']      = 'permit_empty|max_length[50]';
-            $rules['bank_pengirim']    = 'permit_empty|max_length[50]';
         }
+        // Bukti pembayaran wajib untuk KEDUA metode (cash maupun kredit).
+        $rules['bukti']         = 'uploaded[bukti]|max_size[bukti,3072]|ext_in[bukti,jpg,jpeg,png,pdf]|mime_in[bukti,image/jpeg,image/jpg,image/png,application/pdf]';
+        $rules['nama_pengirim'] = 'permit_empty|max_length[150]';
+        $rules['no_rekening']   = 'permit_empty|max_length[50]';
+        $rules['bank_pengirim'] = 'permit_empty|max_length[50]';
 
         if (!$this->validate($rules)) {
             $payload = ['errors' => $this->validator->getErrors(), 'csrf' => csrf_hash()];
@@ -204,29 +204,27 @@ class PublicController extends BaseController
             }
         }
 
-        // Bukti pembayaran DP — disimpan sekarang juga (sebelum insert) agar
-        // tidak ada pesanan kredit tanpa bukti DP.
-        $buktiDpFile = null;
-        if ($metode === 'kredit') {
-            $bukti = $this->request->getFile('bukti_dp');
-            if ($bukti && $bukti->isValid() && !$bukti->hasMoved()) {
-                $buktiDir = WRITEPATH . 'uploads/bukti/';
-                if (!is_dir($buktiDir) && !@mkdir($buktiDir, 0755, true) && !is_dir($buktiDir)) {
-                    return $this->gagalUpload('Gagal menyiapkan folder upload bukti. Hubungi admin.', 'bukti_dp');
-                }
-                if (!is_file($buktiDir . 'index.html')) {
-                    @file_put_contents($buktiDir . 'index.html', '');
-                }
-                try {
-                    $buktiDpFile = $bukti->getRandomName();
-                    $bukti->move($buktiDir, $buktiDpFile);
-                } catch (\Throwable $e) {
-                    $buktiDpFile = null;
-                }
+        // Bukti pembayaran (WAJIB untuk cash maupun kredit) — disimpan
+        // sebelum insert pesanan supaya tidak ada order tanpa bukti.
+        $buktiFile = null;
+        $bukti = $this->request->getFile('bukti');
+        if ($bukti && $bukti->isValid() && !$bukti->hasMoved()) {
+            $buktiDir = WRITEPATH . 'uploads/bukti/';
+            if (!is_dir($buktiDir) && !@mkdir($buktiDir, 0755, true) && !is_dir($buktiDir)) {
+                return $this->gagalUpload('Gagal menyiapkan folder upload bukti. Hubungi admin.', 'bukti');
             }
-            if ($buktiDpFile === null || !is_file(WRITEPATH . 'uploads/bukti/' . $buktiDpFile)) {
-                return $this->gagalUpload('Bukti pembayaran DP gagal diunggah. Coba lagi dengan file JPG/PNG/PDF maksimal 3 MB.', 'bukti_dp');
+            if (!is_file($buktiDir . 'index.html')) {
+                @file_put_contents($buktiDir . 'index.html', '');
             }
+            try {
+                $buktiFile = $bukti->getRandomName();
+                $bukti->move($buktiDir, $buktiFile);
+            } catch (\Throwable $e) {
+                $buktiFile = null;
+            }
+        }
+        if ($buktiFile === null || !is_file(WRITEPATH . 'uploads/bukti/' . $buktiFile)) {
+            return $this->gagalUpload('Bukti pembayaran gagal diunggah. Coba lagi dengan file JPG/PNG/PDF maksimal 3 MB.', 'bukti');
         }
 
         // No. WhatsApp dari form (fallback profil), disimpan ter-normalisasi.
@@ -292,21 +290,24 @@ class PublicController extends BaseController
 
         $emailPayload['pengajuan_id'] = $pengajuanId;
 
-        // Catat aktivitas & kirim email (email tidak boleh menggagalkan alur).
+        // Catat aktivitas & simpan bukti pembayaran (tipe = dp untuk kredit, cash untuk lunas).
         (new PengajuanAktivitasModel())->log((int) $pengajuanId, 'dibuat', 'Pesanan dibuat oleh pelanggan', 'pelanggan');
 
-        // Simpan bukti pembayaran DP (kredit) => status menunggu verifikasi admin.
-        if ($metode === 'kredit' && $buktiDpFile !== null) {
+        if ($buktiFile !== null) {
             $buktiModel = new BuktiPembayaranModel();
+            $tipeBukti = $metode === 'kredit' ? 'dp' : 'cash';
+            $nominalBukti = $metode === 'kredit'
+                ? (int) ($pengajuanData['uang_muka'] ?? 0)
+                : (int) $produk['harga_pokok'];
             $buktiId = $buktiModel->insert([
-                'tipe'          => 'dp',
+                'tipe'          => $tipeBukti,
                 'pengajuan_id'  => (int) $pengajuanId,
                 'user_id'       => current_pelanggan()['id'],
-                'nominal'       => (int) ($pengajuanData['uang_muka'] ?? 0),
+                'nominal'       => $nominalBukti,
                 'nama_pengirim' => $this->request->getPost('nama_pengirim') ?: null,
                 'no_rekening'   => $this->request->getPost('no_rekening') ?: null,
                 'bank_pengirim' => $this->request->getPost('bank_pengirim') ?: null,
-                'file_path'     => $buktiDpFile,
+                'file_path'     => $buktiFile,
                 'status'        => 'menunggu',
             ], true);
             if ($buktiId) {
@@ -321,9 +322,7 @@ class PublicController extends BaseController
             log_message('error', 'Email pesanan_dibuat gagal: ' . $e->getMessage());
         }
 
-        $pesanSukses = $metode === 'kredit'
-            ? 'Pesanan ' . $kode . ' berhasil dibuat. Bukti DP Anda menunggu verifikasi admin.'
-            : 'Pesanan ' . $kode . ' berhasil dibuat dan menunggu verifikasi admin.';
+        $pesanSukses = 'Pesanan ' . $kode . ' berhasil dibuat. Bukti pembayaran Anda menunggu verifikasi admin.';
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([
