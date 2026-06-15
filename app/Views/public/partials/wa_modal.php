@@ -117,16 +117,16 @@
                             <div class="form-text">Format JPG/PNG, maks. 3 MB. Wajib untuk pengajuan kredit.</div>
                         </div>
 
-                        <?php // Upload bukti pembayaran Uang Muka (DP) — wajib untuk kredit ?>
-                        <div class="col-12 wa-kredit-field" id="wa_bukti_dp_wrapper">
-                            <label class="form-label">Bukti Pembayaran Uang Muka (DP) <span class="text-danger">*</span></label>
-                            <input type="file" class="form-control form-control-lg" name="bukti_dp" id="wa_bukti_dp"
-                                accept="image/jpeg,image/png,application/pdf">
-                            <div class="form-text">Transfer DP <strong>Rp <?= number_format($dpTetap, 0, ',', '.'); ?></strong>
-                                lebih dulu, lalu unggah buktinya (JPG/PNG/PDF, maks. 3 MB). Akan diverifikasi admin
-                                (status menunggu sampai disetujui).</div>
+                        <?php // Upload bukti pembayaran — wajib untuk kedua metode. ?>
+                        <div class="col-12">
+                            <label class="form-label" id="wa_bukti_label">Bukti Pembayaran <span class="text-danger">*</span></label>
+                            <input type="file" class="form-control form-control-lg" name="bukti" id="wa_bukti"
+                                accept="image/jpeg,image/png,application/pdf" required>
+                            <div class="form-text" id="wa_bukti_help">
+                                Format JPG/PNG/PDF, maks. 3 MB. Unggah bukti transfer/ pembayaran Anda — akan diverifikasi admin.
+                            </div>
                         </div>
-                        <div class="row g-2 wa-kredit-field">
+                        <div class="row g-2">
                             <div class="col-md-4">
                                 <label class="form-label small">Nama Pengirim <span class="text-muted-mg">(opsional)</span></label>
                                 <input type="text" name="nama_pengirim" class="form-control" maxlength="150"
