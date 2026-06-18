@@ -16,6 +16,7 @@ class PembayaranAngsuranModel extends Model
         'kode_pembayaran',
         'kredit_id',
         'jadwal_angsuran_id',
+        'bukti_pembayaran_id',
         'tanggal_bayar',
         'nominal_bayar',
         'metode_pembayaran',

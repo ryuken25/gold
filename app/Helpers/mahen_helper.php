@@ -127,14 +127,14 @@ if (!function_exists('pesanan_status_label')) {
     function pesanan_status_label(?string $status): string
     {
         return match ($status) {
-            'baru'       => 'Menunggu',
-            'diproses'   => 'Di Verifikasi',
-            'disetujui'  => 'Di Verifikasi',
-            'dikirim'    => 'Sedang Dikirim',
+            'baru'       => 'Menunggu Verifikasi',
+            'diproses'   => 'Menunggu Verifikasi',
+            'disetujui'  => 'Menunggu Dikirim',
+            'dikirim'    => 'Dikirim',
             'selesai'    => 'Selesai',
             'ditolak'    => 'Ditolak',
             'dibatalkan' => 'Dibatalkan',
-            default      => 'Menunggu',
+            default      => 'Menunggu Verifikasi',
         };
     }
 }
@@ -147,13 +147,13 @@ if (!function_exists('pesanan_badge_class')) {
     {
         return match ($status) {
             'baru'       => 'warning',
-            'diproses'   => 'info',
+            'diproses'   => 'warning',
             'disetujui'  => 'info',
             'dikirim'    => 'primary',
             'selesai'    => 'success',
             'ditolak'    => 'danger',
-            'dibatalkan' => 'danger',
-            default      => 'secondary',
+            'dibatalkan' => 'secondary',
+            default      => 'warning',
         };
     }
 }
@@ -165,11 +165,12 @@ if (!function_exists('pesanan_status_step')) {
     function pesanan_status_step(?string $status): int
     {
         return match ($status) {
-            'baru', 'diproses', 'disetujui' => 1,
-            'dikirim'                        => 3,
-            'selesai'                        => 4,
-            'ditolak', 'dibatalkan'          => 0,
-            default                          => 1,
+            'baru', 'diproses' => 1,  // Menunggu Verifikasi
+            'disetujui'        => 2,  // Menunggu Dikirim
+            'dikirim'          => 3,  // Dikirim
+            'selesai'          => 4,  // Selesai
+            'ditolak', 'dibatalkan' => 0,
+            default            => 1,
         };
     }
 }
@@ -181,10 +182,10 @@ if (!function_exists('pesanan_status_steps')) {
     function pesanan_status_steps(): array
     {
         return [
-            ['label' => 'Menunggu',          'icon' => 'bi-clock-history'],
-            ['label' => 'Di Verifikasi',     'icon' => 'bi-check2-circle'],
-            ['label' => 'Sedang Dikirim',    'icon' => 'bi-truck'],
-            ['label' => 'Selesai',           'icon' => 'bi-check-circle-fill'],
+            ['label' => 'Menunggu Verifikasi', 'icon' => 'bi-clock-history'],
+            ['label' => 'Menunggu Dikirim',    'icon' => 'bi-check2-circle'],
+            ['label' => 'Dikirim',             'icon' => 'bi-truck'],
+            ['label' => 'Selesai',             'icon' => 'bi-check-circle-fill'],
         ];
     }
 }
@@ -236,8 +237,8 @@ if (!function_exists('email_status_label')) {
     {
         return match ($status) {
             'baru'       => 'Menunggu Verifikasi',
-            'diproses'   => 'Sedang Diproses',
-            'disetujui'  => 'Telah Disetujui',
+            'diproses'   => 'Menunggu Verifikasi',
+            'disetujui'  => 'Menunggu Dikirim',
             'dikirim'    => 'Sedang Dikirim ke Alamat Anda',
             'selesai'    => 'Selesai',
             'ditolak'    => 'Ditolak',

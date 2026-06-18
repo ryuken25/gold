@@ -88,4 +88,12 @@ class TransaksiController extends BaseAdminController
     {
         return redirect()->to('/admin/transaksi?tipe=kredit');
     }
+
+    /**
+     * Backward compat: /admin/pembayaran redirect ke /admin/transaksi
+     */
+    public function redirectPembayaran()
+    {
+        return redirect()->to('/admin/transaksi');
+    }
 }
