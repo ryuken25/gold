@@ -58,11 +58,14 @@
     const CSRF_NAME = '<?= csrf_token() ?>';
     const CSRF_HASH = '<?= csrf_hash() ?>';
 
-    async function postAjax(url) {
-        const fd = new FormData();
-        fd.append(CSRF_NAME, CSRF_HASH);
-        const res = await fetch(url, { method: 'POST', body: fd });
-        window.location.href = res.url || '/admin/produk';
+    function submitPost(url) {
+        const f = document.createElement('form');
+        f.method = 'POST'; f.action = url; f.style.display = 'none';
+        const cs = document.createElement('input');
+        cs.type = 'hidden'; cs.name = CSRF_NAME; cs.value = CSRF_HASH;
+        f.appendChild(cs);
+        document.body.appendChild(f);
+        f.submit();
     }
 
     document.querySelectorAll('.js-hapus-produk').forEach(btn => {
@@ -72,7 +75,7 @@
                 message: 'Apakah Anda yakin ingin menghapus produk ' + btn.dataset.nama + '? Data yang dihapus tidak dapat dikembalikan.',
                 confirmText: 'Ya, Hapus',
                 confirmClass: 'btn-danger',
-                onConfirm: async (finish) => { await postAjax('/admin/produk/' + btn.dataset.id + '/delete'); finish(); }
+                onConfirm: () => submitPost('/admin/produk/' + btn.dataset.id + '/delete')
             });
         });
     });
