@@ -28,7 +28,9 @@ class PengaturanSistemModel extends Model
      */
     public function getPengaturan(): array
     {
-        helper('mahen');
+        if (!function_exists('wa_number_normalize')) {
+            helper('mahen');
+        }
         return [
             'id'                  => 1,
             'nama_toko'           => 'MahenGold',

@@ -108,24 +108,7 @@
 <?= $this->section('scripts'); ?>
 <script>
 (function() {
-    const CSRF_NAME = '<?= csrf_token() ?>';
-    const CSRF_HASH = '<?= csrf_hash() ?>';
     const ID = <?= (int) $kredit['id'] ?>;
-
-    function ajaxPost(url) {
-        const fd = new FormData();
-        fd.append(CSRF_NAME, CSRF_HASH);
-        fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    MahenDialog.success({ title: 'Berhasil', message: data.message, onConfirm: () => { window.location.href = data.redirect || '/admin/kredit/' + ID; } });
-                } else {
-                    MahenDialog.error({ title: 'Gagal', message: data.message || 'Terjadi kesalahan.' });
-                }
-            })
-            .catch(() => MahenDialog.error({ title: 'Kesalahan', message: 'Gagal menghubungi server.' }));
-    }
 
     document.getElementById('btnBatalkan')?.addEventListener('click', () => {
         MahenDialog.confirm({
@@ -133,7 +116,13 @@
             message: 'Apakah Anda yakin ingin membatalkan kredit ini? Tindakan ini dapat memengaruhi stok dan tidak dapat dibatalkan secara otomatis.',
             confirmText: 'Ya, Batalkan',
             confirmClass: 'btn-danger',
-            onConfirm: () => ajaxPost('/admin/kredit/' + ID + '/batalkan')
+            onConfirm: async (helpers) => {
+                try {
+                    const res = await MahenAjax.post('/admin/kredit/' + ID + '/batalkan');
+                    helpers.close();
+                    MahenDialog.success({ title: 'Dibatalkan', message: res.message, onConfirm: () => window.location.href = res.redirect || '/admin/kredit/' + ID });
+                } catch (err) { helpers.finish(); MahenDialog.error({ title: 'Gagal', message: err.message }); }
+            }
         });
     });
 })();

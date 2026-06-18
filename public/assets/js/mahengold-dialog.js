@@ -325,9 +325,7 @@
             form.appendChild(group);
         });
 
-        wrap.appendChild(form);
-
-        // Buttons
+        // Buttons MUST be inside form for submit to work
         var btnRow = document.createElement('div');
         btnRow.className = 'd-grid gap-2 mt-3';
 
@@ -345,10 +343,22 @@
         cancelBtn.textContent = opts.cancelText || 'Batal';
         btnRow.appendChild(cancelBtn);
 
-        wrap.appendChild(btnRow);
+        form.appendChild(btnRow);
+        wrap.appendChild(form);
 
         // Prevent double submit & call onsubmit
         var submitting = false;
+        var errorEl = document.createElement('div');
+        errorEl.className = 'alert alert-danger mt-2 mb-0 small d-none';
+        errorEl.setAttribute('role', 'alert');
+        wrap.appendChild(errorEl);
+
+        function resetLoading() {
+            submitting = false;
+            submitBtn.disabled = false;
+            submitBtn.textContent = opts.submitText || 'Simpan';
+        }
+
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             if (submitting) return;
@@ -363,6 +373,7 @@
             submitBtn.innerHTML = '';
             submitBtn.appendChild(spinner());
             submitBtn.appendChild(document.createTextNode(' Memproses...'));
+            errorEl.classList.add('d-none');
 
             // Gather values
             var data = {};
@@ -371,23 +382,44 @@
                 data[inputs[i].name] = inputs[i].value;
             }
 
+            var helpers = {
+                close: function () {
+                    var inst = bootstrap.Modal.getInstance(wrap.closest('.modal'));
+                    if (inst) inst.hide();
+                },
+                finish: resetLoading,
+                setError: function (msg) {
+                    errorEl.textContent = msg;
+                    errorEl.classList.remove('d-none');
+                },
+                clearError: function () {
+                    errorEl.classList.add('d-none');
+                },
+                setLoading: function (loading) {
+                    if (loading) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '';
+                        submitBtn.appendChild(spinner());
+                        submitBtn.appendChild(document.createTextNode(' Memproses...'));
+                    } else {
+                        resetLoading();
+                    }
+                }
+            };
+
             if (typeof opts.onsubmit === 'function') {
-                var result = opts.onsubmit(data, function finish() {
-                    submitting = false;
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = opts.submitText || 'Simpan';
-                });
+                var result = opts.onsubmit(data, helpers);
                 if (result && typeof result.then === 'function') {
                     result.then(function () {
-                        submitting = false;
+                        if (submitting) resetLoading();
                     }, function () {
-                        submitting = false;
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = opts.submitText || 'Simpan';
+                        resetLoading();
                     });
+                } else {
+                    resetLoading();
                 }
             } else {
-                submitting = false;
+                resetLoading();
                 submitBtn.disabled = false;
                 submitBtn.textContent = opts.submitText || 'Simpan';
             }

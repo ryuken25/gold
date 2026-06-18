@@ -108,32 +108,19 @@
 <?= $this->section('scripts'); ?>
 <script>
 (function() {
-    const CSRF_NAME = '<?= csrf_token() ?>';
-    const CSRF_HASH = '<?= csrf_hash() ?>';
-
-    function ajaxPost(url, fields) {
-        const fd = new FormData();
-        fd.append(CSRF_NAME, CSRF_HASH);
-        for (const [k, v] of Object.entries(fields || {})) fd.append(k, String(v));
-        fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    MahenDialog.success({ title: 'Berhasil', message: data.message, onConfirm: () => { window.location.href = data.redirect || '/admin/pembayaran'; } });
-                } else {
-                    MahenDialog.error({ title: 'Gagal', message: data.message || 'Terjadi kesalahan.' });
-                }
-            })
-            .catch(() => MahenDialog.error({ title: 'Kesalahan', message: 'Gagal menghubungi server.' }));
-    }
-
     document.querySelectorAll('.js-verif-bukti').forEach(btn => {
         btn.addEventListener('click', () => {
             MahenDialog.confirm({
                 title: 'Verifikasi Pembayaran',
                 message: 'Pastikan nominal, rekening pengirim, dan bukti pembayaran sudah sesuai sebelum melanjutkan.',
                 confirmText: 'Ya, Verifikasi',
-                onConfirm: () => ajaxPost('/admin/pembayaran/' + btn.dataset.id + '/verifikasi', {})
+                onConfirm: async (helpers) => {
+                    try {
+                        const res = await MahenAjax.post('/admin/pembayaran/' + btn.dataset.id + '/verifikasi');
+                        helpers.close();
+                        MahenDialog.success({ title: 'Berhasil', message: res.message, onConfirm: () => window.location.href = res.redirect || '/admin/pembayaran' });
+                    } catch (err) { helpers.finish(); MahenDialog.error({ title: 'Gagal', message: err.message }); }
+                }
             });
         });
     });
@@ -142,10 +129,16 @@
         btn.addEventListener('click', () => {
             MahenDialog.form({
                 title: 'Tolak Bukti Pembayaran',
-                fields: [{ name: 'catatan_admin', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan...', rows: 3 }],
+                fields: [{ name: 'catatan_admin', label: 'Alasan Penolakan', type: 'textarea', required: true, minlength: 5, placeholder: 'Jelaskan alasan penolakan...', rows: 3 }],
                 submitText: 'Tolak',
                 submitClass: 'btn-danger',
-                onsubmit: (data) => ajaxPost('/admin/pembayaran/' + btn.dataset.id + '/tolak', { catatan_admin: data.catatan_admin || '' })
+                onsubmit: async (data, helpers) => {
+                    try {
+                        const res = await MahenAjax.post('/admin/pembayaran/' + btn.dataset.id + '/tolak', { catatan_admin: data.catatan_admin || '' });
+                        helpers.close();
+                        MahenDialog.success({ title: 'Ditolak', message: res.message, onConfirm: () => window.location.href = res.redirect || '/admin/pembayaran' });
+                    } catch (err) { helpers.setError(err.message); helpers.finish(); }
+                }
             });
         });
     });
