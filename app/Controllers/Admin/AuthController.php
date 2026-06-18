@@ -31,8 +31,17 @@ class AuthController extends BaseAdminController
     {
         session()->remove('admin_user');
         session()->remove('pelanggan_user');
-        session()->setFlashdata('success', 'Logout berhasil.');
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success'  => true,
+                'message'  => 'Logout berhasil.',
+                'redirect' => '/login',
+                'csrf'     => ['name' => csrf_token(), 'hash' => csrf_hash()],
+            ]);
+        }
+
+        session()->setFlashdata('success', 'Logout berhasil.');
         return redirect()->to('/login');
     }
 }

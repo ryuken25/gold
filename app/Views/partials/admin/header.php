@@ -15,10 +15,7 @@
                 <div class="fw-semibold"><?= esc($admin['nama'] ?? 'Admin'); ?></div>
                 <small class="text-muted-mg"><?= esc($admin['username'] ?? 'admin'); ?></small>
             </div>
-            <form action="<?= base_url('/admin/logout'); ?>" method="post" class="mb-0">
-                <?= csrf_field(); ?>
-                <button type="submit" class="btn btn-outline-gold px-3">Logout</button>
-            </form>
+            <button type="button" class="btn btn-outline-gold px-3" id="btnLogout">Logout</button>
         </div>
     </div>
 </header>

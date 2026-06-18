@@ -32,10 +32,10 @@ abstract class BaseAdminController extends BaseController
     {
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([
-                'success'   => true,
-                'message'   => $message,
-                'redirect'  => $redirect,
-                'csrf'      => csrf_hash(),
+                'success'  => true,
+                'message'  => $message,
+                'redirect' => $redirect,
+                'csrf'     => ['name' => csrf_token(), 'hash' => csrf_hash()],
             ]);
         }
         return redirect()->to($redirect ?? current_url())->with('success', $message);
@@ -50,7 +50,7 @@ abstract class BaseAdminController extends BaseController
             $payload = [
                 'success' => false,
                 'message' => $message,
-                'csrf'    => csrf_hash(),
+                'csrf'    => ['name' => csrf_token(), 'hash' => csrf_hash()],
             ];
             if ($errors) {
                 $payload['errors'] = $errors;
