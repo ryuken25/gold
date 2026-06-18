@@ -35,16 +35,7 @@ class PengajuanWorkflowService
     {
         $this->db->transStart();
 
-        // Lock row
-        $pengajuan = $this->db->table('pengajuan')
-            ->where('id', $pengajuanId)
-            ->forUpdate()
-            ->get()->getRowArray();
-
-        if (!$pengajuan) {
-            $this->db->transRollback();
-            throw new RuntimeException('Pengajuan tidak ditemukan.');
-        }
+        $pengajuan = $this->lockPengajuan($pengajuanId);
 
         $this->assertTransition($pengajuan, ['baru', 'diproses'], 'disetujui');
 
@@ -98,15 +89,7 @@ class PengajuanWorkflowService
 
         $this->db->transStart();
 
-        $pengajuan = $this->db->table('pengajuan')
-            ->where('id', $pengajuanId)
-            ->forUpdate()
-            ->get()->getRowArray();
-
-        if (!$pengajuan) {
-            $this->db->transRollback();
-            throw new RuntimeException('Pengajuan tidak ditemukan.');
-        }
+        $pengajuan = $this->lockPengajuan($pengajuanId);
 
         $this->assertTransition($pengajuan, ['baru', 'diproses'], 'ditolak');
 
@@ -154,15 +137,7 @@ class PengajuanWorkflowService
 
         $this->db->transStart();
 
-        $pengajuan = $this->db->table('pengajuan')
-            ->where('id', $pengajuanId)
-            ->forUpdate()
-            ->get()->getRowArray();
-
-        if (!$pengajuan) {
-            $this->db->transRollback();
-            throw new RuntimeException('Pengajuan tidak ditemukan.');
-        }
+        $pengajuan = $this->lockPengajuan($pengajuanId);
 
         $this->assertTransition($pengajuan, ['disetujui'], 'dikirim');
 
@@ -198,15 +173,7 @@ class PengajuanWorkflowService
     {
         $this->db->transStart();
 
-        $pengajuan = $this->db->table('pengajuan')
-            ->where('id', $pengajuanId)
-            ->forUpdate()
-            ->get()->getRowArray();
-
-        if (!$pengajuan) {
-            $this->db->transRollback();
-            throw new RuntimeException('Pengajuan tidak ditemukan.');
-        }
+        $pengajuan = $this->lockPengajuan($pengajuanId);
 
         $this->assertTransition($pengajuan, ['dikirim'], 'selesai');
 
@@ -230,6 +197,19 @@ class PengajuanWorkflowService
     }
 
     // ------------------------------------------------------------------
+
+    /**
+     * Lock row pengajuan dengan SELECT ... FOR UPDATE (raw SQL).
+     */
+    protected function lockPengajuan(int $pengajuanId): array
+    {
+        $row = $this->db->query("SELECT * FROM pengajuan WHERE id = ? FOR UPDATE", [$pengajuanId])->getRowArray();
+        if (!$row) {
+            $this->db->transRollback();
+            throw new RuntimeException('Pengajuan tidak ditemukan.');
+        }
+        return $row;
+    }
 
     protected function assertTransition(array $pengajuan, array $allowedFrom, string $to): void
     {

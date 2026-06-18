@@ -32,22 +32,24 @@ class RepairWorkflowAndPaymentSchema extends Migration
             }
         }
 
-        // Indexes — use ADD INDEX (not createTable)
+        // Indexes — skip if already exist
         $indexes = ['status', 'user_id', 'created_at', 'metode_pembayaran', 'pembayaran_status'];
         foreach ($indexes as $idx) {
-            $existing = $db->query("SHOW INDEX FROM `pengajuan` WHERE Column_name = '{$idx}'")->getRowArray();
-            if (!$existing) {
+            if (!$this->indexExists('pengajuan', "idx_{$idx}")) {
                 $db->query("ALTER TABLE `pengajuan` ADD INDEX `idx_{$idx}` (`{$idx}`)");
             }
         }
 
-        // Foreign keys for workflow nullable fields
+        // Foreign keys — skip if already exist, skip silently on failure
         $fkCols = ['diverifikasi_oleh', 'dikirim_oleh', 'selesai_oleh', 'ditolak_oleh'];
         foreach ($fkCols as $fkCol) {
             $fkName = "fk_pengajuan_{$fkCol}";
-            $check = $db->query("SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pengajuan' AND CONSTRAINT_NAME = '{$fkName}'")->getRow();
-            if (!$check) {
-                $db->query("ALTER TABLE `pengajuan` ADD CONSTRAINT `{$fkCol}` FOREIGN KEY (`{$fkCol}`) REFERENCES `users`(`id`) ON DELETE SET NULL");
+            if (!$this->fkExists('pengajuan', $fkName)) {
+                try {
+                    $db->query("ALTER TABLE `pengajuan` ADD CONSTRAINT `{$fkName}` FOREIGN KEY (`{$fkCol}`) REFERENCES `users`(`id`) ON DELETE SET NULL");
+                } catch (\Throwable $e) {
+                    log_message('warning', "Skipping FK {$fkName}: " . $e->getMessage());
+                }
             }
         }
 
@@ -56,12 +58,24 @@ class RepairWorkflowAndPaymentSchema extends Migration
         // ============================================================
         if (!$this->fieldExists('pembayaran_angsuran', 'bukti_pembayaran_id')) {
             $db->query("ALTER TABLE `pembayaran_angsuran` ADD COLUMN `bukti_pembayaran_id` INT UNSIGNED NULL DEFAULT NULL AFTER `jadwal_angsuran_id`");
-            $db->query("ALTER TABLE `pembayaran_angsuran` ADD UNIQUE INDEX `uniq_bukti_pembayaran` (`bukti_pembayaran_id`)");
-            $db->query("ALTER TABLE `pembayaran_angsuran` ADD CONSTRAINT `fk_pembayaran_bukti` FOREIGN KEY (`bukti_pembayaran_id`) REFERENCES `bukti_pembayaran`(`id`) ON DELETE SET NULL");
+        }
+        if (!$this->indexExists('pembayaran_angsuran', 'uniq_bukti_pembayaran')) {
+            try {
+                $db->query("ALTER TABLE `pembayaran_angsuran` ADD UNIQUE INDEX `uniq_bukti_pembayaran` (`bukti_pembayaran_id`)");
+            } catch (\Throwable $e) {
+                log_message('warning', 'Skipping uniq_bukti_pembayaran: ' . $e->getMessage());
+            }
+        }
+        if (!$this->fkExists('pembayaran_angsuran', 'fk_pembayaran_bukti')) {
+            try {
+                $db->query("ALTER TABLE `pembayaran_angsuran` ADD CONSTRAINT `fk_pembayaran_bukti` FOREIGN KEY (`bukti_pembayaran_id`) REFERENCES `bukti_pembayaran`(`id`) ON DELETE SET NULL");
+            } catch (\Throwable $e) {
+                log_message('warning', 'Skipping fk_pembayaran_bukti: ' . $e->getMessage());
+            }
         }
 
         // ============================================================
-        // 3. PEMBAYARAN ALOKASI — recreate if needed (safe)
+        // 3. PEMBAYARAN ALOKASI — create if not exists
         // ============================================================
         $hasAlokasi = $db->query("SHOW TABLES LIKE 'pembayaran_alokasi'")->getRowArray();
         if (!$hasAlokasi) {
@@ -76,7 +90,6 @@ class RepairWorkflowAndPaymentSchema extends Migration
             $this->forge->addKey('id', true);
             $this->forge->addKey('pembayaran_angsuran_id');
             $this->forge->addKey('jadwal_angsuran_id');
-            $this->forge->addUniqueKey(['pembayaran_angsuran_id', 'jadwal_angsuran_id']);
             $this->forge->createTable('pembayaran_alokasi');
         } else {
             // Fix nominal_alokasi to DECIMAL if it's INT
@@ -84,15 +97,10 @@ class RepairWorkflowAndPaymentSchema extends Migration
             if ($colType && strtolower($colType->DATA_TYPE) === 'int') {
                 $db->query("ALTER TABLE `pembayaran_alokasi` MODIFY COLUMN `nominal_alokasi` DECIMAL(15,2) NOT NULL");
             }
-            // Add unique constraint if missing
-            $uniqCheck = $db->query("SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pembayaran_alokasi' AND CONSTRAINT_TYPE = 'UNIQUE' AND CONSTRAINT_NAME LIKE '%alokasi%'")->getRow();
-            if (!$uniqCheck) {
-                $db->query("ALTER TABLE `pembayaran_alokasi` ADD UNIQUE INDEX `uniq_pembayaran_jadwal` (`pembayaran_angsuran_id`, `jadwal_angsuran_id`)");
-            }
         }
 
         // ============================================================
-        // 4. REMINDER ANGSURAN LOGS
+        // 4. REMINDER ANGSURAN LOGS — create if not exists
         // ============================================================
         $hasReminder = $db->query("SHOW TABLES LIKE 'reminder_angsuran_logs'")->getRowArray();
         if (!$hasReminder) {
@@ -117,21 +125,22 @@ class RepairWorkflowAndPaymentSchema extends Migration
             $this->forge->addKey('id', true);
             $this->forge->addKey('kredit_id');
             $this->forge->addKey('jadwal_angsuran_id');
-            $this->forge->addUniqueKey(['jadwal_angsuran_id', 'jenis', 'tanggal_referensi', 'channel']);
             $this->forge->createTable('reminder_angsuran_logs');
         }
 
         // ============================================================
         // 5. UNIQUE kredit.pengajuan_id — check duplicates first
         // ============================================================
-        $hasUnique = $db->query("SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'kredit' AND CONSTRAINT_TYPE = 'UNIQUE' AND CONSTRAINT_NAME LIKE '%pengajuan%'")->getRow();
-        if (!$hasUnique) {
-            // Check for duplicates
+        if (!$this->indexExists('kredit', 'uniq_kredit_pengajuan')) {
             $dups = $db->query("SELECT pengajuan_id, COUNT(*) as cnt FROM kredit WHERE pengajuan_id IS NOT NULL GROUP BY pengajuan_id HAVING cnt > 1")->getResultArray();
             if (empty($dups)) {
-                $db->query("ALTER TABLE `kredit` ADD UNIQUE INDEX `uniq_kredit_pengajuan` (`pengajuan_id`)");
+                try {
+                    $db->query("ALTER TABLE `kredit` ADD UNIQUE INDEX `uniq_kredit_pengajuan` (`pengajuan_id`)");
+                } catch (\Throwable $e) {
+                    log_message('warning', 'Skipping uniq_kredit_pengajuan: ' . $e->getMessage());
+                }
             } else {
-                log_message('warning', 'Skipping kredit.pengajuan_id unique constraint — found ' . count($dups) . ' duplicates');
+                log_message('warning', 'Skipping kredit.pengajuan_id unique — found ' . count($dups) . ' duplicates');
             }
         }
     }
@@ -146,6 +155,24 @@ class RepairWorkflowAndPaymentSchema extends Migration
         $result = $this->db->query(
             "SELECT COUNT(*) as cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
             [$table, $column]
+        )->getRow();
+        return $result && $result->cnt > 0;
+    }
+
+    protected function indexExists(string $table, string $indexName): bool
+    {
+        $result = $this->db->query(
+            "SELECT COUNT(*) as cnt FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?",
+            [$table, $indexName]
+        )->getRow();
+        return $result && $result->cnt > 0;
+    }
+
+    protected function fkExists(string $table, string $fkName): bool
+    {
+        $result = $this->db->query(
+            "SELECT COUNT(*) as cnt FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ? AND CONSTRAINT_TYPE = 'FOREIGN KEY'",
+            [$table, $fkName]
         )->getRow();
         return $result && $result->cnt > 0;
     }
