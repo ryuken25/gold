@@ -18,11 +18,12 @@
         $menu = [
             ['icon' => 'bi-grid', 'label' => 'Dashboard', 'url' => '/admin/dashboard', 'segment' => 'admin/dashboard'],
             ['icon' => 'bi-inbox', 'label' => 'Pengajuan', 'url' => '/admin/pengajuan', 'segment' => 'admin/pengajuan', 'badge' => ($pengajuanBaru ?? 0)],
+            ['icon' => 'bi-arrow-left-right', 'label' => 'Transaksi', 'url' => '/admin/transaksi', 'segment' => 'admin/transaksi'],
             ['icon' => 'bi-gem', 'label' => 'Produk', 'url' => '/admin/produk', 'segment' => 'admin/produk'],
             ['icon' => 'bi-person-badge', 'label' => 'Pelanggan', 'url' => '/admin/pelanggan', 'segment' => 'admin/pelanggan'],
             ['icon' => 'bi-people', 'label' => 'Nasabah', 'url' => '/admin/nasabah', 'segment' => 'admin/nasabah'],
-            ['icon' => 'bi-receipt', 'label' => 'Kredit', 'url' => '/admin/kredit', 'segment' => 'admin/kredit'],
-            ['icon' => 'bi-cash-coin', 'label' => 'Pembayaran', 'url' => '/admin/pembayaran', 'segment' => 'admin/pembayaran'],
+            ['icon' => 'bi-receipt', 'label' => 'Detail Kredit', 'url' => '/admin/kredit', 'segment' => 'admin/kredit'],
+            ['icon' => 'bi-cash-coin', 'label' => 'Verifikasi Bayar', 'url' => '/admin/pembayaran', 'segment' => 'admin/pembayaran'],
             ['icon' => 'bi-file-earmark-text', 'label' => 'Laporan', 'url' => '/admin/laporan/kredit', 'segment' => 'admin/laporan'],
         ];
         ?>

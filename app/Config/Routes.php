@@ -58,6 +58,8 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
         $routes->post('pengajuan/(:num)/status', 'PengajuanController::updateStatus/$1');
         $routes->post('pengajuan/(:num)/verifikasi', 'PengajuanController::verifikasi/$1');
         $routes->post('pengajuan/(:num)/tolak', 'PengajuanController::tolak/$1');
+        $routes->post('pengajuan/(:num)/kirim', 'PengajuanController::kirim/$1');
+        $routes->post('pengajuan/(:num)/selesai', 'PengajuanController::selesai/$1');
         $routes->post('pengajuan/(:num)/batalkan', 'PengajuanController::batalkan/$1');
         // UPDATED: WA manual route dihapus — notifikasi hanya via email
         $routes->get('pengajuan/(:num)/ktp', 'PengajuanController::ktp/$1');
@@ -84,13 +86,20 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
         $routes->post('kredit', 'KreditController::store');
         $routes->get('kredit/(:num)', 'KreditController::show/$1');
         $routes->post('kredit/(:num)/batalkan', 'KreditController::cancel/$1');
-        // UPDATED: WA manual routes dihapus — notifikasi hanya via email
+        $routes->post('kredit/(:num)/angsuran/(:num)/reminder', 'KreditController::reminder/$1/$2');
 
         $routes->get('pembayaran', 'PembayaranController::index');
+        $routes->get('pembayaran/create', 'PembayaranController::create');
+        $routes->post('pembayaran', 'PembayaranController::store');
         $routes->post('pembayaran/(:num)/verifikasi', 'PembayaranController::verifikasi/$1');
         $routes->post('pembayaran/(:num)/tolak', 'PembayaranController::tolak/$1');
         $routes->get('pembayaran/(:num)/bukti', 'PembayaranController::bukti/$1');
-        // UPDATED: WA payment route dihapus
+
+        // Transaksi gabungan
+        $routes->get('transaksi', 'TransaksiController::index');
+        // Backward compat
+        $routes->get('kredit', 'TransaksiController::redirectKredit');
+        $routes->get('pembayaran', 'PembayaranController::index');
 
         $routes->get('laporan/kredit', 'LaporanController::kredit');
         $routes->get('laporan/pembayaran', 'LaporanController::pembayaran');

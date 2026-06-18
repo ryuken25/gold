@@ -144,66 +144,97 @@ $relatif = static function ($datetime): string {
     </div>
 
     <div class="col-lg-5">
-        <?php // Panel aksi ?>
+        <?php // Panel aksi — workflow bertahap ?>
         <div class="premium-card p-4 mb-4">
             <h5 class="fw-bold mb-3">Aksi</h5>
 
             <?php if ($statusFinal): ?>
-                <div class="alert alert-secondary">Pesanan sudah final (<?= esc($pengajuan['status']); ?>). Aksi tidak tersedia.</div>
-            <?php else: ?>
-                <?php if ($bisaVerifikasi): ?>
-                    <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/verifikasi'); ?>" method="post" class="mb-3">
-                        <?= csrf_field(); ?>
-                        <?php if ($pengajuan['metode_pembayaran'] === 'kredit'): ?>
-                            <div class="form-text mb-2">Menyetujui akan otomatis membuat kredit + jadwal angsuran untuk
-                                pelanggan.</div>
-                        <?php endif; ?>
-                        <button type="submit" class="btn btn-gold rounded-pill w-100">
-                            Verifikasi Pesanan
-                        </button>
-                    </form>
+                <div class="alert alert-secondary mb-0">Pesanan sudah final (<?= esc(pesanan_status_label($pengajuan['status'])); ?>). Aksi tidak tersedia.</div>
 
-                    <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/tolak'); ?>" method="post" class="mb-3">
-                        <?= csrf_field(); ?>
-                        <label class="form-label">Alasan Penolakan</label>
-                        <textarea name="alasan" class="form-control mb-2" rows="2" placeholder="Wajib diisi saat menolak..."></textarea>
-                        <button type="submit" class="btn btn-outline-danger rounded-pill w-100">Tolak Pesanan</button>
-                    </form>
-                <?php endif; ?>
-
-                <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/batalkan'); ?>" method="post"
-                    onsubmit="return confirm('Batalkan pesanan ini?');" class="mb-3">
+            <?php elseif (in_array($pengajuan['status'], ['baru', 'diproses'], true)): ?>
+                <?php // TAHAP 1: Verifikasi ?>
+                <button type="button" class="btn btn-gold rounded-pill w-100 mb-2"
+                    onclick="MahenDialog.confirm({
+                        title: 'Verifikasi Pesanan',
+                        message: '<?= $pengajuan['metode_pembayaran'] === 'kredit' ? 'Menyetujui akan otomatis membuat kredit + jadwal angsuran. Lanjutkan?' : 'Verifikasi pesanan ini?'; ?>',
+                        confirmText: 'Ya, Verifikasi',
+                        confirmClass: 'btn-gold',
+                        onConfirm: function(finish) {
+                            document.getElementById('formVerifikasi').submit();
+                            finish();
+                        }
+                    })">
+                    <i class="bi bi-check-circle"></i> Verifikasi Pesanan
+                </button>
+                <form id="formVerifikasi" action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/verifikasi'); ?>" method="post" class="d-none">
                     <?= csrf_field(); ?>
-                    <button type="submit" class="btn btn-outline-danger rounded-pill w-100">Batalkan Pesanan</button>
                 </form>
 
-                <hr>
-                <?php // UPDATED: Dropdown status bertahap — hanya tampilkan status logis berikutnya ?>
-                <?php
-                $allowedNextStatus = match ($pengajuan['status']) {
-                    'baru'       => ['diproses', 'disetujui', 'ditolak', 'dibatalkan'],
-                    'diproses'   => ['disetujui', 'ditolak', 'dibatalkan'],
-                    'disetujui'  => ['dikirim', 'dibatalkan'],
-                    'dikirim'    => ['selesai', 'dibatalkan'],
-                    default      => [],
-                };
-                ?>
-                <?php if (!empty($allowedNextStatus)): ?>
-                <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/status'); ?>" method="post">
+                <button type="button" class="btn btn-outline-danger rounded-pill w-100"
+                    onclick="MahenDialog.form({
+                        title: 'Tolak Pesanan',
+                        fields: [{ name: 'alasan', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan agar dapat dipahami oleh pelanggan.', rows: 3 }],
+                        submitText: 'Tolak Pesanan',
+                        submitClass: 'btn-danger',
+                        onsubmit: function(data, finish) {
+                            var form = document.getElementById('formTolak');
+                            form.querySelector('[name=alasan]').value = data.alasan;
+                            form.submit();
+                            finish();
+                        }
+                    })">
+                    <i class="bi bi-x-circle"></i> Tolak Pesanan
+                </button>
+                <form id="formTolak" action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/tolak'); ?>" method="post" class="d-none">
                     <?= csrf_field(); ?>
-                    <label class="form-label">Ubah Status</label>
-                    <div class="d-flex gap-2">
-                        <select name="status" class="form-select form-select-sm">
-                            <?php foreach ($allowedNextStatus as $item): ?>
-                                <option value="<?= esc($item); ?>">
-                                    <?= esc(pesanan_status_label($item)); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <button type="submit" class="btn btn-sm btn-outline-gold rounded-pill px-3">Simpan</button>
-                    </div>
+                    <input type="hidden" name="alasan" value="">
                 </form>
-                <?php endif; ?>
+
+            <?php elseif ($pengajuan['status'] === 'disetujui'): ?>
+                <?php // TAHAP 2: Kirim ?>
+                <button type="button" class="btn btn-gold rounded-pill w-100 mb-2"
+                    onclick="MahenDialog.form({
+                        title: 'Kirim Pesanan',
+                        message: 'Pilih metode pengiriman dan masukkan referensi.',
+                        fields: [
+                            { name: 'metode_pengiriman', label: 'Metode', type: 'select', required: true, options: [{value:'resi',label:'Nomor Resi'},{value:'no_hp',label:'Nomor HP Pengiriman'}] },
+                            { name: 'referensi_pengiriman', label: 'Referensi', type: 'text', required: true, placeholder: 'Masukkan nomor resi atau nomor HP...' }
+                        ],
+                        submitText: 'Kirim Pesanan',
+                        onsubmit: function(data, finish) {
+                            var form = document.getElementById('formKirim');
+                            form.querySelector('[name=metode_pengiriman]').value = data.metode_pengiriman;
+                            form.querySelector('[name=referensi_pengiriman]').value = data.referensi_pengiriman;
+                            form.submit();
+                            finish();
+                        }
+                    })">
+                    <i class="bi bi-truck"></i> Kirim Pesanan
+                </button>
+                <form id="formKirim" action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/kirim'); ?>" method="post" class="d-none">
+                    <?= csrf_field(); ?>
+                    <input type="hidden" name="metode_pengiriman" value="">
+                    <input type="hidden" name="referensi_pengiriman" value="">
+                </form>
+
+            <?php elseif ($pengajuan['status'] === 'dikirim'): ?>
+                <?php // TAHAP 3: Selesai ?>
+                <button type="button" class="btn btn-gold rounded-pill w-100"
+                    onclick="MahenDialog.confirm({
+                        title: 'Tandai Selesai',
+                        message: 'Tandai pesanan ini sebagai selesai? Pastikan pesanan telah diterima oleh pelanggan.',
+                        confirmText: 'Ya, Selesai',
+                        confirmClass: 'btn-gold',
+                        onConfirm: function(finish) {
+                            document.getElementById('formSelesai').submit();
+                            finish();
+                        }
+                    })">
+                    <i class="bi bi-check-circle-fill"></i> Tandai Selesai
+                </button>
+                <form id="formSelesai" action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/selesai'); ?>" method="post" class="d-none">
+                    <?= csrf_field(); ?>
+                </form>
             <?php endif; ?>
         </div>
 

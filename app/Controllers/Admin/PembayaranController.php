@@ -76,6 +76,53 @@ class PembayaranController extends BaseAdminController
         ]);
     }
 
+    public function create(): string
+    {
+        $kreditId = (int) $this->request->getGet('kredit_id');
+        $kredit = $kreditId ? $this->getKreditForPayment($kreditId) : null;
+
+        return $this->render('admin/pembayaran/form', [
+            'pageTitle' => 'Catat Pembayaran',
+            'kredit'    => $kredit,
+            'jadwal'    => $kredit ? $this->getJadwalForPayment($kreditId) : [],
+        ]);
+    }
+
+    public function store()
+    {
+        $rules = [
+            'kredit_id'          => 'required|integer',
+            'jadwal_angsuran_id' => 'permit_empty|integer',
+            'tanggal_bayar'      => 'required|valid_date',
+            'nominal_bayar'      => 'required|integer|greater_than[0]',
+            'metode_pembayaran'  => 'required|in_list[transfer,tunai,qris]',
+            'keterangan'         => 'permit_empty|max_length[500]',
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        try {
+            $result = $this->paymentService->record([
+                'kredit_id'          => (int) $this->request->getPost('kredit_id'),
+                'jadwal_angsuran_id' => (int) ($this->request->getPost('jadwal_angsuran_id') ?: 0),
+                'tanggal_bayar'      => $this->request->getPost('tanggal_bayar'),
+                'nominal_bayar'      => (int) $this->request->getPost('nominal_bayar'),
+                'metode_pembayaran'  => $this->request->getPost('metode_pembayaran'),
+                'keterangan'         => $this->request->getPost('keterangan'),
+            ], (int) current_admin()['id']);
+
+            // Kirim email notifikasi
+            $this->kirimNotifPembayaran($result['payment']);
+
+            return redirect()->to('/admin/kredit/' . $result['credit']['id'])
+                ->with('success', 'Pembayaran berhasil dicatat. Kode: ' . $result['payment']['kode_pembayaran']);
+        } catch (\Throwable $e) {
+            return redirect()->back()->withInput()->with('error', 'Gagal mencatat pembayaran: ' . $e->getMessage());
+        }
+    }
+
     public function verifikasi(int $id)
     {
         $bukti = $this->buktiModel->find($id);
@@ -96,20 +143,21 @@ class PembayaranController extends BaseAdminController
                     'nominal_bayar'      => $bukti['nominal'],
                     'metode_pembayaran'  => 'transfer',
                     'keterangan'         => 'Verifikasi bukti ' . $bukti['kode'],
+                    'bukti_pembayaran_id'=> $bukti['id'],
                 ], (int) current_admin()['id']);
             } elseif ($bukti['tipe'] === 'dp') {
-                // DP: tandai uang muka diterima. Status pesanan tetap (cicilan berjalan).
+                // DP: tandai uang muka diterima. Status pesanan tetap.
                 if ($bukti['pengajuan_id']) {
                     (new PengajuanModel())->update($bukti['pengajuan_id'], [
                         'pembayaran_status' => 'terverifikasi',
                     ]);
                 }
             } else {
-                // Cash: tandai pengajuan selesai.
+                // UPDATED: Cash — tandai pembayaran terverifikasi, tapi JANGAN langsung selesai.
+                // Admin harus menekan "Kirim" lalu "Done" untuk menyelesaikan.
                 if ($bukti['pengajuan_id']) {
                     (new PengajuanModel())->update($bukti['pengajuan_id'], [
                         'pembayaran_status' => 'terverifikasi',
-                        'status'            => 'selesai',
                     ]);
                 }
             }
@@ -173,9 +221,28 @@ class PembayaranController extends BaseAdminController
             ->setBody((string) file_get_contents($path));
     }
 
+    protected function getKreditForPayment(int $kreditId): ?array
+    {
+        $db = Database::connect();
+        return $db->table('kredit k')
+            ->select('k.*, n.nama as nama_nasabah, p.nama_produk')
+            ->join('nasabah n', 'n.id = k.nasabah_id')
+            ->join('produk_emas p', 'p.id = k.produk_emas_id')
+            ->where('k.id', $kreditId)
+            ->get()->getRowArray();
+    }
+
+    protected function getJadwalForPayment(int $kreditId): array
+    {
+        return (new JadwalAngsuranModel())
+            ->where('kredit_id', $kreditId)
+            ->where('status !=', 'dibayar')
+            ->orderBy('angsuran_ke', 'ASC')
+            ->findAll();
+    }
+
     /**
      * Kirim email notifikasi setelah pembayaran terverifikasi.
-     * (WhatsApp dikirim manual oleh admin lewat tombol "Kirim WA".)
      */
     protected function kirimNotifPembayaran(array $bukti): void
     {

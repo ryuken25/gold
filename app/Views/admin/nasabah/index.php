@@ -34,10 +34,20 @@
                                     class="btn btn-sm btn-outline-gold rounded-pill">Kartu Piutang</a>
                                 <a href="<?= base_url('/admin/nasabah/' . $row['id'] . '/edit'); ?>"
                                     class="btn btn-sm btn-outline-gold rounded-pill">Edit</a>
-                                <form action="<?= base_url('/admin/nasabah/' . $row['id'] . '/delete'); ?>" method="post"
-                                    class="d-inline" onsubmit="return confirm('Hapus nasabah ini?');">
-                                    <?= csrf_field(); ?><button
-                                        class="btn btn-sm btn-outline-danger rounded-pill">Hapus</button></form>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill"
+                                    onclick="var self = this; MahenDialog.confirm({
+                                        title: 'Hapus Nasabah',
+                                        message: 'Apakah Anda yakin ingin menghapus nasabah <?= esc(addslashes($row['nama'])); ?>? Data yang dihapus tidak dapat dikembalikan.',
+                                        confirmText: 'Ya, Hapus',
+                                        confirmClass: 'btn-danger',
+                                        onConfirm: function(finish) {
+                                            document.getElementById('formHapus<?= esc($row['id']); ?>').submit();
+                                            finish();
+                                        }
+                                    })">Hapus</button>
+                                <form id="formHapus<?= esc($row['id']); ?>" action="<?= base_url('/admin/nasabah/' . $row['id'] . '/delete'); ?>" method="post" class="d-none">
+                                    <?= csrf_field(); ?>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>
