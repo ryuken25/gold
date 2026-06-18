@@ -178,20 +178,32 @@ $relatif = static function ($datetime): string {
                 </form>
 
                 <hr>
+                <?php // UPDATED: Dropdown status bertahap — hanya tampilkan status logis berikutnya ?>
+                <?php
+                $allowedNextStatus = match ($pengajuan['status']) {
+                    'baru'       => ['diproses', 'disetujui', 'ditolak', 'dibatalkan'],
+                    'diproses'   => ['disetujui', 'ditolak', 'dibatalkan'],
+                    'disetujui'  => ['dikirim', 'dibatalkan'],
+                    'dikirim'    => ['selesai', 'dibatalkan'],
+                    default      => [],
+                };
+                ?>
+                <?php if (!empty($allowedNextStatus)): ?>
                 <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/status'); ?>" method="post">
                     <?= csrf_field(); ?>
-                    <label class="form-label">Ubah Status Lanjutan</label>
+                    <label class="form-label">Ubah Status</label>
                     <div class="d-flex gap-2">
                         <select name="status" class="form-select form-select-sm">
-                            <?php foreach ($statusList as $item): ?>
-                                <option value="<?= esc($item); ?>" <?= $pengajuan['status'] === $item ? 'selected' : ''; ?>>
-                                    <?= esc(ucfirst($item)); ?>
+                            <?php foreach ($allowedNextStatus as $item): ?>
+                                <option value="<?= esc($item); ?>">
+                                    <?= esc(pesanan_status_label($item)); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                         <button type="submit" class="btn btn-sm btn-outline-gold rounded-pill px-3">Simpan</button>
                     </div>
                 </form>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
 
