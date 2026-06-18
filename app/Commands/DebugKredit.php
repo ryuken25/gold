@@ -27,7 +27,9 @@ class DebugKredit extends BaseCommand
         $idx = $db->query("SHOW INDEX FROM kredit WHERE Non_unique = 0")->getResultArray();
         if ($idx) {
             foreach ($idx as $i) {
-                CLI::write("  {$i['Column_name']} ({$i['Index_name']})", 'yellow');
+                $col = $i['Column_name'] ?? $i['Key_name'] ?? '?';
+                $name = $i['Key_name'] ?? '?';
+                CLI::write("  {$col} ({$name})", 'yellow');
             }
         } else {
             CLI::write('  No unique indexes found', 'green');

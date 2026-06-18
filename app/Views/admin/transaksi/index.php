@@ -64,9 +64,11 @@
                                 $statusBadge = 'bg-danger';
                                 $statusText = 'Terlambat';
                             } elseif ($row['status'] === 'aktif') {
+                                $rowClass = 'row-aktif';
                                 $statusBadge = 'bg-primary';
                                 $statusText = 'Aktif';
                             } else {
+                                $rowClass = '';
                                 $statusBadge = 'bg-secondary';
                                 $statusText = ucfirst($row['status']);
                             }
@@ -74,6 +76,16 @@
                             $href = base_url('/admin/pengajuan/' . $row['id']);
                             $statusText = pesanan_status_label($row['status']);
                             $statusBadge = 'bg-' . pesanan_badge_class($row['status']);
+                            // Cash row class based on status
+                            if (in_array($row['status'], ['selesai'])) {
+                                $rowClass = 'row-lunas';
+                            } elseif (in_array($row['status'], ['disetujui', 'dikirim'])) {
+                                $rowClass = 'row-aktif';
+                            } elseif (in_array($row['status'], ['ditolak', 'dibatalkan'])) {
+                                $rowClass = 'row-overdue';
+                            } else {
+                                $rowClass = '';
+                            }
                         }
                         ?>
                         <tr class="<?= esc($rowClass); ?> clickable-row" data-href="<?= esc($href); ?>" tabindex="0" role="link">
