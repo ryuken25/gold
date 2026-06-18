@@ -50,6 +50,9 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
     $routes->group('', ['filter' => 'adminauth'], static function (RouteCollection $routes) {
         $routes->get('dashboard', 'DashboardController::index');
 
+        // SEMENTARA: Test email — hapat setelah email berhasil
+        $routes->get('test-email', 'TestEmailController::sendTest');
+
         $routes->get('pengajuan', 'PengajuanController::index');
         $routes->get('pengajuan/(:num)', 'PengajuanController::show/$1');
         $routes->post('pengajuan/(:num)/status', 'PengajuanController::updateStatus/$1');

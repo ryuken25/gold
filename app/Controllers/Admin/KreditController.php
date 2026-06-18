@@ -8,7 +8,6 @@ use App\Models\NasabahModel;
 use App\Models\PembayaranAngsuranModel;
 use App\Models\ProdukEmasModel;
 use App\Services\CreditTransactionService;
-use App\Services\WhatsAppTemplateService;
 use Config\Database;
 use Throwable;
 
@@ -18,46 +17,48 @@ class KreditController extends BaseAdminController
 
     protected CreditTransactionService $creditService;
 
-    protected WhatsAppTemplateService $whatsAppService;
-
     public function initController($request, $response, $logger)
     {
         parent::initController($request, $response, $logger);
         $this->kreditModel = new KreditModel();
         $this->creditService = new CreditTransactionService();
-        $this->whatsAppService = new WhatsAppTemplateService();
     }
 
     public function index(): string
     {
         $db = Database::connect();
-        $status = (string) $this->request->getGet('status');
+        $jadwalModel = new JadwalAngsuranModel();
         $today = date('Y-m-d');
 
-        $builder = $db->table('kredit k')
+        // UPDATED: Ambil semua data tanpa filter — warna otomatis di view
+        $kreditList = $db->table('kredit k')
             ->select('k.*, n.nama as nama_nasabah, p.nama_produk')
             ->join('nasabah n', 'n.id = k.nasabah_id')
             ->join('produk_emas p', 'p.id = k.produk_emas_id')
-            ->orderBy('k.created_at', 'DESC');
+            ->orderBy('k.created_at', 'DESC')
+            ->get()->getResultArray();
 
-        if (in_array($status, ['aktif', 'lunas', 'dibatalkan'], true)) {
-            $builder->where('k.status', $status);
-        } elseif ($status === 'jatuh_tempo') {
-            $builder->join('jadwal_angsuran j', 'j.kredit_id = k.id')
-                ->where('j.tanggal_jatuh_tempo', $today)
-                ->whereNotIn('j.status', ['dibayar'])
-                ->groupBy('k.id');
-        } elseif ($status === 'terlambat') {
-            $builder->join('jadwal_angsuran j', 'j.kredit_id = k.id')
-                ->where('j.tanggal_jatuh_tempo <', $today)
-                ->whereNotIn('j.status', ['dibayar'])
-                ->groupBy('k.id');
+        // UPDATED: Tambah flag is_terlambat untuk setiap kredit aktif
+        foreach ($kreditList as &$k) {
+            $k['is_terlambat'] = false;
+            if ($k['status'] === 'aktif') {
+                $angsuranBerikutnya = $jadwalModel
+                    ->where('kredit_id', $k['id'])
+                    ->where('status !=', 'dibayar')
+                    ->orderBy('tanggal_jatuh_tempo', 'ASC')
+                    ->first();
+                if ($angsuranBerikutnya) {
+                    $jatuhTempo = strtotime($angsuranBerikutnya['tanggal_jatuh_tempo']);
+                    $k['is_terlambat'] = $jatuhTempo < strtotime('today');
+                }
+            }
         }
+        unset($k);
 
         return $this->render('admin/kredit/index', [
             'pageTitle' => 'Transaksi Kredit & Piutang',
-            'kredit' => $builder->get()->getResultArray(),
-            'status' => $status,
+            'kredit'    => $kreditList,
+            'status'    => '',
         ]);
     }
 
@@ -127,60 +128,5 @@ class KreditController extends BaseAdminController
         } catch (Throwable $e) {
             return redirect()->to('/admin/kredit/' . $id)->with('error', $e->getMessage());
         }
-    }
-
-    public function waInfo(int $id)
-    {
-        $payload = $this->waPayload($id);
-        $result = $this->whatsAppService->createInfoTransaksiLink($payload);
-
-        return redirect()->to($result['wa_url']);
-    }
-
-    public function waPengingat(int $id, int $jadwalId)
-    {
-        $payload = $this->waPayload($id);
-        $jadwal = (new JadwalAngsuranModel())->find($jadwalId);
-        if (!$jadwal) {
-            return redirect()->to('/admin/kredit/' . $id)->with('error', 'Jadwal angsuran tidak ditemukan.');
-        }
-
-        $result = $this->whatsAppService->createPengingatLink(array_merge($payload, [
-            'angsuran_ke' => $jadwal['angsuran_ke'],
-            'tanggal_jatuh_tempo' => $jadwal['tanggal_jatuh_tempo'],
-            'nominal_tagihan' => $jadwal['nominal_tagihan'],
-            'jadwal_id' => $jadwal['id'],
-            'created_by' => current_admin()['id'],
-        ]));
-
-        return redirect()->to($result['wa_url']);
-    }
-
-    public function waLunas(int $id)
-    {
-        $payload = $this->waPayload($id);
-        $result = $this->whatsAppService->createKreditLunasLink(array_merge($payload, [
-            'created_by' => current_admin()['id'],
-        ]));
-
-        return redirect()->to($result['wa_url']);
-    }
-
-    protected function waPayload(int $id): array
-    {
-        $kredit = Database::connect()->table('kredit k')
-            ->select('k.*, n.nama as nama_nasabah, n.no_telepon, p.nama_produk, p.kadar, p.berat_gram')
-            ->join('nasabah n', 'n.id = k.nasabah_id')
-            ->join('produk_emas p', 'p.id = k.produk_emas_id')
-            ->where('k.id', $id)
-            ->get()->getRowArray();
-
-        $jadwal = (new JadwalAngsuranModel())->where('kredit_id', $id)->orderBy('angsuran_ke', 'ASC')->first();
-
-        return array_merge($kredit ?? [], [
-            'periode_label' => periode_label($kredit['periode_angsuran'] ?? 'bulanan'),
-            'tanggal_jatuh_tempo_pertama' => $jadwal['tanggal_jatuh_tempo'] ?? null,
-            'created_by' => current_admin()['id'],
-        ]);
     }
 }

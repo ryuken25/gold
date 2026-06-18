@@ -117,6 +117,32 @@
                             <div class="form-text">Format JPG/PNG, maks. 3 MB. Wajib untuk semua metode pembelian.</div>
                         </div>
 
+                        <?php // UPDATED: Info rekening bank untuk transfer ?>
+                        <div class="col-12">
+                            <div class="alert border-0 shadow-sm mb-0" style="background:linear-gradient(135deg, #f0f9ff, #e0f2fe); border-left:4px solid #0ea5e9 !important;">
+                                <div class="d-flex align-items-start gap-3">
+                                    <i class="bi bi-bank2 fs-4 text-primary"></i>
+                                    <div class="flex-grow-1">
+                                        <strong class="text-primary">Rekening Transfer Pembayaran</strong>
+                                        <div class="mt-2">
+                                            <span class="text-muted small d-block">Bank</span>
+                                            <strong class="fs-5">BRI</strong>
+                                        </div>
+                                        <div class="mt-2">
+                                            <span class="text-muted small d-block">Nomor Rekening</span>
+                                            <strong class="fs-5 font-monospace">477-9010-0935-6536</strong>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
+                                                onclick="navigator.clipboard.writeText('477901009356536').then(()=>{this.textContent='✓ Tersalin'; setTimeout(()=>this.textContent='Salin',2000)})">Salin</button>
+                                        </div>
+                                        <div class="mt-2">
+                                            <span class="text-muted small d-block">Atas Nama</span>
+                                            <strong>I Gusti Ayu Ari Satriani</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <?php // Upload bukti pembayaran — wajib untuk kedua metode. ?>
                         <div class="col-12">
                             <label class="form-label" id="wa_bukti_label">Bukti Pembayaran <span class="text-danger">*</span></label>
