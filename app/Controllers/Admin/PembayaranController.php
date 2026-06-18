@@ -137,6 +137,9 @@ class PembayaranController extends BaseAdminController
             return $this->respondFail('Bukti ini sudah diproses.', 409);
         }
 
+        $db = Database::connect();
+        $db->transStart();
+
         try {
             if ($bukti['tipe'] === 'cicilan') {
                 $this->paymentService->record([
@@ -167,7 +170,14 @@ class PembayaranController extends BaseAdminController
                 'diverifikasi_oleh' => current_admin()['id'] ?? null,
                 'diverifikasi_pada' => date('Y-m-d H:i:s'),
             ]);
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException('Transaksi database verifikasi gagal.');
+            }
         } catch (Throwable $e) {
+            $db->transRollback();
             return $this->respondFail('Gagal memverifikasi: ' . $e->getMessage(), 400);
         }
 
@@ -292,66 +302,10 @@ class PembayaranController extends BaseAdminController
     }
 
     /**
-     * Buka WhatsApp ke nomor pelanggan dengan template konfirmasi (kirim manual).
+     * @deprecated WhatsApp notification is now automated via email/other channels. This route is unrouted.
      */
     public function wa(int $id)
     {
-        $bukti = $this->buktiModel->find($id);
-        if (!$bukti) {
-            throw PageNotFoundException::forPageNotFound('Bukti pembayaran tidak ditemukan.');
-        }
-
-        $user  = (new UserModel())->find($bukti['user_id']);
-        $nomor = $user['no_telepon'] ?? '';
-        $toko  = $this->pengaturanModel->getPengaturan()['nama_toko'] ?? 'MahenGold';
-        $nama  = $user['nama'] ?? 'Pelanggan';
-
-        if ($bukti['tipe'] === 'cicilan') {
-            $kredit = (new KreditModel())->find($bukti['kredit_id']);
-            $jadwal = $bukti['jadwal_angsuran_id'] ? (new JadwalAngsuranModel())->find($bukti['jadwal_angsuran_id']) : null;
-            if ($nomor === '' && $kredit) {
-                $nasabah = (new NasabahModel())->find($kredit['nasabah_id']);
-                $nomor   = $nasabah['no_telepon'] ?? '';
-            }
-            $pesan = trim(implode("\n", [
-                'Halo ' . $nama . ',',
-                '',
-                'Pembayaran angsuran' . ($jadwal ? ' ke-' . $jadwal['angsuran_ke'] : '') . ' kredit ' . ($kredit['kode_kredit'] ?? '') . ' sudah kami TERIMA & VERIFIKASI.',
-                'Nominal: ' . format_rupiah($bukti['nominal']),
-                'Sisa Piutang: ' . format_rupiah($kredit['sisa_piutang'] ?? 0),
-                (($kredit['status'] ?? '') === 'lunas' ? "\nKredit Anda telah LUNAS. Terima kasih!" : ''),
-                '',
-                'Terima kasih, ' . $toko . '.',
-            ]));
-        } elseif ($bukti['tipe'] === 'dp') {
-            $pengajuan = $bukti['pengajuan_id'] ? (new PengajuanModel())->find($bukti['pengajuan_id']) : null;
-            if ($nomor === '' && $pengajuan) {
-                $nomor = $pengajuan['no_telepon'] ?? '';
-            }
-            $pesan = trim(implode("\n", [
-                'Halo ' . $nama . ',',
-                '',
-                'Pembayaran UANG MUKA (DP) pesanan ' . ($pengajuan['kode_pesanan'] ?? '') . ' sudah kami TERIMA & VERIFIKASI.',
-                'Nominal DP: ' . format_rupiah($bukti['nominal']),
-                'Selanjutnya silakan lanjut pembayaran angsuran sesuai jadwal.',
-                '',
-                'Terima kasih, ' . $toko . '.',
-            ]));
-        } else {
-            $pengajuan = $bukti['pengajuan_id'] ? (new PengajuanModel())->find($bukti['pengajuan_id']) : null;
-            if ($nomor === '' && $pengajuan) {
-                $nomor = $pengajuan['no_telepon'] ?? '';
-            }
-            $pesan = trim(implode("\n", [
-                'Halo ' . $nama . ',',
-                '',
-                'Pembayaran pesanan ' . ($pengajuan['kode_pesanan'] ?? '') . ' sudah kami TERIMA & VERIFIKASI. Pesanan Anda dinyatakan SELESAI.',
-                'Nominal: ' . format_rupiah($bukti['nominal']),
-                '',
-                'Terima kasih, ' . $toko . '.',
-            ]));
-        }
-
-        return redirect()->to((new WhatsAppTemplateService())->buildWaUrl((string) $nomor, $pesan));
+        throw new \RuntimeException('Method/Route wa() is deprecated and unrouted.');
     }
 }

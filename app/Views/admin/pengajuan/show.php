@@ -5,11 +5,15 @@ $statusFinal    = in_array($pengajuan['status'], ['ditolak', 'dibatalkan', 'sele
 $bisaVerifikasi = in_array($pengajuan['status'], ['baru', 'diproses'], true);
 $telepon        = $pengajuan['no_telepon'] ?: ($pengajuan['telepon_user'] ?? '-');
 $aksiIcon = [
-    'dibuat'                => 'bi-plus-circle',
-    'diverifikasi'          => 'bi-check-circle',
-    'ditolak'               => 'bi-x-circle',
-    'dibatalkan'            => 'bi-slash-circle',
-    'status_diubah'         => 'bi-arrow-repeat',
+    'dibuat'                  => 'bi-plus-circle',
+    'diverifikasi'            => 'bi-check-circle',
+    'ditolak'                 => 'bi-x-circle',
+    'dibatalkan'              => 'bi-slash-circle',
+    'status_diubah'           => 'bi-arrow-repeat',
+    'dikirim'                 => 'bi-truck',
+    'selesai'                 => 'bi-check-circle-fill',
+    'kredit_dibuat'           => 'bi-wallet2',
+    'pembayaran_diverifikasi' => 'bi-credit-card-2-front-fill',
 ];
 $relatif = static function ($datetime): string {
     if (!$datetime) {

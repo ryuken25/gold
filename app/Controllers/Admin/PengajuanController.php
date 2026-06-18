@@ -173,36 +173,11 @@ class PengajuanController extends BaseAdminController
     }
 
     /**
-     * Transisi status tambahan (diproses / selesai) via dropdown lanjutan.
+     * @deprecated Status transitions should be managed via workflow actions (verify, ship, complete). This route is unrouted.
      */
     public function updateStatus(int $id)
     {
-        $pengajuan = $this->pengajuanModel->find($id);
-        if (!$pengajuan) {
-            throw PageNotFoundException::forPageNotFound('Pengajuan tidak ditemukan.');
-        }
-
-        $rules = [
-            // UPDATED: tambahkan 'dikirim' sebagai status valid
-            'status'  => 'required|in_list[baru,diproses,disetujui,dikirim,ditolak,dibatalkan,selesai]',
-            'catatan' => 'permit_empty|max_length[1000]',
-        ];
-        if (!$this->validate($rules)) {
-            return redirect()->to('/admin/pengajuan/' . $id)
-                ->with('error', implode(' ', $this->validator->getErrors()));
-        }
-
-        $status = (string) $this->request->getPost('status');
-        $this->pengajuanModel->update($id, [
-            'status'  => $status,
-            'catatan' => $this->request->getPost('catatan') ?: $pengajuan['catatan'],
-        ]);
-        $this->aktivitasModel->log($id, 'status_diubah', 'Status diubah menjadi ' . $status, $this->adminName());
-
-        // UPDATED: Kirim email notifikasi setiap perubahan status
-        $this->kirimEmailStatusUpdate($pengajuan, $status);
-
-        return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Status pengajuan diperbarui.');
+        throw new \RuntimeException('Method/Route updateStatus() is deprecated and unrouted.');
     }
 
     /**

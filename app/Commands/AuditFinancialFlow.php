@@ -89,16 +89,27 @@ class AuditFinancialFlow extends BaseCommand
             }
         }
 
-        // 9. Dikirim tanpa referensi
-        $shippedNoRef = $db->query("SELECT id, kode_pesanan FROM pengajuan WHERE status = 'dikirim' AND (referensi_pengiriman IS NULL OR referensi_pengiriman = '')")->getResultArray();
-        foreach ($shippedNoRef as $r) {
-            $issues[] = "Pesanan dikirim tanpa referensi: {$r['kode_pesanan']}";
+        // 9. Dikirim tanpa referensi / detail pengiriman lengkap
+        $shippedNoDetails = $db->query("SELECT id, kode_pesanan FROM pengajuan WHERE status = 'dikirim' AND (metode_pengiriman IS NULL OR metode_pengiriman = '' OR referensi_pengiriman IS NULL OR referensi_pengiriman = '')")->getResultArray();
+        foreach ($shippedNoDetails as $r) {
+            $issues[] = "Pesanan dikirim tanpa detail pengiriman lengkap (metode atau referensi kosong): {$r['kode_pesanan']}";
         }
 
         // 10. Selesai tanpa metadata pengiriman
-        $doneNoShip = $db->query("SELECT id, kode_pesanan FROM pengajuan WHERE status = 'selesai' AND (dikirim_pada IS NULL OR dikirim_oleh IS NULL)")->getResultArray();
+        $doneNoShip = $db->query("SELECT id, kode_pesanan FROM pengajuan WHERE status = 'selesai' AND (dikirim_pada IS NULL OR dikirim_oleh IS NULL OR metode_pengiriman IS NULL OR referensi_pengiriman IS NULL)")->getResultArray();
         foreach ($doneNoShip as $r) {
-            $issues[] = "Pesanan selesai tanpa metadata pengiriman: {$r['kode_pesanan']}";
+            $issues[] = "Pesanan selesai tapi belum pernah melalui proses kirim (detail/metadata pengiriman kosong): {$r['kode_pesanan']}";
+        }
+
+        // 10b. Dikirim activity matches dikirim/selesai status
+        $shippedActivityMismatch = $db->query("
+            SELECT DISTINCT p.id, p.kode_pesanan, p.status
+            FROM pengajuan p
+            JOIN pengajuan_aktivitas pa ON pa.pengajuan_id = p.id
+            WHERE pa.aksi = 'dikirim' AND p.status NOT IN ('dikirim', 'selesai')
+        ")->getResultArray();
+        foreach ($shippedActivityMismatch as $r) {
+            $issues[] = "Inkonsistensi: Pesanan {$r['kode_pesanan']} memiliki aktivitas 'dikirim' tetapi status saat ini adalah '{$r['status']}'";
         }
 
         // 11. Kredit tanpa pengajuan

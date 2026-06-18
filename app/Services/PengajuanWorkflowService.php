@@ -39,11 +39,20 @@ class PengajuanWorkflowService
 
         $this->assertTransition($pengajuan, ['baru', 'diproses'], 'disetujui');
 
+        // Determine pembayaran_status according to rules:
+        // - Preserve existing pembayaran_status
+        // - For credit with uang_muka = 0, auto-set to 'terverifikasi'
+        // - For other credit with uang_muka > 0 and cash, keep existing status
+        $pembayaranStatus = $pengajuan['pembayaran_status'] ?? 'belum';
+        if ($pengajuan['metode_pembayaran'] === 'kredit' && (int)($pengajuan['uang_muka'] ?? 0) === 0) {
+            $pembayaranStatus = 'terverifikasi';
+        }
+
         $ok = $this->pengajuanModel->update($pengajuanId, [
             'status'            => 'disetujui',
             'diverifikasi_pada' => date('Y-m-d H:i:s'),
             'diverifikasi_oleh' => $adminId,
-            'pembayaran_status' => 'terverifikasi',
+            'pembayaran_status' => $pembayaranStatus,
         ]);
         if (!$ok) {
             $this->db->transRollback();
@@ -51,32 +60,6 @@ class PengajuanWorkflowService
         }
 
         $this->aktivitasModel->log($pengajuanId, 'diverifikasi', 'Pesanan disetujui admin.', 'admin');
-
-        // Auto-verify any pending DP or cash payment proof if it exists
-        $buktiPending = $this->db->table('bukti_pembayaran')
-            ->where('pengajuan_id', $pengajuanId)
-            ->whereIn('tipe', ['dp', 'cash'])
-            ->where('status', 'menunggu')
-            ->get()->getResultArray();
-
-        foreach ($buktiPending as $b) {
-            $this->db->table('bukti_pembayaran')
-                ->where('id', $b['id'])
-                ->update([
-                    'status'            => 'terverifikasi',
-                    'diverifikasi_oleh' => $adminId,
-                    'diverifikasi_pada' => date('Y-m-d H:i:s'),
-                ]);
-            
-            $this->aktivitasModel->log($pengajuanId, 'pembayaran_diverifikasi', 
-                'Pembayaran ' . strtoupper($b['tipe']) . ' otomatis diverifikasi saat pesanan disetujui.', 'admin');
-        }
-
-        if (!empty($buktiPending)) {
-            $this->pengajuanModel->update($pengajuanId, [
-                'pembayaran_status' => 'terverifikasi',
-            ]);
-        }
 
         // Auto-create kredit untuk metode kredit
         if ($pengajuan['metode_pembayaran'] === 'kredit') {
@@ -100,10 +83,11 @@ class PengajuanWorkflowService
             throw new RuntimeException('Gagal memverifikasi pesanan.');
         }
 
-        // Email setelah commit
-        $this->kirimEmailVerifikasi($pengajuan);
+        // Email setelah commit — fetch updated pengajuan
+        $updatedPengajuan = $this->pengajuanModel->find($pengajuanId);
+        $this->kirimEmailVerifikasi($updatedPengajuan);
 
-        return $this->pengajuanModel->find($pengajuanId);
+        return $updatedPengajuan;
     }
 
     /**
@@ -201,9 +185,11 @@ class PengajuanWorkflowService
             throw new RuntimeException('Gagal menandai pesanan dikirim.');
         }
 
-        $this->kirimEmailStatusUpdate($pengajuan, 'dikirim');
+        // Refetch updated row so email contains shipping method/reference details
+        $updatedPengajuan = $this->pengajuanModel->find($pengajuanId);
+        $this->kirimEmailStatusUpdate($updatedPengajuan, 'dikirim');
 
-        return $this->pengajuanModel->find($pengajuanId);
+        return $updatedPengajuan;
     }
 
     /**

@@ -36,7 +36,7 @@ if (!function_exists('status_badge_class')) {
     function status_badge_class(?string $status): string
     {
         return match ($status) {
-            'aktif', 'dibayar', 'dikirim_manual', 'disetujui', 'selesai' => 'success',
+            'aktif', 'dibayar', 'dikirim_manual', 'disetujui', 'selesai', 'dikirim' => 'success',
             'lunas' => 'primary',
             'terlambat', 'gagal', 'dibatalkan', 'ditolak' => 'danger',
             'sebagian' => 'warning',
