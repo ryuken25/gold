@@ -55,14 +55,19 @@
     const CSRF_NAME = '<?= csrf_token() ?>';
     const CSRF_HASH = '<?= csrf_hash() ?>';
 
-    function submitPost(url) {
-        const f = document.createElement('form');
-        f.method = 'POST'; f.action = url; f.style.display = 'none';
-        const cs = document.createElement('input');
-        cs.type = 'hidden'; cs.name = CSRF_NAME; cs.value = CSRF_HASH;
-        f.appendChild(cs);
-        document.body.appendChild(f);
-        f.submit();
+    function ajaxPost(url) {
+        const fd = new FormData();
+        fd.append(CSRF_NAME, CSRF_HASH);
+        fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    MahenDialog.success({ title: 'Berhasil', message: data.message, onConfirm: () => { window.location.href = data.redirect || '/admin/nasabah'; } });
+                } else {
+                    MahenDialog.error({ title: 'Gagal', message: data.message || 'Terjadi kesalahan.' });
+                }
+            })
+            .catch(() => MahenDialog.error({ title: 'Kesalahan', message: 'Gagal menghubungi server.' }));
     }
 
     document.querySelectorAll('.js-hapus-nasabah').forEach(btn => {
@@ -72,7 +77,7 @@
                 message: 'Apakah Anda yakin ingin menghapus nasabah ' + btn.dataset.nama + '? Data yang dihapus tidak dapat dikembalikan.',
                 confirmText: 'Ya, Hapus',
                 confirmClass: 'btn-danger',
-                onConfirm: () => submitPost('/admin/nasabah/' + btn.dataset.id + '/delete')
+                onConfirm: () => ajaxPost('/admin/nasabah/' + btn.dataset.id + '/delete')
             });
         });
     });
