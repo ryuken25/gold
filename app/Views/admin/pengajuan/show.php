@@ -152,70 +152,24 @@ $relatif = static function ($datetime): string {
                 <div class="alert alert-secondary mb-0">Pesanan sudah final (<?= esc(pesanan_status_label($pengajuan['status'])); ?>). Aksi tidak tersedia.</div>
 
             <?php elseif (in_array($pengajuan['status'], ['baru', 'diproses'], true)): ?>
-                <?php // TAHAP 1: Verifikasi ?>
-                <button type="button" class="btn btn-gold rounded-pill w-100 mb-2"
-                    onclick="MahenDialog.confirm({
-                        title: 'Verifikasi Pesanan',
-                        message: '<?= $pengajuan['metode_pembayaran'] === 'kredit' ? 'Menyetujui akan otomatis membuat kredit + jadwal angsuran. Lanjutkan?' : 'Verifikasi pesanan ini?'; ?>',
-                        confirmText: 'Ya, Verifikasi',
-                        confirmClass: 'btn-gold',
-                        onConfirm: function(finish) {
-                            document.getElementById('formVerifikasi').submit();
-                            finish();
-                        }
-                    })">
+                <button type="button" class="btn btn-gold rounded-pill w-100 mb-2" id="btnVerifikasi">
                     <i class="bi bi-check-circle"></i> Verifikasi Pesanan
                 </button>
-                <form id="formVerifikasi" action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/verifikasi'); ?>" method="post" class="d-none">
-                    <?= csrf_field(); ?>
-                </form>
-
-                <button type="button" class="btn btn-outline-danger rounded-pill w-100"
-                    onclick="MahenDialog.form({
-                        title: 'Tolak Pesanan',
-                        fields: [{ name: 'alasan', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan agar dapat dipahami oleh pelanggan.', rows: 3 }],
-                        submitText: 'Tolak Pesanan',
-                        submitClass: 'btn-danger',
-                        onsubmit: function(data, finish) {
-                            var form = document.getElementById('formTolak');
-                            form.querySelector('[name=alasan]').value = data.alasan;
-                            form.submit();
-                            finish();
-                        }
-                    })">
+                <button type="button" class="btn btn-outline-danger rounded-pill w-100" id="btnTolak">
                     <i class="bi bi-x-circle"></i> Tolak Pesanan
                 </button>
-                <form id="formTolak" action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/tolak'); ?>" method="post" class="d-none">
-                    <?= csrf_field(); ?>
-                    <input type="hidden" name="alasan" value="">
-                </form>
 
             <?php elseif ($pengajuan['status'] === 'disetujui'): ?>
-                <?php // TAHAP 2: Kirim ?>
-                <button type="button" class="btn btn-gold rounded-pill w-100 mb-2"
-                    onclick="MahenDialog.form({
-                        title: 'Kirim Pesanan',
-                        message: 'Pilih metode pengiriman dan masukkan referensi.',
-                        fields: [
-                            { name: 'metode_pengiriman', label: 'Metode', type: 'select', required: true, options: [{value:'resi',label:'Nomor Resi'},{value:'no_hp',label:'Nomor HP Pengiriman'}] },
-                            { name: 'referensi_pengiriman', label: 'Referensi', type: 'text', required: true, placeholder: 'Masukkan nomor resi atau nomor HP...' }
-                        ],
-                        submitText: 'Kirim Pesanan',
-                        onsubmit: function(data, finish) {
-                            var form = document.getElementById('formKirim');
-                            form.querySelector('[name=metode_pengiriman]').value = data.metode_pengiriman;
-                            form.querySelector('[name=referensi_pengiriman]').value = data.referensi_pengiriman;
-                            form.submit();
-                            finish();
-                        }
-                    })">
+                <button type="button" class="btn btn-gold rounded-pill w-100 mb-2" id="btnKirim">
                     <i class="bi bi-truck"></i> Kirim Pesanan
                 </button>
-                <form id="formKirim" action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/kirim'); ?>" method="post" class="d-none">
-                    <?= csrf_field(); ?>
-                    <input type="hidden" name="metode_pengiriman" value="">
-                    <input type="hidden" name="referensi_pengiriman" value="">
-                </form>
+
+            <?php elseif ($pengajuan['status'] === 'dikirim'): ?>
+                <button type="button" class="btn btn-gold rounded-pill w-100" id="btnSelesai">
+                    <i class="bi bi-check-circle-fill"></i> Tandai Selesai
+                </button>
+            <?php endif; ?>
+        </div>
 
             <?php elseif ($pengajuan['status'] === 'dikirim'): ?>
                 <?php // TAHAP 3: Selesai ?>
@@ -268,23 +222,74 @@ $relatif = static function ($datetime): string {
 
 <?= $this->section('scripts'); ?>
 <script>
-    document.querySelectorAll('[data-copy-target]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const el = document.querySelector(btn.dataset.copyTarget);
-            if (!el) return;
-            const done = () => { const t = btn.textContent; btn.textContent = 'Tersalin!'; setTimeout(() => { btn.textContent = t; }, 1500); };
-            if (navigator.clipboard) { navigator.clipboard.writeText(el.value).then(done).catch(() => { el.select(); document.execCommand('copy'); done(); }); }
-            else { el.select(); document.execCommand('copy'); done(); }
+(function() {
+    const CSRF = '<?= csrf_token() ?>';
+    const CSRF_VAL = '<?= csrf_hash() ?>';
+    const ID = <?= (int) $pengajuan['id'] ?>;
+    const BASE = '<?= base_url('/admin/pengajuan/' . $pengajuan['id']) ?>';
+
+    async function postAction(url, body) {
+        const fd = new FormData();
+        fd.append(CSRF, CSRF_VAL);
+        for (const [k, v] of Object.entries(body)) fd.append(k, v);
+        const res = await fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (res.redirected || res.ok) { window.location.reload(); return; }
+        const data = await res.json().catch(() => ({}));
+        if (window.MahenDialog) MahenDialog.error({ title: 'Gagal', message: data.error || data.message || 'Terjadi kesalahan.' });
+    }
+
+    // VERIFIKASI
+    const btnVerif = document.getElementById('btnVerifikasi');
+    if (btnVerif) btnVerif.addEventListener('click', () => {
+        MahenDialog.confirm({
+            title: 'Verifikasi Pesanan',
+            message: <?= $pengajuan['metode_pembayaran'] === 'kredit'
+                ? "'Menyetujui akan otomatis membuat kredit + jadwal angsuran. Lanjutkan?'"
+                : "'Verifikasi pesanan ini?'" ?>,
+            confirmText: 'Ya, Verifikasi',
+            confirmClass: 'btn-gold',
+            onConfirm: (finish) => { postAction(BASE + '/verifikasi', {}); finish(); }
         });
     });
-    document.querySelectorAll('[data-wa-tab]').forEach((tab) => {
-        tab.addEventListener('click', () => {
-            document.querySelectorAll('[data-wa-panel]').forEach((p) => p.classList.add('d-none'));
-            const target = document.querySelector(tab.dataset.waTab);
-            if (target) target.classList.remove('d-none');
-            document.querySelectorAll('[data-wa-tab]').forEach((t) => t.classList.remove('active'));
-            tab.classList.add('active');
+
+    // TOLAK
+    const btnTolak = document.getElementById('btnTolak');
+    if (btnTolak) btnTolak.addEventListener('click', () => {
+        MahenDialog.form({
+            title: 'Tolak Pesanan',
+            fields: [{ name: 'alasan', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan agar dapat dipahami oleh pelanggan.', rows: 3 }],
+            submitText: 'Tolak Pesanan',
+            submitClass: 'btn-danger',
+            onsubmit: (data, finish) => { postAction(BASE + '/tolak', { alasan: data.alasan }); finish(); }
         });
     });
+
+    // KIRIM
+    const btnKirim = document.getElementById('btnKirim');
+    if (btnKirim) btnKirim.addEventListener('click', () => {
+        MahenDialog.form({
+            title: 'Kirim Pesanan',
+            message: 'Pilih metode pengiriman dan masukkan referensi.',
+            fields: [
+                { name: 'metode_pengiriman', label: 'Metode', type: 'select', required: true, options: [{value:'resi',label:'Nomor Resi'},{value:'no_hp',label:'Nomor HP Pengiriman'}] },
+                { name: 'referensi_pengiriman', label: 'Referensi', type: 'text', required: true, placeholder: 'Masukkan nomor resi atau nomor HP...' }
+            ],
+            submitText: 'Kirim Pesanan',
+            onsubmit: (data, finish) => { postAction(BASE + '/kirim', data); finish(); }
+        });
+    });
+
+    // SELESAI
+    const btnSelesai = document.getElementById('btnSelesai');
+    if (btnSelesai) btnSelesai.addEventListener('click', () => {
+        MahenDialog.confirm({
+            title: 'Tandai Selesai',
+            message: 'Tandai pesanan ini sebagai selesai? Pastikan pesanan telah diterima oleh pelanggan.',
+            confirmText: 'Ya, Selesai',
+            confirmClass: 'btn-gold',
+            onConfirm: (finish) => { postAction(BASE + '/selesai', {}); finish(); }
+        });
+    });
+})();
 </script>
 <?= $this->endSection(); ?>

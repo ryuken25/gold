@@ -37,20 +37,8 @@
                             <td class="text-end">
                                 <a href="<?= base_url('/admin/produk/' . $row['id'] . '/edit'); ?>"
                                     class="btn btn-sm btn-outline-gold rounded-pill">Edit</a>
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill"
-                                    onclick="MahenDialog.confirm({
-                                        title: 'Hapus Produk',
-                                        message: 'Apakah Anda yakin ingin menghapus produk <?= esc(addslashes($row['nama_produk'])); ?>? Data yang dihapus tidak dapat dikembalikan.',
-                                        confirmText: 'Ya, Hapus',
-                                        confirmClass: 'btn-danger',
-                                        onConfirm: function(finish) {
-                                            document.getElementById('formHapusProduk<?= esc($row['id']); ?>').submit();
-                                            finish();
-                                        }
-                                    })">Hapus</button>
-                                <form id="formHapusProduk<?= esc($row['id']); ?>" action="<?= base_url('/admin/produk/' . $row['id'] . '/delete'); ?>" method="post" class="d-none">
-                                    <?= csrf_field(); ?>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill js-hapus-produk"
+                                    data-id="<?= esc($row['id']); ?>" data-nama="<?= esc(addslashes($row['nama_produk'])); ?>">Hapus</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -62,4 +50,32 @@
         <?= view('partials/empty_state', ['title' => 'Belum ada produk emas']); ?>
     <?php endif; ?>
 </div>
+<?= $this->endSection(); ?>
+
+<?= $this->section('scripts'); ?>
+<script>
+(function() {
+    const CSRF = '<?= csrf_token() ?>';
+    const CSRF_VAL = '<?= csrf_hash() ?>';
+
+    async function postAjax(url) {
+        const fd = new FormData();
+        fd.append(CSRF, CSRF_VAL);
+        await fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        window.location.reload();
+    }
+
+    document.querySelectorAll('.js-hapus-produk').forEach(btn => {
+        btn.addEventListener('click', () => {
+            MahenDialog.confirm({
+                title: 'Hapus Produk',
+                message: 'Apakah Anda yakin ingin menghapus produk ' + btn.dataset.nama + '? Data yang dihapus tidak dapat dikembalikan.',
+                confirmText: 'Ya, Hapus',
+                confirmClass: 'btn-danger',
+                onConfirm: (finish) => { postAjax('/admin/produk/' + btn.dataset.id + '/delete'); finish(); }
+            });
+        });
+    });
+})();
+</script>
 <?= $this->endSection(); ?>

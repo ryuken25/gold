@@ -83,37 +83,11 @@
                                 <a href="<?= base_url('/admin/pembayaran/' . $r['id'] . '/bukti'); ?>" target="_blank"
                                     rel="noopener" class="btn btn-sm btn-outline-gold rounded-pill">Bukti</a>
                                 <?php if ($r['status'] === 'menunggu'): ?>
-                                    <button type="button" class="btn btn-sm btn-gold rounded-pill"
-                                        onclick="MahenDialog.confirm({
-                                            title: 'Verifikasi Pembayaran',
-                                            message: 'Pastikan nominal, rekening pengirim, dan bukti pembayaran sudah sesuai sebelum melanjutkan.',
-                                            confirmText: 'Ya, Verifikasi',
-                                            onConfirm: function(finish) {
-                                                document.getElementById('formVerif<?= esc($r['id']); ?>').submit();
-                                                finish();
-                                            }
-                                        })">Verifikasi</button>
-                                    <form id="formVerif<?= esc($r['id']); ?>" action="<?= base_url('/admin/pembayaran/' . $r['id'] . '/verifikasi'); ?>" method="post" class="d-none">
-                                        <?= csrf_field(); ?>
-                                    </form>
+                                    <button type="button" class="btn btn-sm btn-gold rounded-pill js-verif-bukti"
+                                        data-id="<?= esc($r['id']); ?>">Verifikasi</button>
 
-                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill"
-                                        onclick="var self = this; MahenDialog.form({
-                                            title: 'Tolak Bukti Pembayaran',
-                                            fields: [{ name: 'catatan_admin', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan...', rows: 3 }],
-                                            submitText: 'Tolak',
-                                            submitClass: 'btn-danger',
-                                            onsubmit: function(data, finish) {
-                                                var input = document.getElementById('catatanAdmin<?= esc($r['id']); ?>');
-                                                input.value = data.catatan_admin;
-                                                document.getElementById('formTolak<?= esc($r['id']); ?>').submit();
-                                                finish();
-                                            }
-                                        });">Tolak</button>
-                                    <form id="formTolak<?= esc($r['id']); ?>" action="<?= base_url('/admin/pembayaran/' . $r['id'] . '/tolak'); ?>" method="post" class="d-none">
-                                        <?= csrf_field(); ?>
-                                        <input type="hidden" id="catatanAdmin<?= esc($r['id']); ?>" name="catatan_admin" value="">
-                                    </form>
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill js-tolak-bukti"
+                                        data-id="<?= esc($r['id']); ?>">Tolak</button>
                                 <?php elseif ($r['status'] === 'terverifikasi'): ?>
                                     <span class="badge bg-success">Terverifikasi</span>
                                 <?php elseif ($r['status'] === 'ditolak' && !empty($r['catatan_admin'])): ?>
@@ -131,4 +105,46 @@
 </div>
 <?= $this->endSection(); ?>
 
+<?= $this->section('scripts'); ?>
+<script>
+(function() {
+    const CSRF = '<?= csrf_token() ?>';
+    const CSRF_VAL = '<?= csrf_hash() ?>';
+
+    async function postAjax(url, body) {
+        const fd = new FormData();
+        fd.append(CSRF, CSRF_VAL);
+        for (const [k, v] of Object.entries(body || {})) fd.append(k, v);
+        const res = await fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        window.location.reload();
+    }
+
+    // VERIFIKASI BUKTI
+    document.querySelectorAll('.js-verif-bukti').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            MahenDialog.confirm({
+                title: 'Verifikasi Pembayaran',
+                message: 'Pastikan nominal, rekening pengirim, dan bukti pembayaran sudah sesuai sebelum melanjutkan.',
+                confirmText: 'Ya, Verifikasi',
+                onConfirm: (finish) => { postAjax('/admin/pembayaran/' + id + '/verifikasi', {}); finish(); }
+            });
+        });
+    });
+
+    // TOLAK BUKTI
+    document.querySelectorAll('.js-tolak-bukti').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            MahenDialog.form({
+                title: 'Tolak Bukti Pembayaran',
+                fields: [{ name: 'catatan_admin', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan...', rows: 3 }],
+                submitText: 'Tolak',
+                submitClass: 'btn-danger',
+                onsubmit: (data, finish) => { postAjax('/admin/pembayaran/' + id + '/tolak', { catatan_admin: data.catatan_admin }); finish(); }
+            });
+        });
+    });
+})();
+</script>
 <?= $this->endSection(); ?>
