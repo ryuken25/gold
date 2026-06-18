@@ -9,5 +9,6 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         $this->call(MahenGoldSeeder::class);
+        $this->call(MahenGoldWorkflowSeeder::class);
     }
 }
