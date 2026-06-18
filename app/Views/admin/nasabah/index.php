@@ -52,14 +52,14 @@
 <?= $this->section('scripts'); ?>
 <script>
 (function() {
-    const CSRF = '<?= csrf_token() ?>';
-    const CSRF_VAL = '<?= csrf_hash() ?>';
+    const CSRF_NAME = '<?= csrf_token() ?>';
+    const CSRF_HASH = '<?= csrf_hash() ?>';
 
     async function postAjax(url) {
         const fd = new FormData();
-        fd.append(CSRF, CSRF_VAL);
-        await fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        window.location.reload();
+        fd.append(CSRF_NAME, CSRF_HASH);
+        const res = await fetch(url, { method: 'POST', body: fd });
+        window.location.href = res.url || '/admin/nasabah';
     }
 
     document.querySelectorAll('.js-hapus-nasabah').forEach(btn => {
@@ -69,7 +69,7 @@
                 message: 'Apakah Anda yakin ingin menghapus nasabah ' + btn.dataset.nama + '? Data yang dihapus tidak dapat dikembalikan.',
                 confirmText: 'Ya, Hapus',
                 confirmClass: 'btn-danger',
-                onConfirm: (finish) => { postAjax('/admin/nasabah/' + btn.dataset.id + '/delete'); finish(); }
+                onConfirm: async (finish) => { await postAjax('/admin/nasabah/' + btn.dataset.id + '/delete'); finish(); }
             });
         });
     });
