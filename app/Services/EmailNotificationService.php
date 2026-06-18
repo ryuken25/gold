@@ -263,6 +263,7 @@ class EmailNotificationService
 
         try {
             $email = Services::email(null, false);
+            $email->clear(); // UPDATED: WAJIB clear sebelum setiap kirim baru
             $email->setFrom($cfg->fromEmail ?: 'no-reply@mahengold.test', $cfg->fromName ?: 'Mahen Gold');
             $email->setTo($user['email']);
             $email->setSubject($subjek);
