@@ -28,13 +28,15 @@ class PengajuanModel extends Model
         'status',
         'pembayaran_status',
         'catatan',
-        // UPDATED: workflow fields
+        // workflow fields
         'metode_pengiriman',
         'referensi_pengiriman',
         'diverifikasi_pada',
         'diverifikasi_oleh',
         'dikirim_pada',
         'dikirim_oleh',
+        'diterima_pada',
+        'diterima_oleh',
         'selesai_pada',
         'selesai_oleh',
         'ditolak_pada',
