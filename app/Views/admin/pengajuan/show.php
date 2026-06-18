@@ -171,27 +171,6 @@ $relatif = static function ($datetime): string {
             <?php endif; ?>
         </div>
 
-            <?php elseif ($pengajuan['status'] === 'dikirim'): ?>
-                <?php // TAHAP 3: Selesai ?>
-                <button type="button" class="btn btn-gold rounded-pill w-100"
-                    onclick="MahenDialog.confirm({
-                        title: 'Tandai Selesai',
-                        message: 'Tandai pesanan ini sebagai selesai? Pastikan pesanan telah diterima oleh pelanggan.',
-                        confirmText: 'Ya, Selesai',
-                        confirmClass: 'btn-gold',
-                        onConfirm: function(finish) {
-                            document.getElementById('formSelesai').submit();
-                            finish();
-                        }
-                    })">
-                    <i class="bi bi-check-circle-fill"></i> Tandai Selesai
-                </button>
-                <form id="formSelesai" action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/selesai'); ?>" method="post" class="d-none">
-                    <?= csrf_field(); ?>
-                </form>
-            <?php endif; ?>
-        </div>
-
         <?php // Riwayat aktivitas ?>
         <div class="premium-card p-4">
             <h5 class="fw-bold mb-3">Riwayat Aktivitas</h5>
