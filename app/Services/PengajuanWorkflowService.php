@@ -57,6 +57,7 @@ class PengajuanWorkflowService
                         'Kredit otomatis dibuat: ' . $hasil['kredit']['kode_kredit'], 'admin');
                 }
             } catch (\Throwable $e) {
+                log_message('error', 'createFromPengajuan failed: ' . $e->getMessage());
                 $this->db->transRollback();
                 throw new RuntimeException('Gagal membuat kredit: ' . $e->getMessage());
             }
