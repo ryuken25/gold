@@ -111,37 +111,40 @@
     const CSRF_NAME = '<?= csrf_token() ?>';
     const CSRF_HASH = '<?= csrf_hash() ?>';
 
-    async function postAjax(url, body) {
-        const fd = new FormData();
-        fd.append(CSRF_NAME, CSRF_HASH);
-        for (const [k, v] of Object.entries(body || {})) fd.append(k, v);
-        const res = await fetch(url, { method: 'POST', body: fd });
-        window.location.href = res.url || '/admin/pembayaran';
+    function submitPost(url, fields) {
+        const f = document.createElement('form');
+        f.method = 'POST'; f.action = url; f.style.display = 'none';
+        const cs = document.createElement('input');
+        cs.type = 'hidden'; cs.name = CSRF_NAME; cs.value = CSRF_HASH;
+        f.appendChild(cs);
+        for (const [k, v] of Object.entries(fields || {})) {
+            const inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = k; inp.value = v;
+            f.appendChild(inp);
+        }
+        document.body.appendChild(f);
+        f.submit();
     }
 
-    // VERIFIKASI BUKTI
     document.querySelectorAll('.js-verif-bukti').forEach(btn => {
         btn.addEventListener('click', () => {
-            const id = btn.dataset.id;
             MahenDialog.confirm({
                 title: 'Verifikasi Pembayaran',
                 message: 'Pastikan nominal, rekening pengirim, dan bukti pembayaran sudah sesuai sebelum melanjutkan.',
                 confirmText: 'Ya, Verifikasi',
-                onConfirm: async (finish) => { await postAjax('/admin/pembayaran/' + id + '/verifikasi', {}); finish(); }
+                onConfirm: () => submitPost('/admin/pembayaran/' + btn.dataset.id + '/verifikasi', {})
             });
         });
     });
 
-    // TOLAK BUKTI
     document.querySelectorAll('.js-tolak-bukti').forEach(btn => {
         btn.addEventListener('click', () => {
-            const id = btn.dataset.id;
             MahenDialog.form({
                 title: 'Tolak Bukti Pembayaran',
                 fields: [{ name: 'catatan_admin', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan...', rows: 3 }],
                 submitText: 'Tolak',
                 submitClass: 'btn-danger',
-                onsubmit: async (data, finish) => { await postAjax('/admin/pembayaran/' + id + '/tolak', { catatan_admin: data.catatan_admin }); finish(); }
+                onsubmit: (data) => submitPost('/admin/pembayaran/' + btn.dataset.id + '/tolak', { catatan_admin: data.catatan_admin })
             });
         });
     });

@@ -206,13 +206,22 @@ $relatif = static function ($datetime): string {
     const CSRF_HASH = '<?= csrf_hash() ?>';
     const BASE = '<?= base_url('/admin/pengajuan/' . $pengajuan['id']) ?>';
 
-    async function postAction(url, body) {
-        const fd = new FormData();
-        fd.append(CSRF_NAME, CSRF_HASH);
-        for (const [k, v] of Object.entries(body || {})) fd.append(k, v);
-        const res = await fetch(url, { method: 'POST', body: fd });
-        // Server returns redirect (302) — follow it and reload
-        window.location.href = res.url || BASE;
+    // Helper: create hidden form + submit (bypass dialog form handler)
+    function submitPost(url, fields) {
+        const f = document.createElement('form');
+        f.method = 'POST';
+        f.action = url;
+        f.style.display = 'none';
+        const cs = document.createElement('input');
+        cs.type = 'hidden'; cs.name = CSRF_NAME; cs.value = CSRF_HASH;
+        f.appendChild(cs);
+        for (const [k, v] of Object.entries(fields || {})) {
+            const inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = k; inp.value = v;
+            f.appendChild(inp);
+        }
+        document.body.appendChild(f);
+        f.submit();
     }
 
     // VERIFIKASI
@@ -224,7 +233,7 @@ $relatif = static function ($datetime): string {
                 : "'Verifikasi pesanan ini?'" ?>,
             confirmText: 'Ya, Verifikasi',
             confirmClass: 'btn-gold',
-            onConfirm: async (finish) => { await postAction(BASE + '/verifikasi', {}); finish(); }
+            onConfirm: () => submitPost(BASE + '/verifikasi', {})
         });
     });
 
@@ -235,7 +244,7 @@ $relatif = static function ($datetime): string {
             fields: [{ name: 'alasan', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan agar dapat dipahami oleh pelanggan.', rows: 3 }],
             submitText: 'Tolak Pesanan',
             submitClass: 'btn-danger',
-            onsubmit: async (data, finish) => { await postAction(BASE + '/tolak', { alasan: data.alasan }); finish(); }
+            onsubmit: (data) => submitPost(BASE + '/tolak', { alasan: data.alasan })
         });
     });
 
@@ -249,7 +258,7 @@ $relatif = static function ($datetime): string {
                 { name: 'referensi_pengiriman', label: 'Referensi', type: 'text', required: true, placeholder: 'Masukkan nomor resi atau nomor HP...' }
             ],
             submitText: 'Kirim Pesanan',
-            onsubmit: async (data, finish) => { await postAction(BASE + '/kirim', data); finish(); }
+            onsubmit: (data) => submitPost(BASE + '/kirim', data)
         });
     });
 
@@ -260,7 +269,7 @@ $relatif = static function ($datetime): string {
             message: 'Tandai pesanan ini sebagai selesai? Pastikan pesanan telah diterima oleh pelanggan.',
             confirmText: 'Ya, Selesai',
             confirmClass: 'btn-gold',
-            onConfirm: async (finish) => { await postAction(BASE + '/selesai', {}); finish(); }
+            onConfirm: () => submitPost(BASE + '/selesai', {})
         });
     });
 })();

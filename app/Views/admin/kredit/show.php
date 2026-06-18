@@ -112,11 +112,19 @@
     const CSRF_HASH = '<?= csrf_hash() ?>';
     const ID = <?= (int) $kredit['id'] ?>;
 
-    async function postAjax(url) {
-        const fd = new FormData();
-        fd.append(CSRF_NAME, CSRF_HASH);
-        const res = await fetch(url, { method: 'POST', body: fd });
-        window.location.href = res.url || '/admin/kredit/' + ID;
+    function submitPost(url, fields) {
+        const f = document.createElement('form');
+        f.method = 'POST'; f.action = url; f.style.display = 'none';
+        const cs = document.createElement('input');
+        cs.type = 'hidden'; cs.name = CSRF_NAME; cs.value = CSRF_HASH;
+        f.appendChild(cs);
+        for (const [k, v] of Object.entries(fields || {})) {
+            const inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = k; inp.value = v;
+            f.appendChild(inp);
+        }
+        document.body.appendChild(f);
+        f.submit();
     }
 
     document.getElementById('btnBatalkan')?.addEventListener('click', () => {
@@ -125,7 +133,7 @@
             message: 'Apakah Anda yakin ingin membatalkan kredit ini? Tindakan ini dapat memengaruhi stok dan tidak dapat dibatalkan secara otomatis.',
             confirmText: 'Ya, Batalkan',
             confirmClass: 'btn-danger',
-            onConfirm: async (finish) => { await postAjax('/admin/kredit/' + ID + '/batalkan'); finish(); }
+            onConfirm: () => submitPost('/admin/kredit/' + ID + '/batalkan', {})
         });
     });
 })();
