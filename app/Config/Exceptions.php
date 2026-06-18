@@ -101,6 +101,16 @@ class Exceptions extends BaseConfig
      */
     public function handler(int $statusCode, Throwable $exception): ExceptionHandlerInterface
     {
+        // AJAX CSRF error → return JSON instead of HTML debug page
+        if ($statusCode === 403 && $exception instanceof \CodeIgniter\Security\Exceptions\SecurityException) {
+            $request = service('request');
+            $isAjax = $request->isAJAX()
+                || str_contains($request->getHeaderLine('Accept') ?? '', 'application/json')
+                || $request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest';
+            if ($isAjax) {
+                return new \App\Libraries\AjaxExceptionHandler();
+            }
+        }
         return new ExceptionHandler($this);
     }
 }
