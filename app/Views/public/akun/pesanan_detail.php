@@ -19,10 +19,29 @@
                             <span class="section-eyebrow d-block mb-1"><?= esc($pengajuan['kode_pesanan'] ?? '-'); ?></span>
                             <h4 class="fw-black mb-0"><?= esc($pengajuan['nama_produk'] ?? 'Produk'); ?></h4>
                         </div>
-                        <span class="badge bg-<?= status_badge_class($pengajuan['status']); ?>">
-                            <?= esc(ucfirst($pengajuan['status'])); ?>
+                        <span class="badge bg-<?= esc(pesanan_badge_class($pengajuan['status'])); ?>">
+                            <?= esc(pesanan_status_label($pengajuan['status'])); ?>
                         </span>
                     </div>
+
+                    <?php // UPDATED: Order Stepper ala Shopee ?>
+                    <?php $currentStep = pesanan_status_step($pengajuan['status']); $steps = pesanan_status_steps(); ?>
+                    <?php if ($currentStep > 0): ?>
+                    <div class="order-stepper mb-4">
+                        <?php foreach ($steps as $idx => $step): ?>
+                            <?php $stepNum = $idx + 1; $isCompleted = $stepNum < $currentStep; $isCurrent = $stepNum === $currentStep; ?>
+                            <div class="stepper-item <?= $isCompleted ? 'completed' : ($isCurrent ? 'active' : ''); ?>">
+                                <div class="stepper-circle">
+                                    <i class="bi <?= esc($step['icon']); ?>"></i>
+                                </div>
+                                <div class="stepper-label"><?= esc($step['label']); ?></div>
+                                <?php if ($idx < count($steps) - 1): ?>
+                                    <div class="stepper-line <?= $isCompleted ? 'completed' : ''; ?>"></div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
 
                     <div class="row g-2 small">
                         <div class="col-sm-6"><span class="text-muted-mg">Metode</span><br><strong><?= esc(ucfirst($pengajuan['metode_pembayaran'])); ?></strong></div>

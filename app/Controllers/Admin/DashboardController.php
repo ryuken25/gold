@@ -6,7 +6,7 @@ use App\Models\JadwalAngsuranModel;
 use App\Models\KreditModel;
 use App\Models\NasabahModel;
 use App\Models\PembayaranAngsuranModel;
-use App\Models\WhatsAppLogModel;
+use App\Models\EmailLogModel;
 use Config\Database;
 
 class DashboardController extends BaseAdminController
@@ -17,7 +17,7 @@ class DashboardController extends BaseAdminController
         $kreditModel = new KreditModel();
         $pembayaranModel = new PembayaranAngsuranModel();
         $jadwalModel = new JadwalAngsuranModel();
-        $waLogModel = new WhatsAppLogModel();
+        $emailLogModel = new EmailLogModel();
 
         $today = date('Y-m-d');
 
@@ -71,7 +71,7 @@ class DashboardController extends BaseAdminController
             'recentPayments' => $recentPayments,
             'upcomingDue' => $upcomingDue,
             'topReceivables' => $topReceivables,
-            'recentLogs' => $waLogModel->orderBy('created_at', 'DESC')->findAll(5),
+            'recentLogs' => $emailLogModel->orderBy('created_at', 'DESC')->findAll(5),
         ]);
     }
 }

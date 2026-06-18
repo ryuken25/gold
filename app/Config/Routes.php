@@ -56,7 +56,7 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
         $routes->post('pengajuan/(:num)/verifikasi', 'PengajuanController::verifikasi/$1');
         $routes->post('pengajuan/(:num)/tolak', 'PengajuanController::tolak/$1');
         $routes->post('pengajuan/(:num)/batalkan', 'PengajuanController::batalkan/$1');
-        $routes->post('pengajuan/(:num)/wa-terkirim', 'PengajuanController::waTerkirim/$1');
+        // UPDATED: WA manual route dihapus — notifikasi hanya via email
         $routes->get('pengajuan/(:num)/ktp', 'PengajuanController::ktp/$1');
 
         $routes->get('produk', 'ProdukController::index');
@@ -81,15 +81,13 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
         $routes->post('kredit', 'KreditController::store');
         $routes->get('kredit/(:num)', 'KreditController::show/$1');
         $routes->post('kredit/(:num)/batalkan', 'KreditController::cancel/$1');
-        $routes->get('kredit/(:num)/wa-info', 'KreditController::waInfo/$1');
-        $routes->get('kredit/(:num)/wa-lunas', 'KreditController::waLunas/$1');
-        $routes->get('kredit/(:num)/wa-pengingat/(:num)', 'KreditController::waPengingat/$1/$2');
+        // UPDATED: WA manual routes dihapus — notifikasi hanya via email
 
         $routes->get('pembayaran', 'PembayaranController::index');
         $routes->post('pembayaran/(:num)/verifikasi', 'PembayaranController::verifikasi/$1');
         $routes->post('pembayaran/(:num)/tolak', 'PembayaranController::tolak/$1');
         $routes->get('pembayaran/(:num)/bukti', 'PembayaranController::bukti/$1');
-        $routes->get('pembayaran/(:num)/wa', 'PembayaranController::wa/$1');
+        // UPDATED: WA payment route dihapus
 
         $routes->get('laporan/kredit', 'LaporanController::kredit');
         $routes->get('laporan/pembayaran', 'LaporanController::pembayaran');

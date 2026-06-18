@@ -4,11 +4,9 @@ namespace App\Controllers\Admin;
 
 use App\Models\PengajuanAktivitasModel;
 use App\Models\PengajuanModel;
-use App\Models\WhatsAppLogModel;
 use App\Services\CreditCalculatorService;
 use App\Services\CreditTransactionService;
 use App\Services\EmailNotificationService;
-use App\Services\WhatsAppTemplateService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 use CodeIgniter\HTTP\ResponseInterface;
 use Config\Database;
@@ -57,20 +55,14 @@ class PengajuanController extends BaseAdminController
         }
 
         $simulasi = $this->hitungSimulasi($pengajuan);
-        $payload  = $this->payloadWa($pengajuan, $simulasi);
 
-        $service     = new WhatsAppTemplateService();
-        $waKonfirmasi = $service->konfirmasiPesananLink($payload);
-        $waTenor      = $pengajuan['metode_pembayaran'] === 'kredit' ? $service->infoTenorLink($payload) : null;
-
+        // UPDATED: Hapus semua kode WA manual — notifikasi hanya via email
         return $this->render('admin/pengajuan/show', [
-            'pageTitle'    => 'Detail Pengajuan',
-            'pengajuan'    => $pengajuan,
-            'simulasi'     => $simulasi,
-            'aktivitas'    => $this->aktivitasModel->where('pengajuan_id', $id)->orderBy('id', 'DESC')->findAll(),
-            'statusList'   => $this->statusList(),
-            'waKonfirmasi' => $waKonfirmasi,
-            'waTenor'      => $waTenor,
+            'pageTitle'  => 'Detail Pengajuan',
+            'pengajuan'  => $pengajuan,
+            'simulasi'   => $simulasi,
+            'aktivitas'  => $this->aktivitasModel->where('pengajuan_id', $id)->orderBy('id', 'DESC')->findAll(),
+            'statusList' => $this->statusList(),
         ]);
     }
 
@@ -151,7 +143,8 @@ class PengajuanController extends BaseAdminController
         }
 
         $rules = [
-            'status'  => 'required|in_list[baru,diproses,disetujui,ditolak,dibatalkan,selesai]',
+            // UPDATED: tambahkan 'dikirim' sebagai status valid
+            'status'  => 'required|in_list[baru,diproses,disetujui,dikirim,ditolak,dibatalkan,selesai]',
             'catatan' => 'permit_empty|max_length[1000]',
         ];
         if (!$this->validate($rules)) {
@@ -166,39 +159,10 @@ class PengajuanController extends BaseAdminController
         ]);
         $this->aktivitasModel->log($id, 'status_diubah', 'Status diubah menjadi ' . $status, $this->adminName());
 
+        // UPDATED: Kirim email notifikasi setiap perubahan status
+        $this->kirimEmailStatusUpdate($pengajuan, $status);
+
         return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Status pengajuan diperbarui.');
-    }
-
-    /**
-     * Tandai pesan WhatsApp konfirmasi sudah dikirim manual oleh admin.
-     */
-    public function waTerkirim(int $id)
-    {
-        $pengajuan = $this->ambilPengajuan($id);
-        if (!$pengajuan) {
-            throw PageNotFoundException::forPageNotFound('Pengajuan tidak ditemukan.');
-        }
-
-        $payload = $this->payloadWa($pengajuan, $this->hitungSimulasi($pengajuan));
-        $service = new WhatsAppTemplateService();
-        $pesan   = $service->buildKonfirmasiPesananMessage($payload);
-
-        (new WhatsAppLogModel())->insert([
-            'tipe'         => 'konfirmasi_pesanan',
-            'target'       => 'pelanggan',
-            'tujuan_nomor' => $pengajuan['no_telepon'],
-            'nama_tujuan'  => $pengajuan['nama'],
-            'pesan'        => $pesan,
-            'wa_url'       => $service->buildWaUrl((string) $pengajuan['no_telepon'], $pesan),
-            'status'       => 'dikirim_manual',
-            'related_type' => 'pengajuan',
-            'related_id'   => $id,
-            'created_by'   => current_admin()['id'] ?? null,
-        ]);
-
-        $this->aktivitasModel->log($id, 'wa_konfirmasi_dikirim', 'Admin menandai konfirmasi WhatsApp sudah dikirim.', $this->adminName());
-
-        return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Konfirmasi WhatsApp ditandai sudah dikirim.');
     }
 
     /**
@@ -226,7 +190,8 @@ class PengajuanController extends BaseAdminController
 
     protected function statusList(): array
     {
-        return ['baru', 'diproses', 'disetujui', 'ditolak', 'dibatalkan', 'selesai'];
+        // UPDATED: tambahkan 'dikirim' sebagai status valid
+        return ['baru', 'diproses', 'disetujui', 'dikirim', 'ditolak', 'dibatalkan', 'selesai'];
     }
 
     protected function adminName(): string
@@ -261,36 +226,6 @@ class PengajuanController extends BaseAdminController
         );
     }
 
-    protected function payloadWa(array $pengajuan, ?array $simulasi): array
-    {
-        $pengaturan = $this->pengaturanModel->getPengaturan();
-
-        $payload = [
-            'nama'              => $pengajuan['nama'],
-            'no_telepon'        => $pengajuan['no_telepon'],
-            'kode_pesanan'      => $pengajuan['kode_pesanan'],
-            'nama_produk'       => $pengajuan['nama_produk'] ?? '-',
-            'kode_produk'       => $pengajuan['kode_produk'] ?? '',
-            'harga_pokok'       => $pengajuan['harga_pokok'] ?? 0,
-            'metode_pembayaran' => $pengajuan['metode_pembayaran'],
-            'tenor_bulan'       => $pengajuan['tenor_bulan'] ?? null,
-            'periode_angsuran'  => $pengajuan['periode_angsuran'] ?? null,
-            'nama_toko'         => $pengaturan['nama_toko'] ?? 'MahenGold',
-        ];
-
-        if ($simulasi) {
-            $payload += [
-                'margin_persen'      => $simulasi['margin_persen'],
-                'total_harga_kredit' => $simulasi['total_harga_kredit'],
-                'jumlah_periode'     => $simulasi['jumlah_periode'],
-                'nominal_angsuran'   => $simulasi['nominal_angsuran'],
-                'periode_label'      => $simulasi['periode_label'],
-            ];
-        }
-
-        return $payload;
-    }
-
     protected function kirimEmailVerifikasi(array $pengajuan): void
     {
         $simulasi = $this->hitungSimulasi($pengajuan);
@@ -319,6 +254,29 @@ class PengajuanController extends BaseAdminController
             (new EmailNotificationService())->kirimPesananDiverifikasi($payload);
         } catch (\Throwable $e) {
             log_message('error', 'Email pesanan_diverifikasi gagal: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * UPDATED: Kirim email notifikasi saat status pesanan berubah.
+     */
+    protected function kirimEmailStatusUpdate(array $pengajuan, string $newStatus): void
+    {
+        $payload = [
+            'user_id'           => (int) $pengajuan['user_id'],
+            'pengajuan_id'      => (int) $pengajuan['id'],
+            'nama'              => $pengajuan['nama'],
+            'kode_pesanan'      => $pengajuan['kode_pesanan'],
+            'nama_produk'       => $pengajuan['nama_produk'] ?? '-',
+            'kode_produk'       => $pengajuan['kode_produk'] ?? '',
+            'metode_pembayaran' => $pengajuan['metode_pembayaran'],
+            'status_baru'       => $newStatus,
+        ];
+
+        try {
+            (new EmailNotificationService())->kirimStatusPesanan($payload);
+        } catch (\Throwable $e) {
+            log_message('error', 'Email status_update gagal: ' . $e->getMessage());
         }
     }
 }

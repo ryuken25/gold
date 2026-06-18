@@ -112,6 +112,42 @@ class EmailNotificationService
         );
     }
 
+    /**
+     * UPDATED: Kirim email notifikasi perubahan status pesanan.
+     */
+    public function kirimStatusPesanan(array $p): bool
+    {
+        $status     = $p['status_baru'] ?? '';
+        $label      = email_status_label($status);
+        $isSelesai  = $status === 'selesai';
+        $isDikirim  = $status === 'dikirim';
+        $isDitolak  = in_array($status, ['ditolak', 'dibatalkan'], true);
+
+        $baris = $this->barisPesanan($p);
+        $baris['Status'] = $label;
+
+        $penutup = match (true) {
+            $isSelesai => 'Pesanan Anda telah <strong>selesai</strong>. Terima kasih telah mempercayai MahenGold sebagai mitra investasi emas Anda.',
+            $isDikirim => 'Pesanan Anda sedang <strong>dalam perjalanan</strong> ke alamat tujuan. Anda akan menerima konfirmasi lagi setelah pesanan sampai.',
+            $isDitolak => 'Pesanan Anda telah <strong>dibatalkan/ditolak</strong>. Jika ada pertanyaan, silakan hubungi admin.',
+            default    => 'Status pesanan Anda telah diperbarui ke <strong>' . esc($label) . '</strong>. Pantau terus di menu Pesanan pada akun MahenGold Anda.',
+        };
+
+        $isi = $this->daftarHtml($baris)
+            . '<p style="margin:16px 0 0;">' . $penutup . '</p>'
+            . '<p style="margin:14px 0 0;"><a href="' . esc(base_url('/akun/pesanan')) . '" '
+            . 'style="background:#C9A24B;color:#1c1a17;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700;">Lihat Pesanan</a></p>';
+
+        return $this->kirim(
+            'status_pesanan',
+            (int) ($p['user_id'] ?? 0),
+            'Status Pesanan ' . ($p['kode_pesanan'] ?? '') . ' — ' . $label,
+            'Halo ' . esc($p['nama'] ?? 'Pelanggan') . ', ada pembaruan status pesanan Anda.',
+            $isi,
+            (int) ($p['pengajuan_id'] ?? 0),
+        );
+    }
+
     // ------------------------------------------------------------------
 
     /**

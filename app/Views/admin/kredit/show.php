@@ -27,12 +27,6 @@
                 <div><span>Jatuh Tempo Pertama</span><strong><?= esc(format_tanggal($jadwalPertama)); ?></strong></div>
             </div>
             <div class="d-grid gap-2">
-                <a class="btn btn-whatsapp rounded-pill"
-                    href="<?= base_url('/admin/kredit/' . $kredit['id'] . '/wa-info'); ?>">Kirim Info Transaksi via
-                    WhatsApp</a>
-                <?php if ($kredit['status'] === 'lunas'): ?><a class="btn btn-outline-gold rounded-pill"
-                        href="<?= base_url('/admin/kredit/' . $kredit['id'] . '/wa-lunas'); ?>">Kirim Notifikasi
-                        Lunas</a><?php endif; ?>
                 <?php if ($kredit['status'] === 'aktif'): ?><a class="btn btn-outline-gold rounded-pill"
                         href="<?= base_url('/admin/pembayaran/create?kredit_id=' . $kredit['id']); ?>">Catat
                         Pembayaran</a><?php endif; ?>
@@ -40,6 +34,9 @@
                     <form action="<?= base_url('/admin/kredit/' . $kredit['id'] . '/batalkan'); ?>" method="post"
                         onsubmit="return confirm('Batalkan kredit ini?');"><?= csrf_field(); ?><button
                             class="btn btn-outline-danger rounded-pill w-100">Batalkan Kredit</button></form><?php endif; ?>
+                <div class="alert alert-info mb-0 small">
+                    <i class="bi bi-envelope-check"></i> Notifikasi otomatis via email.
+                </div>
             </div>
         </div>
     </div>
@@ -59,17 +56,21 @@
                         </tr>
                     </thead>
                     <tbody><?php foreach ($jadwal as $row): ?>
-                            <tr>
+                            <?php // UPDATED: color coding menggunakan kredit_state helper ?>
+                            <?php $state = kredit_state($row); ?>
+                            <tr class="<?= esc($state['class']); ?>">
                                 <td><?= esc($row['angsuran_ke']); ?></td>
                                 <td><?= esc(format_tanggal($row['tanggal_jatuh_tempo'])); ?></td>
                                 <td><?= esc(format_rupiah($row['nominal_tagihan'])); ?></td>
                                 <td><?= esc(format_rupiah($row['nominal_dibayar'])); ?></td>
-                                <td><span
-                                        class="badge text-bg-<?= esc(status_badge_class($row['status'])); ?>"><?= esc($row['status']); ?></span>
+                                <td>
+                                    <span class="badge text-bg-<?= esc(status_badge_class($row['status'])); ?>">
+                                        <?= esc(ucfirst($row['status'])); ?>
+                                    </span>
+                                    <?php if (!empty($state['label'])): ?>
+                                        <div class="small mt-1"><?= esc($state['icon'] . ' ' . $state['label']); ?></div>
+                                    <?php endif; ?>
                                 </td>
-                                <td class="text-end"><a
-                                        href="<?= base_url('/admin/kredit/' . $kredit['id'] . '/wa-pengingat/' . $row['id']); ?>"
-                                        class="btn btn-sm btn-whatsapp rounded-pill">Pengingat</a></td>
                             </tr><?php endforeach; ?>
                     </tbody>
                 </table>

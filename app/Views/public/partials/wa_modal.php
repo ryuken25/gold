@@ -109,12 +109,12 @@
                             </div>
                         </div>
 
-                        <?php // Upload KTP hanya untuk kredit ?>
-                        <div class="col-12 wa-kredit-field" id="wa_ktp_wrapper">
+                        <?php // Upload KTP — wajib untuk semua metode ?>
+                        <div class="col-12" id="wa_ktp_wrapper">
                             <label class="form-label">Foto KTP <span class="text-danger">*</span></label>
                             <input type="file" class="form-control form-control-lg" name="foto_ktp" id="wa_foto_ktp"
-                                accept="image/jpeg,image/png">
-                            <div class="form-text">Format JPG/PNG, maks. 3 MB. Wajib untuk pengajuan kredit.</div>
+                                accept="image/jpeg,image/png" required>
+                            <div class="form-text">Format JPG/PNG, maks. 3 MB. Wajib untuk semua metode pembelian.</div>
                         </div>
 
                         <?php // Upload bukti pembayaran — wajib untuk kedua metode. ?>
@@ -154,9 +154,22 @@
             </div>
             <div class="modal-footer border-0 p-4 pt-3 justify-content-between">
                 <span class="small text-muted-mg">Pesanan akan diverifikasi admin di sistem. Pantau statusnya di menu
-                    Pesanan.</span>
+                    Pesanan. Anda akan menerima email notifikasi otomatis.</span>
                 <button type="submit" form="waPengajuanForm" class="btn btn-gold px-4">Kirim Pesanan</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- UPDATED: Popup sukses order -->
+<div class="modal fade" id="orderSuccessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 text-center p-5" style="border-radius:24px;">
+            <div class="mb-3" style="font-size:3.5rem;">✅</div>
+            <h4 class="fw-black mb-2">Pesanan Berhasil Dikirim!</h4>
+            <p class="text-muted-mg mb-1">Pesanan Anda sedang diproses.</p>
+            <p class="text-muted-mg mb-3">Mohon tunggu diverifikasi admin. Anda akan menerima email konfirmasi.</p>
+            <button type="button" class="btn btn-gold px-4" id="orderSuccessOk">Lihat Pesanan Saya</button>
         </div>
     </div>
 </div>
