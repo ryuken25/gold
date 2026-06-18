@@ -215,9 +215,10 @@ class CreditTransactionService
         $this->db->transComplete();
 
         if (!$this->db->transStatus()) {
-            $error = $this->db->getError();
-            log_message('error', 'Transaction failed createFromPengajuan: ' . json_encode($error));
-            throw new RuntimeException('Gagal membuat kredit dari pesanan: ' . (is_array($error) ? ($error['message'] ?? 'unknown') : (string) $error));
+            $error = $this->db->error();
+            $msg = is_array($error) ? ($error['message'] ?? 'unknown') : (string) $error;
+            log_message('error', 'Transaction failed createFromPengajuan: ' . $msg);
+            throw new RuntimeException('Gagal membuat kredit dari pesanan: ' . $msg);
         }
 
         return [
