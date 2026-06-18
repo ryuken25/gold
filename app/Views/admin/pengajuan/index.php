@@ -2,20 +2,35 @@
 <?= $this->section('content'); ?>
 <div class="premium-card p-4">
     <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
-        <form method="get" class="d-flex gap-2">
-            <select name="status" class="form-select">
-                <option value="">Semua Status</option>
-                <?php foreach ($statusList as $item): ?>
-                    <option value="<?= esc($item); ?>" <?= $status === $item ? 'selected' : ''; ?>>
-                        <?= esc(ucfirst($item)); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <button class="btn btn-outline-gold rounded-pill px-4">Filter</button>
-        </form>
+        <div>
+            <h5 class="fw-bold mb-1">Pengajuan</h5>
+            <p class="text-muted small mb-0">Klik baris untuk membuka detail.</p>
+        </div>
     </div>
 
-    <?php if ($pengajuan): ?>
+    <!-- Filter Chips -->
+    <div class="d-flex gap-2 mb-4 flex-wrap">
+        <?php
+        $chips = [
+            ''       => ['label' => 'Semua',              'icon' => 'bi-list-ul'],
+            'perlu'  => ['label' => 'Perlu Diverifikasi', 'icon' => 'bi-clock-history', 'count' => $counts['perlu'] ?? 0],
+            'proses' => ['label' => 'Terverifikasi',      'icon' => 'bi-check2-circle', 'count' => $counts['proses'] ?? 0],
+            'ditolak'=> ['label' => 'Ditolak',            'icon' => 'bi-x-circle',      'count' => $counts['ditolak'] ?? 0],
+        ];
+        foreach ($chips as $val => $chip):
+            $isActive = $bucket === $val;
+        ?>
+            <a href="<?= base_url('/admin/pengajuan' . ($val !== '' ? '?bucket=' . $val : '')); ?>"
+               class="btn btn-sm <?= $isActive ? 'btn-gold' : 'btn-outline-gold'; ?> rounded-pill px-3">
+                <i class="bi <?= esc($chip['icon']); ?>"></i> <?= esc($chip['label']); ?>
+                <?php if (isset($chip['count']) && $chip['count'] > 0): ?>
+                    <span class="badge bg-<?= $isActive ? 'dark' : 'secondary'; ?> rounded-pill ms-1"><?= esc($chip['count']); ?></span>
+                <?php endif; ?>
+            </a>
+        <?php endforeach; ?>
+    </div>
+
+    <?php if (!empty($pengajuan)): ?>
         <div class="table-responsive">
             <table class="table table-modern align-middle">
                 <thead>
@@ -25,16 +40,14 @@
                         <th>Pelanggan</th>
                         <th>Produk</th>
                         <th>Metode</th>
-                        <th>KTP</th>
                         <th>Status</th>
-                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($pengajuan as $row): ?>
-                        <tr>
+                        <tr class="clickable-row" data-href="<?= base_url('/admin/pengajuan/' . $row['id']); ?>" tabindex="0" role="link">
                             <td><span class="fw-semibold"><?= esc($row['kode_pesanan'] ?? '-'); ?></span></td>
-                            <td><?= esc(format_tanggal($row['created_at'], 'd M Y H:i')); ?></td>
+                            <td class="text-nowrap"><?= esc(format_tanggal($row['created_at'], 'd M Y H:i')); ?></td>
                             <td>
                                 <span class="fw-semibold d-block"><?= esc($row['nama']); ?></span>
                                 <small class="text-muted-mg"><?= esc($row['email_user'] ?? '-'); ?></small>
@@ -44,25 +57,14 @@
                                 <small class="text-muted-mg"><?= esc($row['kode_produk'] ?? ''); ?></small>
                             </td>
                             <td>
-                                <span class="badge text-bg-<?= $row['metode_pembayaran'] === 'kredit' ? 'warning' : 'info'; ?>">
+                                <span class="badge bg-<?= $row['metode_pembayaran'] === 'kredit' ? 'warning' : 'info'; ?>">
                                     <?= esc(ucfirst($row['metode_pembayaran'])); ?>
                                 </span>
                             </td>
                             <td>
-                                <?php if (!empty($row['foto_ktp'])): ?>
-                                    <i class="bi bi-check-circle-fill text-success" title="KTP terlampir"></i>
-                                <?php else: ?>
-                                    <span class="text-muted-mg">-</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <span class="badge text-bg-<?= esc(status_badge_class($row['status'])); ?>">
-                                    <?= esc(ucfirst($row['status'])); ?>
+                                <span class="badge bg-<?= esc(pesanan_badge_class($row['status'])); ?>">
+                                    <?= esc(pesanan_status_label($row['status'])); ?>
                                 </span>
-                            </td>
-                            <td class="text-end">
-                                <a href="<?= base_url('/admin/pengajuan/' . $row['id']); ?>"
-                                    class="btn btn-sm btn-outline-gold rounded-pill">Detail</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -70,7 +72,7 @@
             </table>
         </div>
     <?php else: ?>
-        <?= view('partials/empty_state', ['title' => 'Belum ada pengajuan masuk']); ?>
+        <?= view('partials/empty_state', ['title' => 'Belum ada pengajuan']); ?>
     <?php endif; ?>
 </div>
 <?= $this->endSection(); ?>

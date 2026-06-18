@@ -98,7 +98,7 @@ class EmailNotificationService
             ? 'Selamat! Seluruh angsuran kredit emas Anda telah <strong>LUNAS</strong>. Terima kasih telah mempercayai MahenGold.'
             : ($isKredit
                 ? 'Pembayaran angsuran Anda telah kami verifikasi. Lanjutkan pembayaran berikutnya sesuai jadwal di akun Anda.'
-                : 'Pembayaran Anda telah kami verifikasi dan pesanan dinyatakan <strong>selesai</strong>. Terima kasih.');
+                : 'Pembayaran Anda telah kami verifikasi. Pesanan sedang <strong>dipersiapkan untuk proses pengiriman</strong>. Terima kasih.');
 
         $isi = $this->daftarHtml($baris) . '<p style="margin:16px 0 0;">' . $penutup . '</p>';
 
