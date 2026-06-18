@@ -124,9 +124,9 @@ class KreditController extends BaseAdminController
     {
         try {
             $this->creditService->cancel($id);
-            return redirect()->to('/admin/kredit/' . $id)->with('success', 'Kredit berhasil dibatalkan.');
+            return $this->respondSuccess('Kredit berhasil dibatalkan.', '/admin/kredit/' . $id);
         } catch (Throwable $e) {
-            return redirect()->to('/admin/kredit/' . $id)->with('error', $e->getMessage());
+            return $this->respondError($e->getMessage(), 400);
         }
     }
 
@@ -137,15 +137,12 @@ class KreditController extends BaseAdminController
             $result = $reminderService->sendManual($kreditId, $jadwalId, (int) current_admin()['id']);
 
             if ($result['success']) {
-                return redirect()->to('/admin/kredit/' . $kreditId)
-                    ->with('success', 'Pengingat berhasil dikirim ke pelanggan.');
+                return $this->respondSuccess('Pengingat berhasil dikirim ke pelanggan.', '/admin/kredit/' . $kreditId);
             }
 
-            return redirect()->to('/admin/kredit/' . $kreditId)
-                ->with('warning', 'Pengingat gagal dikirim. Coba lagi nanti.');
+            return $this->respondError('Pengingat gagal dikirim. Coba lagi nanti.', 400);
         } catch (\Throwable $e) {
-            return redirect()->to('/admin/kredit/' . $kreditId)
-                ->with('error', $e->getMessage());
+            return $this->respondError($e->getMessage(), 400);
         }
     }
 }

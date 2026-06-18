@@ -15,7 +15,7 @@
                 <div class="fw-semibold"><?= esc($admin['nama'] ?? 'Admin'); ?></div>
                 <small class="text-muted-mg"><?= esc($admin['username'] ?? 'admin'); ?></small>
             </div>
-            <button type="button" class="btn btn-outline-gold px-3" id="btnLogout">Logout</button>
+            <button type="button" class="btn btn-outline-gold px-3" id="btnLogout" data-logout-url="<?= base_url('/logout') ?>">Logout</button>
         </div>
     </div>
 </header>

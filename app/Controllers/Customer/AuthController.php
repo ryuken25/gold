@@ -150,8 +150,17 @@ class AuthController extends BaseController
     {
         session()->remove('pelanggan_user');
         session()->remove('admin_user');
-        session()->setFlashdata('success', 'Anda telah keluar.');
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success'  => true,
+                'message'  => 'Logout berhasil.',
+                'redirect' => '/login',
+                'csrf'     => ['name' => csrf_token(), 'hash' => csrf_hash()],
+            ]);
+        }
+
+        session()->setFlashdata('success', 'Anda telah keluar.');
         return redirect()->to('/login');
     }
 }

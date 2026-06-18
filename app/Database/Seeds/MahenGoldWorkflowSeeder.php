@@ -2,156 +2,266 @@
 
 namespace App\Database\Seeds;
 
+use App\Models\PengaturanSistemModel;
+use App\Models\ProdukEmasModel;
+use App\Models\UserModel;
+use App\Services\CreditCalculatorService;
 use CodeIgniter\Database\Seeder;
+use Config\Database;
+use DateTimeImmutable;
 
-class MahenGoldWorkflowSeeder extends CodeIgniter\Seeder
+class MahenGoldWorkflowSeeder extends Seeder
 {
     public function run()
     {
-        $db = \Config\Database::connect();
-        $today = new \DateTimeImmutable('today');
+        helper('mahen');
+
+        $db = Database::connect();
+        $today = new DateTimeImmutable('today');
+
+        $pengaturan = (new PengaturanSistemModel())->getPengaturan();
+        $dpMinimal  = (int) ($pengaturan['dp_minimal'] ?? 200000);
+        $margin     = (float) ($pengaturan['margin_default'] ?? 10.00);
 
         // ============================================================
-        // 1. USERS (idempotent by email)
+        // 1. USERS — idempotent by email
         // ============================================================
-        $adminId = $this->upsertUser($db, 'admin@mahengold.test', 'Admin MahenGold', 'admin123', 'admin');
-        $demoUserId = $this->upsertUser($db, 'demo.pelanggan@mahengold.test', 'Nadiari Putri', 'demo1234', 'pelanggan');
-        $demo2UserId = $this->upsertUser($db, 'demo.lain@mahengold.test', 'Kadek Nadi', 'demo1234', 'pelanggan');
+        $adminId       = $this->upsertUser($db, 'admin@mahengold.test');
+        $staffVerifId  = $this->upsertUser($db, 'staff.verifikasi@mahengold.test');
+        $staffFinId    = $this->upsertUser($db, 'staff.finance@mahengold.test');
+
+        $pelangganId   = $this->upsertUser($db, 'demo.pelanggan@mahengold.test');
+        $dpPendingId   = $this->upsertUser($db, 'demo.dp.pending@mahengold.test');
+        $dpReadyId     = $this->upsertUser($db, 'demo.dp.ready@mahengold.test');
+        $cashPendId    = $this->upsertUser($db, 'demo.cash.pending@mahengold.test');
+        $cashReadyId   = $this->upsertUser($db, 'demo.cash.ready@mahengold.test');
+        $shippedId     = $this->upsertUser($db, 'demo.shipped@mahengold.test');
+        $doneId        = $this->upsertUser($db, 'demo.done@mahengold.test');
+        $rejectedId    = $this->upsertUser($db, 'demo.rejected@mahengold.test');
+        $overdueId     = $this->upsertUser($db, 'demo.overdue@mahengold.test');
+        $lunasId       = $this->upsertUser($db, 'demo.lunas@mahengold.test');
 
         // ============================================================
-        // 2. NASABAH (idempotent by user_id + nama)
+        // 2. NASABAH — idempotent by user_id
         // ============================================================
-        $nasabah1 = $this->upsertNasabah($db, $demoUserId, 'Nadiari Putri', '081234567890');
-        $nasabah2 = $this->upsertNasabah($db, $demo2UserId, 'Kadek Nadi', '089876543210');
+        $nsbPelanggan = $this->upsertNasabah($db, $pelangganId, 'Putu Demo Pelanggan', '6281200000001');
+        $nsbDpPend    = $this->upsertNasabah($db, $dpPendingId, 'Made DP Pending', '6281200000002');
+        $nsbDpReady   = $this->upsertNasabah($db, $dpReadyId, 'Ketut DP Ready', '6281200000003');
+        $nsbCashPend  = $this->upsertNasabah($db, $cashPendId, 'Wayan Cash Pending', '6281200000004');
+        $nsbCashReady = $this->upsertNasabah($db, $cashReadyId, 'Nyoman Cash Ready', '6281200000005');
+        $nsbShipped   = $this->upsertNasabah($db, $shippedId, 'Komang Shipped', '6281200000006');
+        $nsbDone      = $this->upsertNasabah($db, $doneId, 'Putu Done', '6281200000007');
+        $nsbRejected  = $this->upsertNasabah($db, $rejectedId, 'Made Rejected', '6281200000008');
+        $nsbOverdue   = $this->upsertNasabah($db, $overdueId, 'Ketut Overdue', '6281200000009');
+        $nsbLunas     = $this->upsertNasabah($db, $lunasId, 'Wayan Lunas', '6281200000010');
 
-        // Get produk
-        $produk = $db->table('produk_emas')->where('status', 'aktif')->first();
-        if (!$produk) {
+        // ============================================================
+        // 3. PRODUK — get active products
+        // ============================================================
+        $produk = [];
+        foreach (['MGD-001','MGD-002','MGD-003','MGD-004','MGD-005',
+                   'MGD-006','MGD-007','MGD-008','MGD-009','MGD-010'] as $kode) {
+            $row = $db->table('produk_emas')->where('kode_produk', $kode)->where('status', 'aktif')->get()->getRowArray();
+            if ($row) {
+                $produk[$kode] = $row;
+            }
+        }
+        if (empty($produk)) {
             throw new \RuntimeException('Tidak ada produk aktif. Jalankan MahenGoldSeeder dulu.');
         }
-        $produkId = $produk['id'];
+        // Helper to pick first available product
+        $pick = fn(array $codes) => $this->pickProduk($produk, $codes);
+
+        $ktpFile = 'demo_ktp.png';
+        $this->writeDemoImage(WRITEPATH . 'uploads/ktp/' . $ktpFile, 'KTP DEMO', 'Demo Pelanggan');
 
         // ============================================================
-        // 3. SCENARIO PESANAN (idempotent by kode_pesanan)
+        // 4. PENGAJUAN SCENARIOS (idempotent by kode_pesanan)
         // ============================================================
 
-        // 1. MG-DEMO-WAIT-VERIFY — kredit, baru, DP menunggu
-        $this->upsertPengajuan($db, [
+        // A. MG-DEMO-WAIT-VERIFY: kredit, status baru, DP menunggu
+        $pidA = $this->upsertPengajuan($db, [
             'kode_pesanan'      => 'MG-DEMO-WAIT-VERIFY',
-            'user_id'           => $demoUserId,
-            'produk_emas_id'    => $produkId,
+            'user_id'           => $pelangganId,
+            'produk_emas_id'    => $pick(['MGD-001','MGD-003']),
             'metode_pembayaran' => 'kredit',
-            'nama'              => 'Nadiari Putri',
-            'no_telepon'        => '081234567890',
-            'alamat'            => 'Jl. Raya Ubud No. 123, Gianyar',
+            'nama'              => 'Putu Demo Pelanggan',
+            'no_telepon'        => '6281200000001',
+            'alamat'            => 'Jl. Tunjung Sari No. 12, Denpasar',
             'tenor_bulan'       => 12,
             'periode_angsuran'  => 'bulanan',
-            'uang_muka'         => 200000,
+            'uang_muka'         => $dpMinimal,
+            'foto_ktp'          => $ktpFile,
             'status'            => 'baru',
             'pembayaran_status' => 'menunggu',
         ]);
+        $this->logAktivitas($db, $pidA, 'dibuat', 'Pesanan dibuat oleh pelanggan', 'pelanggan');
+        $this->createBuktiDP($db, $pidA, $pelangganId, $dpMinimal, 'menunggu', $ktpFile);
 
-        // 2. MG-DEMO-CREDIT-PAY-WAIT — kredit, disetujui, DP menunggu
-        $this->upsertPengajuan($db, [
-            'kode_pesanan'      => 'MG-DEMO-CREDIT-PAY-WAIT',
-            'user_id'           => $demoUserId,
-            'produk_emas_id'    => $produkId,
+        // B. MG-DEMO-DP-PENDING: kredit, disetujui, DP belum terverifikasi
+        $pidB = $this->upsertPengajuan($db, [
+            'kode_pesanan'      => 'MG-DEMO-DP-PENDING',
+            'user_id'           => $dpPendingId,
+            'produk_emas_id'    => $pick(['MGD-002','MGD-004']),
             'metode_pembayaran' => 'kredit',
-            'nama'              => 'Nadiari Putri',
-            'no_telepon'        => '081234567890',
-            'alamat'            => 'Jl. Raya Ubud No. 123, Gianyar',
+            'nama'              => 'Made DP Pending',
+            'no_telepon'        => '6281200000002',
+            'alamat'            => 'Jl. Sunset Road No. 45, Denpasar',
             'tenor_bulan'       => 12,
             'periode_angsuran'  => 'bulanan',
-            'uang_muka'         => 200000,
+            'uang_muka'         => $dpMinimal,
+            'foto_ktp'          => $ktpFile,
             'status'            => 'disetujui',
             'pembayaran_status' => 'menunggu',
+            'diverifikasi_pada' => $today->modify('-2 days')->format('Y-m-d H:i:s'),
+            'diverifikasi_oleh' => $adminId,
         ]);
+        $this->logAktivitas($db, $pidB, 'dibuat', 'Pesanan dibuat', 'pelanggan');
+        $this->logAktivitas($db, $pidB, 'diverifikasi', 'Pesanan disetujui admin', 'admin');
+        $this->buatKreditDariPengajuan($db, $pidB, $margin, $adminId);
+        $this->createBuktiDP($db, $pidB, $dpPendingId, $dpMinimal, 'menunggu', $ktpFile);
 
-        // 3. MG-DEMO-CREDIT-READY — kredit, disetujui, DP terverifikasi
-        $this->upsertPengajuan($db, [
-            'kode_pesanan'      => 'MG-DEMO-CREDIT-READY',
-            'user_id'           => $demoUserId,
-            'produk_emas_id'    => $produkId,
+        // C. MG-DEMO-DP-READY: kredit, disetujui, DP terverifikasi
+        $pidC = $this->upsertPengajuan($db, [
+            'kode_pesanan'      => 'MG-DEMO-DP-READY',
+            'user_id'           => $dpReadyId,
+            'produk_emas_id'    => $pick(['MGD-003','MGD-005']),
             'metode_pembayaran' => 'kredit',
-            'nama'              => 'Nadiari Putri',
-            'no_telepon'        => '081234567890',
-            'alamat'            => 'Jl. Raya Ubud No. 123, Gianyar',
-            'tenor_bulan'       => 12,
+            'nama'              => 'Ketut DP Ready',
+            'no_telepon'        => '6281200000003',
+            'alamat'            => 'Jl. Raya Kerobokan No. 88, Badung',
+            'tenor_bulan'       => 6,
             'periode_angsuran'  => 'bulanan',
-            'uang_muka'         => 200000,
+            'uang_muka'         => $dpMinimal,
+            'foto_ktp'          => $ktpFile,
             'status'            => 'disetujui',
             'pembayaran_status' => 'terverifikasi',
+            'diverifikasi_pada' => $today->modify('-3 days')->format('Y-m-d H:i:s'),
+            'diverifikasi_oleh' => $adminId,
         ]);
+        $this->logAktivitas($db, $pidC, 'dibuat', 'Pesanan dibuat', 'pelanggan');
+        $this->logAktivitas($db, $pidC, 'diverifikasi', 'Pesanan disetujui admin', 'admin');
+        $this->buatKreditDariPengajuan($db, $pidC, $margin, $adminId);
+        $this->createBuktiDP($db, $pidC, $dpReadyId, $dpMinimal, 'terverifikasi', $ktpFile, $adminId);
 
-        // 4. MG-DEMO-CASH-WAIT — cash, disetujui, pembayaran menunggu
-        $this->upsertPengajuan($db, [
-            'kode_pesanan'      => 'MG-DEMO-CASH-WAIT',
-            'user_id'           => $demo2UserId,
-            'produk_emas_id'    => $produkId,
+        // D. MG-DEMO-NO-DP-READY: kredit DP 0, disetujui, siap kirim
+        $pidD = $this->upsertPengajuan($db, [
+            'kode_pesanan'      => 'MG-DEMO-NO-DP-READY',
+            'user_id'           => $pelangganId,
+            'produk_emas_id'    => $pick(['MGD-008']),
+            'metode_pembayaran' => 'kredit',
+            'nama'              => 'Putu Demo Pelanggan',
+            'no_telepon'        => '6281200000001',
+            'alamat'            => 'Jl. Tunjung Sari No. 12, Denpasar',
+            'tenor_bulan'       => 6,
+            'periode_angsuran'  => 'bulanan',
+            'uang_muka'         => 0,
+            'foto_ktp'          => $ktpFile,
+            'status'            => 'disetujui',
+            'pembayaran_status' => 'terverifikasi',
+            'diverifikasi_pada' => $today->modify('-1 day')->format('Y-m-d H:i:s'),
+            'diverifikasi_oleh' => $adminId,
+        ]);
+        $this->logAktivitas($db, $pidD, 'dibuat', 'Pesanan dibuat', 'pelanggan');
+        $this->logAktivitas($db, $pidD, 'diverifikasi', 'Pesanan disetujui admin', 'admin');
+        $this->buatKreditDariPengajuan($db, $pidD, $margin, $adminId);
+
+        // E. MG-DEMO-CASH-PENDING: cash, pembayaran belum terverifikasi
+        $pidE = $this->upsertPengajuan($db, [
+            'kode_pesanan'      => 'MG-DEMO-CASH-PENDING',
+            'user_id'           => $cashPendId,
+            'produk_emas_id'    => $pick(['MGD-006']),
             'metode_pembayaran' => 'cash',
-            'nama'              => 'Kadek Nadi',
-            'no_telepon'        => '089876543210',
-            'alamat'            => 'Jl. Sunset Road No. 456, Denpasar',
+            'nama'              => 'Wayan Cash Pending',
+            'no_telepon'        => '6281200000004',
+            'alamat'            => 'Jl. Seminyak No. 22, Badung',
             'status'            => 'disetujui',
             'pembayaran_status' => 'menunggu',
+            'diverifikasi_pada' => $today->modify('-1 day')->format('Y-m-d H:i:s'),
+            'diverifikasi_oleh' => $adminId,
         ]);
+        $this->logAktivitas($db, $pidE, 'dibuat', 'Pesanan dibuat', 'pelanggan');
+        $this->logAktivitas($db, $pidE, 'diverifikasi', 'Pesanan disetujui admin', 'admin');
+        $this->createBuktiCash($db, $pidE, $cashPendId, $this->getProdukHarga($produk, 'MGD-006'), 'menunggu');
 
-        // 5. MG-DEMO-CASH-READY — cash, disetujui, pembayaran terverifikasi
-        $this->upsertPengajuan($db, [
+        // F. MG-DEMO-CASH-READY: cash, pembayaran terverifikasi
+        $pidF = $this->upsertPengajuan($db, [
             'kode_pesanan'      => 'MG-DEMO-CASH-READY',
-            'user_id'           => $demo2UserId,
-            'produk_emas_id'    => $produkId,
+            'user_id'           => $cashReadyId,
+            'produk_emas_id'    => $pick(['MGD-007']),
             'metode_pembayaran' => 'cash',
-            'nama'              => 'Kadek Nadi',
-            'no_telepon'        => '089876543210',
-            'alamat'            => 'Jl. Sunset Road No. 456, Denpasar',
+            'nama'              => 'Nyoman Cash Ready',
+            'no_telepon'        => '6281200000005',
+            'alamat'            => 'Jl. Padma Utara No. 9, Denpasar',
             'status'            => 'disetujui',
             'pembayaran_status' => 'terverifikasi',
+            'diverifikasi_pada' => $today->modify('-2 days')->format('Y-m-d H:i:s'),
+            'diverifikasi_oleh' => $adminId,
         ]);
+        $this->logAktivitas($db, $pidF, 'dibuat', 'Pesanan dibuat', 'pelanggan');
+        $this->logAktivitas($db, $pidF, 'diverifikasi', 'Pesanan disetujui admin', 'admin');
+        $this->createBuktiCash($db, $pidF, $cashReadyId, $this->getProdukHarga($produk, 'MGD-007'), 'terverifikasi', $adminId);
 
-        // 6. MG-DEMO-SHIPPED-RESI — dikirim via resi
-        $this->upsertPengajuan($db, [
+        // G. MG-DEMO-SHIPPED-RESI: status dikirim, metode resi
+        $pidG = $this->upsertPengajuan($db, [
             'kode_pesanan'         => 'MG-DEMO-SHIPPED-RESI',
-            'user_id'              => $demoUserId,
-            'produk_emas_id'       => $produkId,
-            'metode_pembayaran'    => 'cash',
-            'nama'                 => 'Nadiari Putri',
-            'no_telepon'           => '081234567890',
-            'alamat'               => 'Jl. Raya Ubud No. 123, Gianyar',
+            'user_id'              => $shippedId,
+            'produk_emas_id'       => $pick(['MGD-001','MGD-003']),
+            'metode_pembayaran'    => 'kredit',
+            'nama'                 => 'Komang Shipped',
+            'no_telepon'           => '6281200000006',
+            'alamat'               => 'Jl. Gatot Subroto No. 15, Denpasar',
+            'tenor_bulan'          => 12,
+            'periode_angsuran'     => 'bulanan',
+            'uang_muka'            => $dpMinimal,
+            'foto_ktp'             => $ktpFile,
             'status'               => 'dikirim',
             'pembayaran_status'    => 'terverifikasi',
             'metode_pengiriman'    => 'resi',
             'referensi_pengiriman' => 'JNE-1234567890',
+            'diverifikasi_pada'    => $today->modify('-5 days')->format('Y-m-d H:i:s'),
+            'diverifikasi_oleh'    => $adminId,
             'dikirim_pada'         => $today->modify('-2 days')->format('Y-m-d H:i:s'),
             'dikirim_oleh'         => $adminId,
         ]);
+        $this->logAktivitas($db, $pidG, 'dibuat', 'Pesanan dibuat', 'pelanggan');
+        $this->logAktivitas($db, $pidG, 'diverifikasi', 'Pesanan disetujui', 'admin');
+        $this->logAktivitas($db, $pidG, 'dikirim', 'Pesanan dikirim via resi: JNE-1234567890', 'admin');
+        $this->buatKreditDariPengajuan($db, $pidG, $margin, $adminId);
+        $this->createBuktiDP($db, $pidG, $shippedId, $dpMinimal, 'terverifikasi', $ktpFile, $adminId);
 
-        // 7. MG-DEMO-SHIPPED-PHONE — dikirim via no HP
-        $this->upsertPengajuan($db, [
+        // H. MG-DEMO-SHIPPED-PHONE: status dikirim, metode no_hp
+        $pidH = $this->upsertPengajuan($db, [
             'kode_pesanan'         => 'MG-DEMO-SHIPPED-PHONE',
-            'user_id'              => $demo2UserId,
-            'produk_emas_id'       => $produkId,
+            'user_id'              => $doneId,
+            'produk_emas_id'       => $pick(['MGD-004']),
             'metode_pembayaran'    => 'cash',
-            'nama'                 => 'Kadek Nadi',
-            'no_telepon'           => '089876543210',
-            'alamat'               => 'Jl. Sunset Road No. 456, Denpasar',
+            'nama'                 => 'Putu Done',
+            'no_telepon'           => '6281200000007',
+            'alamat'               => 'Jl. Diponegoro No. 30, Denpasar',
             'status'               => 'dikirim',
             'pembayaran_status'    => 'terverifikasi',
             'metode_pengiriman'    => 'no_hp',
             'referensi_pengiriman' => '6281234567890',
+            'diverifikasi_pada'    => $today->modify('-4 days')->format('Y-m-d H:i:s'),
+            'diverifikasi_oleh'    => $adminId,
             'dikirim_pada'         => $today->modify('-1 day')->format('Y-m-d H:i:s'),
             'dikirim_oleh'         => $adminId,
         ]);
+        $this->logAktivitas($db, $pidH, 'dibuat', 'Pesanan dibuat', 'pelanggan');
+        $this->logAktivitas($db, $pidH, 'diverifikasi', 'Pesanan disetujui', 'admin');
+        $this->logAktivitas($db, $pidH, 'dikirim', 'Pesanan dikirim via no_hp: 6281234567890', 'admin');
+        $this->createBuktiCash($db, $pidH, $doneId, $this->getProdukHarga($produk, 'MGD-004'), 'terverifikasi', $adminId);
 
-        // 8. MG-DEMO-DONE — selesai
-        $this->upsertPengajuan($db, [
+        // I. MG-DEMO-DONE: status selesai
+        $pidI = $this->upsertPengajuan($db, [
             'kode_pesanan'         => 'MG-DEMO-DONE',
-            'user_id'              => $demoUserId,
-            'produk_emas_id'       => $produkId,
+            'user_id'              => $doneId,
+            'produk_emas_id'       => $pick(['MGD-005']),
             'metode_pembayaran'    => 'cash',
-            'nama'                 => 'Nadiari Putri',
-            'no_telepon'           => '081234567890',
-            'alamat'               => 'Jl. Raya Ubud No. 123, Gianyar',
+            'nama'                 => 'Putu Done',
+            'no_telepon'           => '6281200000007',
+            'alamat'               => 'Jl. Diponegoro No. 30, Denpasar',
             'status'               => 'selesai',
             'pembayaran_status'    => 'terverifikasi',
             'metode_pengiriman'    => 'resi',
@@ -163,47 +273,111 @@ class MahenGoldWorkflowSeeder extends CodeIgniter\Seeder
             'selesai_pada'         => $today->modify('-3 days')->format('Y-m-d H:i:s'),
             'selesai_oleh'         => $adminId,
         ]);
+        $this->logAktivitas($db, $pidI, 'dibuat', 'Pesanan dibuat', 'pelanggan');
+        $this->logAktivitas($db, $pidI, 'diverifikasi', 'Pesanan disetujui', 'admin');
+        $this->logAktivitas($db, $pidI, 'dikirim', 'Pesanan dikirim via resi', 'admin');
+        $this->logAktivitas($db, $pidI, 'selesai', 'Pesanan selesai', 'admin');
+        $this->createBuktiCash($db, $pidI, $doneId, $this->getProdukHarga($produk, 'MGD-005'), 'terverifikasi', $adminId);
 
-        // 9. MG-DEMO-REJECTED — ditolak
-        $this->upsertPengajuan($db, [
-            'kode_pesanan'  => 'MG-DEMO-REJECTED',
-            'user_id'       => $demo2UserId,
-            'produk_emas_id'=> $produkId,
+        // J. MG-DEMO-REJECTED: ditolak
+        $pidJ = $this->upsertPengajuan($db, [
+            'kode_pesanan'      => 'MG-DEMO-REJECTED',
+            'user_id'           => $rejectedId,
+            'produk_emas_id'    => $pick(['MGD-001']),
             'metode_pembayaran' => 'kredit',
-            'nama'          => 'Kadek Nadi',
-            'no_telepon'    => '089876543210',
-            'alamat'        => 'Jl. Sunset Road No. 456, Denpasar',
-            'tenor_bulan'   => 12,
-            'periode_angsuran' => 'bulanan',
-            'uang_muka'     => 200000,
-            'status'        => 'ditolak',
-            'catatan'       => 'Data KTP tidak sesuai dengan identitas nasabah.',
-            'ditolak_pada'  => $today->modify('-5 days')->format('Y-m-d H:i:s'),
-            'ditolak_oleh'  => $adminId,
+            'nama'              => 'Made Rejected',
+            'no_telepon'        => '6281200000008',
+            'alamat'            => 'Jl. Teuku Umar No. 5, Denpasar',
+            'tenor_bulan'       => 12,
+            'periode_angsuran'  => 'bulanan',
+            'uang_muka'         => $dpMinimal,
+            'status'            => 'ditolak',
+            'catatan'           => 'Data KTP tidak sesuai dengan identitas nasabah.',
+            'ditolak_pada'      => $today->modify('-5 days')->format('Y-m-d H:i:s'),
+            'ditolak_oleh'      => $adminId,
         ]);
+        $this->logAktivitas($db, $pidJ, 'dibuat', 'Pesanan dibuat', 'pelanggan');
+        $this->logAktivitas($db, $pidJ, 'ditolak', 'Data KTP tidak sesuai dengan identitas nasabah.', 'admin');
+
+        // K. MG-DEMO-CANCELLED-LEGACY: status dibatalkan
+        $pidK = $this->upsertPengajuan($db, [
+            'kode_pesanan'      => 'MG-DEMO-CANCELLED-LEGACY',
+            'user_id'           => $overdueId,
+            'produk_emas_id'    => $pick(['MGD-002']),
+            'metode_pembayaran' => 'cash',
+            'nama'              => 'Ketut Overdue',
+            'no_telepon'        => '6281200000009',
+            'alamat'            => 'Jl. By Pass Ngurah Rai No. 10, Denpasar',
+            'status'            => 'dibatalkan',
+            'catatan'           => 'Pesanan dibatalkan oleh pelanggan.',
+        ]);
+        $this->logAktivitas($db, $pidK, 'dibuat', 'Pesanan dibuat', 'pelanggan');
+        $this->logAktivitas($db, $pidK, 'dibatalkan', 'Pesanan dibatalkan oleh admin', 'admin');
+
+        // L. MG-DEMO-VERIFY-TODAY: data khusus untuk klik Verifikasi
+        $pidL = $this->upsertPengajuan($db, [
+            'kode_pesanan'      => 'MG-DEMO-VERIFY-TODAY',
+            'user_id'           => $pelangganId,
+            'produk_emas_id'    => $pick(['MGD-009','MGD-010']),
+            'metode_pembayaran' => 'kredit',
+            'nama'              => 'Putu Demo Pelanggan',
+            'no_telepon'        => '6281200000001',
+            'alamat'            => 'Jl. Tunjung Sari No. 12, Denpasar',
+            'tenor_bulan'       => 12,
+            'periode_angsuran'  => 'bulanan',
+            'uang_muka'         => $dpMinimal,
+            'foto_ktp'          => $ktpFile,
+            'status'            => 'baru',
+            'pembayaran_status' => 'menunggu',
+        ]);
+        $this->logAktivitas($db, $pidL, 'dibuat', 'Pesanan dibuat oleh pelanggan', 'pelanggan');
 
         // ============================================================
-        // 4. KREDIT DEMO (idempotent by pengajuan_id)
+        // 5. KREDIT DEMO SCENARIOS
         // ============================================================
-        $this->createDemoKredit($db, $nasabah1, $produkId, $today, $adminId);
+        $calculator = new CreditCalculatorService();
 
-        log_message('info', 'MahenGoldWorkflowSeeder completed.');
+        // 5a. Kredit aktif lancar — beberapa cicilan sudah dibayar
+        $this->seedKreditLancar($db, $nsbPelanggan, $produk, $calculator, $margin, $dpMinimal, $today, $adminId);
+
+        // 5b. Kredit H-3 jatuh tempo — cicilan pertama jatuh tempo 3 hari lagi
+        $this->seedKreditH3($db, $nsbDpReady, $produk, $calculator, $margin, $dpMinimal, $today, $adminId);
+
+        // 5c. Kredit jatuh tempo hari ini
+        $this->seedKreditJatuhTempo($db, $nsbDpPend, $produk, $calculator, $margin, $dpMinimal, $today, $adminId);
+
+        // 5d. Kredit terlambat 7 hari
+        $this->seedKreditTerlambat($db, $nsbOverdue, $produk, $calculator, $margin, $dpMinimal, $today, $adminId, 7);
+
+        // 5e. Kredit terlambat 30 hari
+        $this->seedKreditTerlambat($db, $nsbOverdue, $produk, $calculator, $margin, $dpMinimal, $today, $adminId, 30);
+
+        // 5f. Kredit pembayaran sebagian
+        $this->seedKreditSebagian($db, $nsbCashPend, $produk, $calculator, $margin, $dpMinimal, $today, $adminId);
+
+        // 5g. Kredit pembayaran lebih awal
+        $this->seedKreditLebihAwal($db, $nsbCashReady, $produk, $calculator, $margin, $dpMinimal, $today, $adminId);
+
+        // 5h. Kredit — satu pembayaran melunasi dua jadwal
+        $this->seedKreditMultiJadwal($db, $nsbShipped, $produk, $calculator, $margin, $dpMinimal, $today, $adminId);
+
+        // 5i. Kredit lunas
+        $this->seedKreditLunas($db, $nsbLunas, $produk, $calculator, $margin, $dpMinimal, $today, $adminId);
+
+        // 5j. Kredit dibatalkan legacy
+        $this->seedKreditDibatalkan($db, $nsbRejected, $produk, $calculator, $margin, $dpMinimal, $today, $adminId);
+
+        log_message('info', 'MahenGoldWorkflowSeeder completed — ' . count($db->table('pengajuan')->get()->getResultArray()) . ' pengajuan, ' . $db->table('kredit')->countAllResults() . ' kredit');
     }
 
-    protected function upsertUser($db, string $email, string $nama, string $password, string $role): int
+    // ================================================================
+    // UPSERT HELPERS
+    // ================================================================
+
+    protected function upsertUser($db, string $email): int
     {
         $existing = $db->table('users')->where('email', $email)->get()->getRowArray();
-        if ($existing) {
-            return (int) $existing['id'];
-        }
-
-        $db->table('users')->insert([
-            'email'         => $email,
-            'nama'          => $nama,
-            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-            'role'          => $role,
-        ]);
-        return (int) $db->insertID();
+        return $existing ? (int) $existing['id'] : (int) $db->insertID();
     }
 
     protected function upsertNasabah($db, int $userId, string $nama, string $noTelepon): int
@@ -212,7 +386,6 @@ class MahenGoldWorkflowSeeder extends CodeIgniter\Seeder
         if ($existing) {
             return (int) $existing['id'];
         }
-
         $db->table('nasabah')->insert([
             'kode_nasabah' => 'NSB-' . str_pad((string) ($db->table('nasabah')->countAllResults() + 1), 4, '0', STR_PAD_LEFT),
             'user_id'      => $userId,
@@ -229,97 +402,482 @@ class MahenGoldWorkflowSeeder extends CodeIgniter\Seeder
         if ($existing) {
             return (int) $existing['id'];
         }
-
         $db->table('pengajuan')->insert($data);
         return (int) $db->insertID();
     }
 
-    protected function createDemoKredit($db, int $nasabahId, int $produkId, \DateTimeImmutable $today, int $adminId): void
+    protected function pickProduk(array $produk, array $codes): int
     {
-        $produk = $db->table('produk_emas')->where('id', $produkId)->get()->getRowArray();
-        if (!$produk) return;
+        foreach ($codes as $code) {
+            if (isset($produk[$code])) {
+                return (int) $produk[$code]['id'];
+            }
+        }
+        return (int) reset($produk)['id'];
+    }
 
-        $calculator = new \App\Services\CreditCalculatorService();
-        $pengaturan = (new \App\Models\PengaturanSistemModel())->getPengaturan();
-        $margin = (float) $pengaturan['margin_default'];
-        $uangMuka = (int) $pengaturan['dp_minimal'];
+    protected function getProdukHarga(array $produk, string $kode): int
+    {
+        return isset($produk[$kode]) ? (int) $produk[$kode]['harga_pokok'] : 1500000;
+    }
 
-        // 1. Kredit aktif lancar
-        $this->createOneKredit($db, $nasabahId, $produk, $calculator, $margin, $uangMuka, $today, $adminId, 'MG-KR-ACTIVE', [
-            'status' => 'aktif',
-            'total_terbayar' => 500000,
-        ]);
+    // ================================================================
+    // AKTIVITAS & BUKTI HELPERS
+    // ================================================================
 
-        // 2. Kredit H-3
-        $h3 = $today->modify('+3 days');
-        $this->createOneKredit($db, $nasabahId, $produk, $calculator, $margin, $uangMuka, $today, $adminId, 'MG-KR-H3', [
-            'status' => 'aktif',
-            'total_terbayar' => 0,
-            'jadwal_pertama' => $h3->format('Y-m-d'),
-        ]);
-
-        // 3. Kredit terlambat 7 hari
-        $terlambat = $today->modify('-7 days');
-        $this->createOneKredit($db, $nasabahId, $produk, $calculator, $margin, $uangMuka, $today, $adminId, 'MG-KR-OVERDUE', [
-            'status' => 'aktif',
-            'total_terbayar' => 0,
-            'jadwal_pertama' => $terlambat->modify('-1 month')->format('Y-m-d'),
-        ]);
-
-        // 4. Kredit lunas
-        $kalkulasi = $calculator->calculate($produk['harga_pokok'], $margin, 12, 'bulanan', $uangMuka);
-        $this->createOneKredit($db, $nasabahId, $produk, $calculator, $margin, $uangMuka, $today, $adminId, 'MG-KR-PAID', [
-            'status' => 'lunas',
-            'total_terbayar' => $kalkulasi['sisa_pokok'],
+    protected function logAktivitas($db, int $pengajuanId, string $aksi, string $keterangan, string $aktor): void
+    {
+        $db->table('pengajuan_aktivitas')->insert([
+            'pengajuan_id' => $pengajuanId,
+            'aksi'         => $aksi,
+            'keterangan'   => $keterangan,
+            'aktor'        => $aktor,
         ]);
     }
 
-    protected function createOneKredit($db, int $nasabahId, array $produk, $calculator, float $margin, int $uangMuka, \DateTimeImmutable $today, int $adminId, string $kode, array $overrides): void
+    protected function createBuktiDP($db, int $pengajuanId, int $userId, int $nominal, string $status, string $ktpFile, ?int $adminId = null): void
     {
-        $existing = $db->table('kredit')->where('kode_kredit', $kode)->get()->getRowArray();
-        if ($existing) return;
+        $file = 'demo_bukti_dp_' . $pengajuanId . '.png';
+        $this->writeDemoImage(WRITEPATH . 'uploads/bukti/' . $file, 'BUKTI DP #' . $pengajuanId, 'Ref: ' . $pengajuanId);
 
-        $kalkulasi = $calculator->calculate($produk['harga_pokok'], $margin, 12, 'bulanan', $uangMuka);
-        $jadwalPertama = ($overrides['jadwal_pertama'] ?? null) ?: $today->modify('+1 month')->format('Y-m-d');
+        $data = [
+            'tipe'          => 'dp',
+            'pengajuan_id'  => $pengajuanId,
+            'user_id'       => $userId,
+            'nominal'       => $nominal,
+            'nama_pengirim' => 'Demo Pelanggan',
+            'no_rekening'   => '1234567890',
+            'bank_pengirim' => 'BCA',
+            'file_path'     => $file,
+            'status'        => $status,
+        ];
+        if ($status === 'terverifikasi' && $adminId) {
+            $data['diverifikasi_oleh'] = $adminId;
+            $data['diverifikasi_pada'] = date('Y-m-d H:i:s');
+        }
+        $bid = $db->table('bukti_pembayaran')->insert($data);
+        if ($bid) {
+            $id = (int) $db->insertID();
+            $db->table('bukti_pembayaran')->where('id', $id)->update(['kode' => generate_kode('BKT', $id)]);
+        }
+    }
+
+    protected function createBuktiCash($db, int $pengajuanId, int $userId, int $nominal, string $status, ?int $adminId = null): void
+    {
+        $file = 'demo_bukti_cash_' . $pengajuanId . '.png';
+        $this->writeDemoImage(WRITEPATH . 'uploads/bukti/' . $file, 'BUKTI CASH #' . $pengajuanId, 'Ref: ' . $pengajuanId);
+
+        $data = [
+            'tipe'          => 'cash',
+            'pengajuan_id'  => $pengajuanId,
+            'user_id'       => $userId,
+            'nominal'       => $nominal,
+            'nama_pengirim' => 'Demo Pelanggan',
+            'no_rekening'   => '1234567890',
+            'bank_pengirim' => 'BCA',
+            'file_path'     => $file,
+            'status'        => $status,
+        ];
+        if ($status === 'terverifikasi' && $adminId) {
+            $data['diverifikasi_oleh'] = $adminId;
+            $data['diverifikasi_pada'] = date('Y-m-d H:i:s');
+        }
+        $bid = $db->table('bukti_pembayaran')->insert($data);
+        if ($bid) {
+            $id = (int) $db->insertID();
+            $db->table('bukti_pembayaran')->where('id', $id)->update(['kode' => generate_kode('BKT', $id)]);
+        }
+    }
+
+    // ================================================================
+    // KREDIT CREATION HELPERS
+    // ================================================================
+
+    /**
+     * Create a kredit + jadwal angsuran, idempotent by kode_kredit.
+     */
+    protected function createKredit(
+        $db,
+        int $nasabahId,
+        int $produkId,
+        $calculator,
+        float $margin,
+        int $uangMuka,
+        \DateTimeImmutable $today,
+        int $adminId,
+        string $kode,
+        string $jadwalPertama,
+        array $overrides = []
+    ): ?int {
+        $existing = $db->table('kredit')->where('kode_kredit', $kode)->get()->getRowArray();
+        if ($existing) {
+            return (int) $existing['id'];
+        }
+
+        $produk = $db->table('produk_emas')->where('id', $produkId)->get()->getRowArray();
+        if (!$produk) {
+            return null;
+        }
+
+        $kalkulasi = $calculator->calculate((float) $produk['harga_pokok'], $margin, 12, 'bulanan', $uangMuka);
 
         $totalTerbayar = $overrides['total_terbayar'] ?? 0;
-        $sisaPiutang = max(0, $kalkulasi['sisa_pokok'] - $totalTerbayar);
+        $sisaPokok = (int) $kalkulasi['sisa_pokok'];
+        $sisaPiutang = max(0, $sisaPokok - $totalTerbayar);
+        $status = $overrides['status'] ?? 'aktif';
 
         $db->table('kredit')->insert([
             'kode_kredit'          => $kode,
+            'pengajuan_id'         => $overrides['pengajuan_id'] ?? null,
             'nasabah_id'           => $nasabahId,
-            'produk_emas_id'       => $produk['id'],
+            'produk_emas_id'       => $produkId,
             'tanggal_kredit'       => $today->format('Y-m-d'),
             'harga_pokok_snapshot' => $kalkulasi['harga_pokok'],
             'margin_persen'        => $kalkulasi['margin_persen'],
             'margin_nominal'       => $kalkulasi['margin_nominal'],
             'total_harga_kredit'   => $kalkulasi['total_harga_kredit'],
             'uang_muka'            => $uangMuka,
-            'sisa_pokok_kredit'    => $kalkulasi['sisa_pokok'],
+            'sisa_pokok_kredit'    => $sisaPokok,
             'tenor_bulan'          => 12,
             'periode_angsuran'     => 'bulanan',
             'jumlah_periode'       => $kalkulasi['jumlah_periode'],
             'nominal_angsuran'     => $kalkulasi['nominal_angsuran'],
             'total_terbayar'       => $totalTerbayar,
             'sisa_piutang'         => $sisaPiutang,
-            'status'               => $overrides['status'] ?? 'aktif',
+            'status'               => $status,
         ]);
-
         $kreditId = (int) $db->insertID();
 
         // Generate jadwal
         $jadwal = $calculator->generateSchedule($jadwalPertama, $kalkulasi);
         foreach ($jadwal as &$j) {
             $j['kredit_id'] = $kreditId;
-            // Mark first N schedules as paid if total_terbayar > 0
-            if ($totalTerbayar > 0) {
-                $paid = min($totalTerbayar, (float) $j['nominal_tagihan']);
-                $j['nominal_dibayar'] = $paid;
-                $j['status'] = $paid >= $j['nominal_tagihan'] ? 'dibayar' : 'sebagian';
-                $totalTerbayar -= $paid;
-            }
         }
         unset($j);
         $db->table('jadwal_angsuran')->insertBatch($jadwal);
+
+        return $kreditId;
+    }
+
+    /**
+     * Buat kredit dari pengajuan — mimics CreditTransactionService::createFromPengajuan
+     */
+    protected function buatKreditDariPengajuan($db, int $pengajuanId, float $margin, int $adminId): void
+    {
+        $pengajuan = $db->table('pengajuan')->where('id', $pengajuanId)->get()->getRowArray();
+        if (!$pengajuan || ($pengajuan['metode_pembayaran'] ?? '') !== 'kredit') {
+            return;
+        }
+
+        // Skip if kredit already exists for this pengajuan
+        $existing = $db->table('kredit')->where('pengajuan_id', $pengajuanId)->get()->getRowArray();
+        if ($existing) {
+            return;
+        }
+
+        $produk = $db->table('produk_emas')->where('id', $pengajuan['produk_emas_id'])->get()->getRowArray();
+        if (!$produk) {
+            return;
+        }
+
+        $calculator = new CreditCalculatorService();
+        $tenor    = (int) ($pengajuan['tenor_bulan'] ?: 12);
+        $periode  = (string) ($pengajuan['periode_angsuran'] ?: 'bulanan');
+        $uangMuka = (int) ($pengajuan['uang_muka'] ?? 0);
+        $kalkulasi = $calculator->calculate((float) $produk['harga_pokok'], $margin, $tenor, $periode, $uangMuka);
+
+        $jatuhTempoPertama = $periode === 'mingguan'
+            ? date('Y-m-d', strtotime('+7 day'))
+            : date('Y-m-d', strtotime('+1 month'));
+
+        $sisaPokok = (int) $kalkulasi['sisa_pokok'];
+
+        // Find nasabah for this user — required by FK
+        $nasabah = $db->table('nasabah')->where('user_id', $pengajuan['user_id'])->get()->getRowArray();
+        if (!$nasabah) {
+            // Auto-create nasabah
+            $nsbId = $db->table('nasabah')->insert([
+                'kode_nasabah' => 'NSB-' . str_pad((string) ($db->table('nasabah')->countAllResults() + 1), 4, '0', STR_PAD_LEFT),
+                'user_id'      => $pengajuan['user_id'],
+                'nama'         => $pengajuan['nama'] ?? 'Auto Nasabah',
+                'no_telepon'   => $pengajuan['no_telepon'] ?? '',
+                'alamat'       => $pengajuan['alamat'] ?? '-',
+            ]);
+            $nasabahId = (int) $db->insertID();
+            $db->table('nasabah')->where('id', $nasabahId)->update(['kode_nasabah' => generate_kode('NSB', $nasabahId)]);
+        } else {
+            $nasabahId = (int) $nasabah['id'];
+        }
+
+        $db->table('kredit')->insert([
+            'kode_kredit'          => 'PENDING',
+            'pengajuan_id'         => $pengajuanId,
+            'nasabah_id'           => $nasabahId,
+            'produk_emas_id'       => $produk['id'],
+            'tanggal_kredit'       => date('Y-m-d'),
+            'harga_pokok_snapshot' => $kalkulasi['harga_pokok'],
+            'margin_persen'        => $kalkulasi['margin_persen'],
+            'margin_nominal'       => $kalkulasi['margin_nominal'],
+            'total_harga_kredit'   => $kalkulasi['total_harga_kredit'],
+            'uang_muka'            => $uangMuka,
+            'sisa_pokok_kredit'    => $sisaPokok,
+            'tenor_bulan'          => $tenor,
+            'periode_angsuran'     => $periode,
+            'jumlah_periode'       => $kalkulasi['jumlah_periode'],
+            'nominal_angsuran'     => $kalkulasi['nominal_angsuran'],
+            'total_terbayar'       => 0,
+            'sisa_piutang'         => $sisaPokok,
+            'status'               => 'aktif',
+            'catatan'              => 'Auto dari pesanan ' . ($pengajuan['kode_pesanan'] ?? ''),
+        ]);
+        $kreditId = (int) $db->insertID();
+        $db->table('kredit')->where('id', $kreditId)->update(['kode_kredit' => generate_kode('KRD', $kreditId)]);
+
+        $jadwal = $calculator->generateSchedule($jatuhTempoPertama, $kalkulasi);
+        foreach ($jadwal as &$j) {
+            $j['kredit_id'] = $kreditId;
+        }
+        unset($j);
+        $db->table('jadwal_angsuran')->insertBatch($jadwal);
+
+        // Decrement stock
+        $stok = (int) $produk['stok'];
+        if ($stok > 0) {
+            $db->table('produk_emas')->where('id', $produk['id'])->update(['stok' => $stok - 1]);
+        }
+    }
+
+    // ================================================================
+    // KREDIT SCENARIO HELPERS
+    // ================================================================
+
+    protected function seedKreditLancar($db, int $nasabahId, array $produk, $calculator, float $margin, int $dp, \DateTimeImmutable $today, int $adminId): void
+    {
+        $p = reset($produk);
+        $jadwalPertama = $today->modify('-30 days')->format('Y-m-d');
+        $kreditId = $this->createKredit($db, $nasabahId, (int) $p['id'], $calculator, $margin, $dp, $today, $adminId, 'MG-KR-ACTIVE', $jadwalPertama, [
+            'status' => 'aktif',
+        ]);
+        if (!$kreditId) return;
+
+        // Pay first 2 installments
+        $schedules = $db->table('jadwal_angsuran')->where('kredit_id', $kreditId)->orderBy('angsuran_ke', 'ASC')->get()->getResultArray();
+        $totalPaid = 0;
+        for ($i = 0; $i < min(2, count($schedules)); $i++) {
+            $nominal = (int) round((float) $schedules[$i]['nominal_tagihan']);
+            $db->table('jadwal_angsuran')->where('id', $schedules[$i]['id'])->update([
+                'nominal_dibayar' => $nominal,
+                'status'          => 'dibayar',
+                'tanggal_dibayar' => $schedules[$i]['tanggal_jatuh_tempo'],
+            ]);
+            $totalPaid += $nominal;
+        }
+        // Read sisa_pokok_kredit from the kredit row (set correctly by createKredit)
+        $kreditRow = $db->table('kredit')->where('id', $kreditId)->get()->getRowArray();
+        $sisaPokokKredit = (int) round((float) ($kreditRow['sisa_pokok_kredit'] ?? 0));
+        $db->table('kredit')->where('id', $kreditId)->update([
+            'total_terbayar' => $totalPaid,
+            'sisa_piutang'   => max(0, $sisaPokokKredit - $totalPaid),
+        ]);
+    }
+
+    protected function seedKreditH3($db, int $nasabahId, array $produk, $calculator, float $margin, int $dp, \DateTimeImmutable $today, int $adminId): void
+    {
+        $p = reset($produk);
+        $jadwalPertama = $today->modify('+3 days')->format('Y-m-d');
+        $this->createKredit($db, $nasabahId, (int) $p['id'], $calculator, $margin, $dp, $today, $adminId, 'MG-KR-H3', $jadwalPertama, [
+            'status' => 'aktif',
+        ]);
+    }
+
+    protected function seedKreditJatuhTempo($db, int $nasabahId, array $produk, $calculator, float $margin, int $dp, \DateTimeImmutable $today, int $adminId): void
+    {
+        $p = reset($produk);
+        $jadwalPertama = $today->format('Y-m-d');
+        $this->createKredit($db, $nasabahId, (int) $p['id'], $calculator, $margin, $dp, $today, $adminId, 'MG-KR-JT-TODAY', $jadwalPertama, [
+            'status' => 'aktif',
+        ]);
+    }
+
+    protected function seedKreditTerlambat($db, int $nasabahId, array $produk, $calculator, float $margin, int $dp, \DateTimeImmutable $today, int $adminId, int $daysOverdue): void
+    {
+        $p = reset($produk);
+        $kode = 'MG-KR-OVERDUE-' . $daysOverdue;
+        $jadwalPertama = $today->modify("-{$daysOverdue} days -1 month")->format('Y-m-d');
+        $kreditId = $this->createKredit($db, $nasabahId, (int) $p['id'], $calculator, $margin, $dp, $today, $adminId, $kode, $jadwalPertama, [
+            'status' => 'aktif',
+        ]);
+        if (!$kreditId) return;
+
+        // Mark first installment as overdue
+        $schedules = $db->table('jadwal_angsuran')->where('kredit_id', $kreditId)->orderBy('angsuran_ke', 'ASC')->get()->getResultArray();
+        if (!empty($schedules[0])) {
+            $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
+                'status' => 'terlambat',
+            ]);
+        }
+    }
+
+    protected function seedKreditSebagian($db, int $nasabahId, array $produk, $calculator, float $margin, int $dp, \DateTimeImmutable $today, int $adminId): void
+    {
+        $p = reset($produk);
+        $jadwalPertama = $today->modify('-45 days')->format('Y-m-d');
+        $kreditId = $this->createKredit($db, $nasabahId, (int) $p['id'], $calculator, $margin, $dp, $today, $adminId, 'MG-KR-SEBAGIAN', $jadwalPertama, [
+            'status' => 'aktif',
+        ]);
+        if (!$kreditId) return;
+
+        $schedules = $db->table('jadwal_angsuran')->where('kredit_id', $kreditId)->orderBy('angsuran_ke', 'ASC')->get()->getResultArray();
+        if (!empty($schedules[0])) {
+            $tagihan = (int) round((float) $schedules[0]['nominal_tagihan']);
+            $bayar = (int) ($tagihan * 0.5); // Pay 50%
+            $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
+                'nominal_dibayar' => $bayar,
+                'status'          => 'sebagian',
+                'tanggal_dibayar' => date('Y-m-d'),
+            ]);
+            $kreditRow = $db->table('kredit')->where('id', $kreditId)->get()->getRowArray();
+            $sisaPokokKredit = (int) round((float) ($kreditRow['sisa_pokok_kredit'] ?? 0));
+            $db->table('kredit')->where('id', $kreditId)->update([
+                'total_terbayar' => $bayar,
+                'sisa_piutang'   => max(0, $sisaPokokKredit - $bayar),
+            ]);
+        }
+    }
+
+    protected function seedKreditLebihAwal($db, int $nasabahId, array $produk, $calculator, float $margin, int $dp, \DateTimeImmutable $today, int $adminId): void
+    {
+        $p = reset($produk);
+        $jadwalPertama = $today->modify('+20 days')->format('Y-m-d');
+        $kreditId = $this->createKredit($db, $nasabahId, (int) $p['id'], $calculator, $margin, $dp, $today, $adminId, 'MG-KR-EARLY', $jadwalPertama, [
+            'status' => 'aktif',
+        ]);
+        if (!$kreditId) return;
+
+        // Pay first installment early (before due date)
+        $schedules = $db->table('jadwal_angsuran')->where('kredit_id', $kreditId)->orderBy('angsuran_ke', 'ASC')->get()->getResultArray();
+        if (!empty($schedules[0])) {
+            $nominal = (int) round((float) $schedules[0]['nominal_tagihan']);
+            $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
+                'nominal_dibayar' => $nominal,
+                'status'          => 'dibayar',
+                'tanggal_dibayar' => date('Y-m-d'),
+            ]);
+            $kreditRow = $db->table('kredit')->where('id', $kreditId)->get()->getRowArray();
+            $sisaPokokKredit = (int) round((float) ($kreditRow['sisa_pokok_kredit'] ?? 0));
+            $db->table('kredit')->where('id', $kreditId)->update([
+                'total_terbayar' => $nominal,
+                'sisa_piutang'   => max(0, $sisaPokokKredit - $nominal),
+            ]);
+        }
+    }
+
+    protected function seedKreditMultiJadwal($db, int $nasabahId, array $produk, $calculator, float $margin, int $dp, \DateTimeImmutable $today, int $adminId): void
+    {
+        $p = reset($produk);
+        $jadwalPertama = $today->modify('-60 days')->format('Y-m-d');
+        $kreditId = $this->createKredit($db, $nasabahId, (int) $p['id'], $calculator, $margin, $dp, $today, $adminId, 'MG-KR-MULTI', $jadwalPertama, [
+            'status' => 'aktif',
+        ]);
+        if (!$kreditId) return;
+
+        $schedules = $db->table('jadwal_angsuran')->where('kredit_id', $kreditId)->orderBy('angsuran_ke', 'ASC')->get()->getResultArray();
+        if (count($schedules) >= 2) {
+            // One payment covers 2 schedules
+            $nominal1 = (int) round((float) $schedules[0]['nominal_tagihan']);
+            $nominal2 = (int) round((float) $schedules[1]['nominal_tagihan']);
+            $totalBayar = $nominal1 + $nominal2;
+
+            foreach ([$schedules[0], $schedules[1]] as $s) {
+                $n = (int) round((float) $s['nominal_tagihan']);
+                $db->table('jadwal_angsuran')->where('id', $s['id'])->update([
+                    'nominal_dibayar' => $n,
+                    'status'          => 'dibayar',
+                    'tanggal_dibayar' => date('Y-m-d'),
+                ]);
+            }
+            $kreditRow = $db->table('kredit')->where('id', $kreditId)->get()->getRowArray();
+            $sisaPokokKredit = (int) round((float) ($kreditRow['sisa_pokok_kredit'] ?? 0));
+            $db->table('kredit')->where('id', $kreditId)->update([
+                'total_terbayar' => $totalBayar,
+                'sisa_piutang'   => max(0, $sisaPokokKredit - $totalBayar),
+            ]);
+        }
+    }
+
+    protected function seedKreditLunas($db, int $nasabahId, array $produk, $calculator, float $margin, int $dp, \DateTimeImmutable $today, int $adminId): void
+    {
+        $p = reset($produk);
+        $jadwalPertama = $today->modify('-365 days')->format('Y-m-d');
+        $kalkulasi = $calculator->calculate((float) $p['harga_pokok'], $margin, 12, 'bulanan', $dp);
+        $kreditId = $this->createKredit($db, $nasabahId, (int) $p['id'], $calculator, $margin, $dp, $today, $adminId, 'MG-KR-LUNAS', $jadwalPertama, [
+            'status' => 'aktif',
+        ]);
+        if (!$kreditId) return;
+
+        // Mark all schedules as paid
+        $schedules = $db->table('jadwal_angsuran')->where('kredit_id', $kreditId)->get()->getResultArray();
+        $totalPaid = 0;
+        foreach ($schedules as $s) {
+            $nominal = (int) round((float) $s['nominal_tagihan']);
+            $db->table('jadwal_angsuran')->where('id', $s['id'])->update([
+                'nominal_dibayar' => $nominal,
+                'status'          => 'dibayar',
+                'tanggal_dibayar' => $s['tanggal_jatuh_tempo'],
+            ]);
+            $totalPaid += $nominal;
+        }
+        $db->table('kredit')->where('id', $kreditId)->update([
+            'total_terbayar' => $totalPaid,
+            'sisa_piutang'   => 0,
+            'status'         => 'lunas',
+        ]);
+    }
+
+    protected function seedKreditDibatalkan($db, int $nasabahId, array $produk, $calculator, float $margin, int $dp, \DateTimeImmutable $today, int $adminId): void
+    {
+        $p = reset($produk);
+        $jadwalPertama = $today->modify('-30 days')->format('Y-m-d');
+        $this->createKredit($db, $nasabahId, (int) $p['id'], $calculator, $margin, $dp, $today, $adminId, 'MG-KR-CANCELLED', $jadwalPertama, [
+            'status' => 'dibatalkan',
+        ]);
+    }
+
+    // ================================================================
+    // IMAGE HELPER
+    // ================================================================
+
+    protected function writeDemoImage(string $path, string $judul, string $sub): void
+    {
+        if (is_file($path)) {
+            return;
+        }
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        if (!is_file($dir . '/index.html')) {
+            @file_put_contents($dir . '/index.html', '');
+        }
+
+        if (function_exists('imagecreatetruecolor')) {
+            $img  = imagecreatetruecolor(640, 400);
+            $bg   = imagecolorallocate($img, 28, 26, 23);
+            $gold = imagecolorallocate($img, 201, 162, 75);
+            $soft = imagecolorallocate($img, 156, 147, 133);
+            imagefilledrectangle($img, 0, 0, 640, 400, $bg);
+            imagefilledrectangle($img, 0, 0, 640, 64, imagecolorallocate($img, 18, 17, 15));
+            imagestring($img, 5, 24, 24, 'MahenGold', $gold);
+            imagestring($img, 4, 24, 150, $judul, $gold);
+            imagestring($img, 3, 24, 185, 'Ref: ' . $sub, $soft);
+            imagestring($img, 2, 24, 360, 'Gambar contoh data demo.', $soft);
+            imagepng($img, $path);
+            imagedestroy($img);
+            return;
+        }
+
+        @file_put_contents($path, base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+        ));
     }
 }

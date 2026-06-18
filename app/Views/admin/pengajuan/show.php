@@ -160,9 +160,39 @@ $relatif = static function ($datetime): string {
                 </button>
 
             <?php elseif ($pengajuan['status'] === 'disetujui'): ?>
-                <button type="button" class="btn btn-gold rounded-pill w-100 mb-2" id="btnKirim">
-                    <i class="bi bi-truck"></i> Kirim Pesanan
-                </button>
+                <?php
+                $payStatus = $pengajuan['pembayaran_status'] ?? 'belum';
+                $metode    = $pengajuan['metode_pembayaran'] ?? 'cash';
+                $uangMuka  = (int) ($pengajuan['uang_muka'] ?? 0);
+                $bisaKirim = false;
+                $kirimReason = '';
+
+                if ($metode === 'cash') {
+                    if ($payStatus === 'terverifikasi') {
+                        $bisaKirim = true;
+                    } else {
+                        $kirimReason = 'Pembayaran cash belum terverifikasi. Verifikasi pembayaran terlebih dahulu.';
+                    }
+                } elseif ($metode === 'kredit') {
+                    if ($uangMuka > 0 && $payStatus !== 'terverifikasi') {
+                        $kirimReason = 'DP belum terverifikasi. Verifikasi pembayaran DP terlebih dahulu.';
+                    } else {
+                        $bisaKirim = true;
+                    }
+                }
+                ?>
+                <?php if ($bisaKirim): ?>
+                    <button type="button" class="btn btn-gold rounded-pill w-100 mb-2" id="btnKirim">
+                        <i class="bi bi-truck"></i> Kirim Pesanan
+                    </button>
+                <?php else: ?>
+                    <button type="button" class="btn btn-secondary rounded-pill w-100 mb-2" disabled>
+                        <i class="bi bi-truck"></i> Kirim Pesanan
+                    </button>
+                    <div class="alert alert-warning mb-0 small">
+                        <i class="bi bi-exclamation-triangle"></i> <?= esc($kirimReason); ?>
+                    </div>
+                <?php endif; ?>
 
             <?php elseif ($pengajuan['status'] === 'dikirim'): ?>
                 <button type="button" class="btn btn-gold rounded-pill w-100" id="btnSelesai">

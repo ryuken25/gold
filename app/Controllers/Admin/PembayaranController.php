@@ -100,7 +100,7 @@ class PembayaranController extends BaseAdminController
         ];
 
         if (!$this->validate($rules)) {
-            return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
+            return $this->respondError('Validasi gagal: ' . implode(', ', $this->validator->getErrors()), 422, $this->validator->getErrors());
         }
 
         try {
@@ -113,13 +113,14 @@ class PembayaranController extends BaseAdminController
                 'keterangan'         => $this->request->getPost('keterangan'),
             ], (int) current_admin()['id']);
 
-            // Kirim email notifikasi
             $this->kirimNotifPembayaran($result['payment']);
 
-            return redirect()->to('/admin/kredit/' . $result['credit']['id'])
-                ->with('success', 'Pembayaran berhasil dicatat. Kode: ' . $result['payment']['kode_pembayaran']);
+            return $this->respondSuccess(
+                'Pembayaran berhasil dicatat. Kode: ' . $result['payment']['kode_pembayaran'],
+                '/admin/kredit/' . $result['credit']['id']
+            );
         } catch (\Throwable $e) {
-            return redirect()->back()->withInput()->with('error', 'Gagal mencatat pembayaran: ' . $e->getMessage());
+            return $this->respondError('Gagal mencatat pembayaran: ' . $e->getMessage(), 400);
         }
     }
 
@@ -130,12 +131,11 @@ class PembayaranController extends BaseAdminController
             throw PageNotFoundException::forPageNotFound('Bukti pembayaran tidak ditemukan.');
         }
         if ($bukti['status'] !== 'menunggu') {
-            return redirect()->to('/admin/pembayaran')->with('error', 'Bukti ini sudah diproses.');
+            return $this->respondError('Bukti ini sudah diproses.', 409);
         }
 
         try {
             if ($bukti['tipe'] === 'cicilan') {
-                // Nominal sudah fix (= tagihan angsuran). Auto-catat pembayaran.
                 $this->paymentService->record([
                     'kredit_id'          => $bukti['kredit_id'],
                     'jadwal_angsuran_id' => $bukti['jadwal_angsuran_id'],
@@ -146,15 +146,12 @@ class PembayaranController extends BaseAdminController
                     'bukti_pembayaran_id'=> $bukti['id'],
                 ], (int) current_admin()['id']);
             } elseif ($bukti['tipe'] === 'dp') {
-                // DP: tandai uang muka diterima. Status pesanan tetap.
                 if ($bukti['pengajuan_id']) {
                     (new PengajuanModel())->update($bukti['pengajuan_id'], [
                         'pembayaran_status' => 'terverifikasi',
                     ]);
                 }
             } else {
-                // UPDATED: Cash — tandai pembayaran terverifikasi, tapi JANGAN langsung selesai.
-                // Admin harus menekan "Kirim" lalu "Done" untuk menyelesaikan.
                 if ($bukti['pengajuan_id']) {
                     (new PengajuanModel())->update($bukti['pengajuan_id'], [
                         'pembayaran_status' => 'terverifikasi',
@@ -168,12 +165,12 @@ class PembayaranController extends BaseAdminController
                 'diverifikasi_pada' => date('Y-m-d H:i:s'),
             ]);
         } catch (Throwable $e) {
-            return redirect()->to('/admin/pembayaran')->with('error', 'Gagal memverifikasi: ' . $e->getMessage());
+            return $this->respondError('Gagal memverifikasi: ' . $e->getMessage(), 400);
         }
 
         $this->kirimNotifPembayaran($bukti);
 
-        return redirect()->to('/admin/pembayaran')->with('success', 'Pembayaran terverifikasi & notifikasi dikirim.');
+        return $this->respondSuccess('Pembayaran terverifikasi & notifikasi dikirim.', '/admin/pembayaran');
     }
 
     public function tolak(int $id)
@@ -183,10 +180,10 @@ class PembayaranController extends BaseAdminController
             throw PageNotFoundException::forPageNotFound('Bukti pembayaran tidak ditemukan.');
         }
         if ($bukti['status'] !== 'menunggu') {
-            return redirect()->to('/admin/pembayaran')->with('error', 'Bukti ini sudah diproses.');
+            return $this->respondError('Bukti ini sudah diproses.', 409);
         }
         if (!$this->validate(['catatan_admin' => 'required|max_length[1000]'])) {
-            return redirect()->to('/admin/pembayaran')->with('error', 'Alasan penolakan wajib diisi.');
+            return $this->respondError('Alasan penolakan wajib diisi.', 422, $this->validator->getErrors());
         }
 
         $this->buktiModel->update($id, [
@@ -200,7 +197,7 @@ class PembayaranController extends BaseAdminController
             (new PengajuanModel())->update($bukti['pengajuan_id'], ['pembayaran_status' => 'belum']);
         }
 
-        return redirect()->to('/admin/pembayaran')->with('success', 'Bukti pembayaran ditolak.');
+        return $this->respondSuccess('Bukti pembayaran ditolak.', '/admin/pembayaran');
     }
 
     public function bukti(int $id): ResponseInterface

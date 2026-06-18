@@ -40,19 +40,19 @@ class AuditFinancialFlow extends BaseCommand
         // 3. Pembayaran tanpa alokasi
         $noAlloc = $db->query("SELECT pa.id, pa.kode_pembayaran FROM pembayaran_angsuran pa LEFT JOIN pembayaran_alokasi pa2 ON pa2.pembayaran_angsuran_id = pa.id WHERE pa2.id IS NULL")->getResultArray();
         foreach ($noAlloc as $r) {
-            $issues[] = "Pembayaran {$r['kode_payments']} (ID:{$r['id']}) tanpa alokasi";
+            $issues[] = "Pembayaran {$r['kode_pembayaran']} (ID:{$r['id']}) tanpa alokasi";
         }
 
         // 4. Alokasi sum != payment amount
         $mismatch = $db->query("
-            SELECT pa.id, pa.kode_payments, pa.nominal_bayar, COALESCE(SUM(pa2.nominal_alokasi), 0) as total_alokasi
+            SELECT pa.id, pa.kode_pembayaran, pa.nominal_bayar, COALESCE(SUM(pa2.nominal_alokasi), 0) as total_alokasi
             FROM pembayaran_angsuran pa
             LEFT JOIN pembayaran_alokasi pa2 ON pa2.pembayaran_angsuran_id = pa.id
             GROUP BY pa.id
             HAVING total_alokasi != pa.nominal_bayar
         ")->getResultArray();
         foreach ($mismatch as $r) {
-            $issues[] = "Pembayaran {$r['kode_payments']} alokasi {$r['total_alokasi']} != nominal {$r['nominal_bayar']}";
+            $issues[] = "Pembayaran {$r['kode_pembayaran']} alokasi {$r['total_alokasi']} != nominal {$r['nominal_bayar']}";
         }
 
         // 5. Saldo kredit tidak konsisten

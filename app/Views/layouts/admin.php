@@ -35,11 +35,12 @@
     <script src="<?= base_url('assets/js/mahengold-ajax.js'); ?>"></script>
     <?= $this->include('partials/mahengold_dialog'); ?>
     <script>
-    // Logout via AJAX — single click
+    // Logout via AJAX — single click, canonical /logout
     document.getElementById('btnLogout')?.addEventListener('click', function() {
-        MahenAjax.post('<?= base_url('/admin/logout') ?>')
+        var url = this.getAttribute('data-logout-url') || '<?= base_url('/logout') ?>';
+        MahenAjax.post(url)
             .then(function(res) { window.location.href = res.redirect || '<?= base_url('/login') ?>'; })
-            .catch(function() { window.location.href = '<?= base_url('/admin/logout') ?>'; });
+            .catch(function() { window.location.href = '<?= base_url('/logout') ?>'; });
     });
     </script>
     <?= $this->renderSection('scripts'); ?>

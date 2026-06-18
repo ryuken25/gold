@@ -158,7 +158,7 @@ class PengajuanController extends BaseAdminController
         $this->pengajuanModel->update($id, ['status' => 'dibatalkan']);
         $this->aktivitasModel->log($id, 'dibatalkan', 'Pesanan dibatalkan oleh admin.', $this->adminName());
 
-        return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan dibatalkan.');
+        return $this->respondSuccess('Pesanan dibatalkan.', '/admin/pengajuan/' . $id);
     }
 
     /**

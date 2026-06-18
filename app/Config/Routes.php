@@ -18,7 +18,9 @@ $routes->get('login', 'Customer\AuthController::login', ['namespace' => 'App\Con
 $routes->post('login', 'Customer\AuthController::attempt', ['namespace' => 'App\Controllers']);
 $routes->get('register', 'Customer\AuthController::register', ['namespace' => 'App\Controllers']);
 $routes->post('register', 'Customer\AuthController::store', ['namespace' => 'App\Controllers']);
-$routes->post('logout', 'Customer\AuthController::logout', ['namespace' => 'App\Controllers']);
+
+// Canonical logout — supports both AJAX and non-AJAX, clears admin + pelanggan session
+$routes->post('logout', 'Admin\AuthController::logout', ['namespace' => 'App\Controllers\Admin']);
 
 // Area akun pelanggan (butuh login)
 $routes->group('akun', ['namespace' => 'App\Controllers', 'filter' => 'customerauth'], static function (RouteCollection $routes) {
@@ -46,6 +48,7 @@ $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function (R
 $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static function (RouteCollection $routes) {
     $routes->get('/', 'DashboardController::index', ['filter' => 'adminauth']);
     $routes->get('login', 'AuthController::login'); // redirect ke /login (login disatukan)
+    // Backward compat — canonical logout via POST /logout
     $routes->post('logout', 'AuthController::logout', ['filter' => 'adminauth']);
 
     $routes->group('', ['filter' => 'adminauth'], static function (RouteCollection $routes) {
