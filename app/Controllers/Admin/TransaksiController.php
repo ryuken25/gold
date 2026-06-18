@@ -52,7 +52,7 @@ class TransaksiController extends BaseAdminController
         // 2. Data cash pengajuan
         if ($tipe !== 'kredit') {
             $cashBuilder = $db->table('pengajuan pg')
-                ->select("pg.*, u.nama as nama_user, p.nama_produk, 'cash' as tipe_transaksi")
+                ->select("pg.*, p.nama_produk, p.harga_pokok AS harga_produk, u.nama as nama_user, 'cash' as tipe_transaksi")
                 ->join('produk_emas p', 'p.id = pg.produk_emas_id', 'left')
                 ->join('users u', 'u.id = pg.user_id', 'left')
                 ->where('pg.metode_pembayaran', 'cash')
@@ -60,9 +60,16 @@ class TransaksiController extends BaseAdminController
 
             $cashList = $cashBuilder->get()->getResultArray();
             foreach ($cashList as &$c) {
-                $c['total_pembayaran'] = $c['harga_pokok'] ?? 0;
-                $c['total_terbayar']   = 0;
-                $c['sisa_piutang']     = 0;
+                $harga = (float) ($c['harga_produk'] ?? 0);
+                $terbayar = (float) $db->table('bukti_pembayaran')
+                    ->selectSum('nominal')
+                    ->where('pengajuan_id', $c['id'])
+                    ->where('tipe', 'cash')
+                    ->where('status', 'terverifikasi')
+                    ->get()->getRow('nominal') ?? 0;
+                $c['total_pembayaran'] = $harga;
+                $c['total_terbayar']   = $terbayar;
+                $c['sisa_piutang']     = max(0, $harga - $terbayar);
                 $c['is_terlambat']     = false;
                 $c['bukti_pending']    = $db->table('bukti_pembayaran')
                     ->where('pengajuan_id', $c['id'])->where('status', 'menunggu')->countAllResults();

@@ -207,25 +207,34 @@ $relatif = static function ($datetime): string {
     const BASE = '<?= base_url('/admin/pengajuan/' . $pengajuan['id']) ?>';
 
     function submitPost(url, fields) {
-        try {
-            const f = document.createElement('form');
-            f.method = 'POST';
-            f.action = url;
-            f.style.display = 'none';
-            const cs = document.createElement('input');
-            cs.type = 'hidden'; cs.name = CSRF_NAME; cs.value = CSRF_HASH;
-            f.appendChild(cs);
-            for (const [k, v] of Object.entries(fields || {})) {
-                const inp = document.createElement('input');
-                inp.type = 'hidden'; inp.name = k; inp.value = String(v);
-                f.appendChild(inp);
+        const fd = new FormData();
+        fd.append(CSRF_NAME, CSRF_HASH);
+        for (const [k, v] of Object.entries(fields || {})) fd.append(k, String(v));
+
+        fetch(url, {
+            method: 'POST',
+            body: fd,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                MahenDialog.success({
+                    title: 'Berhasil',
+                    message: data.message || 'Operasi berhasil.',
+                    onConfirm: () => { window.location.href = data.redirect || BASE; }
+                });
+            } else {
+                MahenDialog.error({
+                    title: 'Gagal',
+                    message: data.message || 'Terjadi kesalahan.'
+                });
             }
-            document.body.appendChild(f);
-            f.submit();
-        } catch (err) {
-            console.error('submitPost error:', err);
-            window.location.href = url;
-        }
+        })
+        .catch(err => {
+            console.error('AJAX error:', err);
+            MahenDialog.error({ title: 'Kesalahan Jaringan', message: 'Gagal menghubungi server.' });
+        });
     }
 
     // VERIFIKASI
@@ -252,36 +261,30 @@ $relatif = static function ($datetime): string {
         });
     });
 
-    // KIRIM — pakai prompt fallback bila form dialog bermasalah
+    // KIRIM
     document.getElementById('btnKirim')?.addEventListener('click', () => {
-        try {
-            MahenDialog.form({
-                title: 'Kirim Pesanan',
-                message: 'Pilih metode pengiriman dan masukkan referensi.',
-                fields: [
-                    { name: 'metode_pengiriman', label: 'Metode', type: 'select', required: true, options: [{value:'resi',label:'Nomor Resi'},{value:'no_hp',label:'Nomor HP Pengiriman'}] },
-                    { name: 'referensi_pengiriman', label: 'Referensi', type: 'text', required: true, placeholder: 'Masukkan nomor resi atau nomor HP...' }
-                ],
-                submitText: 'Kirim Pesanan',
-                onsubmit: (data) => {
-                    const metode = data.metode_pengiriman || '';
-                    const ref = data.referensi_pengiriman || '';
-                    if (!metode || !ref) {
-                        MahenDialog.error({ title: 'Validasi', message: 'Metode dan Referensi wajib diisi.' });
-                        return;
-                    }
-                    submitPost(BASE + '/kirim', { metode_pengiriman: metode, referensi_pengiriman: ref });
+        MahenDialog.form({
+            title: 'Kirim Pesanan',
+            message: 'Pilih metode pengiriman dan masukkan referensi.',
+            fields: [
+                { name: 'metode_pengiriman', label: 'Metode', type: 'select', required: true, options: [{value:'resi',label:'Nomor Resi'},{value:'no_hp',label:'Nomor HP Pengiriman'}] },
+                { name: 'referensi_pengiriman', label: 'Referensi', type: 'text', required: true, placeholder: 'Masukkan nomor resi atau nomor HP...' }
+            ],
+            submitText: 'Kirim Pesanan',
+            onsubmit: (data) => {
+                const metode = String(data.metode_pengiriman || '').trim();
+                const ref = String(data.referensi_pengiriman || '').trim();
+                if (!['resi', 'no_hp'].includes(metode)) {
+                    MahenDialog.error({ title: 'Metode Tidak Valid', message: 'Pilih Nomor Resi atau Nomor HP Pengiriman.' });
+                    return;
                 }
-            });
-        } catch (e) {
-            console.error('Kirim dialog error:', e);
-            // Fallback: prompt manual
-            const metode = prompt('Metode pengiriman (resi / no_hp):');
-            if (!metode) return;
-            const ref = prompt('Nomor referensi:');
-            if (!ref) return;
-            submitPost(BASE + '/kirim', { metode_pengiriman: metode, referensi_pengiriman: ref });
-        }
+                if (!ref) {
+                    MahenDialog.error({ title: 'Referensi Kosong', message: 'Nomor resi atau nomor HP wajib diisi.' });
+                    return;
+                }
+                submitPost(BASE + '/kirim', { metode_pengiriman: metode, referensi_pengiriman: ref });
+            }
+        });
     });
 
     // SELESAI

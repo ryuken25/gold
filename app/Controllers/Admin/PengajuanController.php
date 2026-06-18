@@ -82,26 +82,27 @@ class PengajuanController extends BaseAdminController
         try {
             $workflow = new \App\Services\PengajuanWorkflowService();
             $workflow->verify($id, (int) current_admin()['id']);
-            return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan diverifikasi & email konfirmasi dikirim.');
+            return $this->respondSuccess('Pesanan diverifikasi & email konfirmasi dikirim.', '/admin/pengajuan/' . $id);
         } catch (\Throwable $e) {
-            return redirect()->to('/admin/pengajuan/' . $id)->with('error', $e->getMessage());
+            log_message('error', 'Verifikasi pengajuan ' . $id . ' gagal: ' . $e->getMessage());
+            return $this->respondError('Gagal memverifikasi: ' . $e->getMessage(), 400);
         }
     }
 
     public function tolak(int $id)
     {
         if (!$this->validate(['alasan' => 'required|max_length[1000]'])) {
-            return redirect()->to('/admin/pengajuan/' . $id)
-                ->with('error', 'Alasan penolakan wajib diisi.');
+            return $this->respondError('Alasan penolakan wajib diisi.', 422, $this->validator->getErrors());
         }
 
         try {
             $workflow = new \App\Services\PengajuanWorkflowService();
             $alasan = (string) $this->request->getPost('alasan');
             $workflow->reject($id, (int) current_admin()['id'], $alasan);
-            return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan ditolak.');
+            return $this->respondSuccess('Pesanan ditolak.', '/admin/pengajuan/' . $id);
         } catch (\Throwable $e) {
-            return redirect()->to('/admin/pengajuan/' . $id)->with('error', $e->getMessage());
+            log_message('error', 'Tolak pengajuan ' . $id . ' gagal: ' . $e->getMessage());
+            return $this->respondError('Gagal menolak: ' . $e->getMessage(), 400);
         }
     }
 
@@ -114,8 +115,7 @@ class PengajuanController extends BaseAdminController
             'metode_pengiriman'   => 'required|in_list[resi,no_hp]',
             'referensi_pengiriman'=> 'required|max_length[255]',
         ])) {
-            return redirect()->to('/admin/pengajuan/' . $id)
-                ->with('error', implode(' ', $this->validator->getErrors()));
+            return $this->respondError('Validasi gagal: ' . implode(', ', $this->validator->getErrors()), 422, $this->validator->getErrors());
         }
 
         try {
@@ -126,9 +126,10 @@ class PengajuanController extends BaseAdminController
                 (string) $this->request->getPost('metode_pengiriman'),
                 (string) $this->request->getPost('referensi_pengiriman')
             );
-            return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan berhasil dikirim.');
+            return $this->respondSuccess('Pesanan berhasil dikirim.', '/admin/pengajuan/' . $id);
         } catch (\Throwable $e) {
-            return redirect()->to('/admin/pengajuan/' . $id)->with('error', $e->getMessage());
+            log_message('error', 'Kirim pengajuan ' . $id . ' gagal: ' . $e->getMessage());
+            return $this->respondError('Gagal mengirim: ' . $e->getMessage(), 400);
         }
     }
 
@@ -140,9 +141,10 @@ class PengajuanController extends BaseAdminController
         try {
             $workflow = new \App\Services\PengajuanWorkflowService();
             $workflow->complete($id, (int) current_admin()['id']);
-            return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan selesai.');
+            return $this->respondSuccess('Pesanan selesai.', '/admin/pengajuan/' . $id);
         } catch (\Throwable $e) {
-            return redirect()->to('/admin/pengajuan/' . $id)->with('error', $e->getMessage());
+            log_message('error', 'Selesai pengajuan ' . $id . ' gagal: ' . $e->getMessage());
+            return $this->respondError('Gagal menyelesaikan: ' . $e->getMessage(), 400);
         }
     }
 
