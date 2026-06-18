@@ -206,22 +206,26 @@ $relatif = static function ($datetime): string {
     const CSRF_HASH = '<?= csrf_hash() ?>';
     const BASE = '<?= base_url('/admin/pengajuan/' . $pengajuan['id']) ?>';
 
-    // Helper: create hidden form + submit (bypass dialog form handler)
     function submitPost(url, fields) {
-        const f = document.createElement('form');
-        f.method = 'POST';
-        f.action = url;
-        f.style.display = 'none';
-        const cs = document.createElement('input');
-        cs.type = 'hidden'; cs.name = CSRF_NAME; cs.value = CSRF_HASH;
-        f.appendChild(cs);
-        for (const [k, v] of Object.entries(fields || {})) {
-            const inp = document.createElement('input');
-            inp.type = 'hidden'; inp.name = k; inp.value = v;
-            f.appendChild(inp);
+        try {
+            const f = document.createElement('form');
+            f.method = 'POST';
+            f.action = url;
+            f.style.display = 'none';
+            const cs = document.createElement('input');
+            cs.type = 'hidden'; cs.name = CSRF_NAME; cs.value = CSRF_HASH;
+            f.appendChild(cs);
+            for (const [k, v] of Object.entries(fields || {})) {
+                const inp = document.createElement('input');
+                inp.type = 'hidden'; inp.name = k; inp.value = String(v);
+                f.appendChild(inp);
+            }
+            document.body.appendChild(f);
+            f.submit();
+        } catch (err) {
+            console.error('submitPost error:', err);
+            window.location.href = url;
         }
-        document.body.appendChild(f);
-        f.submit();
     }
 
     // VERIFIKASI
@@ -244,22 +248,40 @@ $relatif = static function ($datetime): string {
             fields: [{ name: 'alasan', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan agar dapat dipahami oleh pelanggan.', rows: 3 }],
             submitText: 'Tolak Pesanan',
             submitClass: 'btn-danger',
-            onsubmit: (data) => submitPost(BASE + '/tolak', { alasan: data.alasan })
+            onsubmit: (data) => submitPost(BASE + '/tolak', { alasan: data.alasan || '' })
         });
     });
 
-    // KIRIM
+    // KIRIM — pakai prompt fallback bila form dialog bermasalah
     document.getElementById('btnKirim')?.addEventListener('click', () => {
-        MahenDialog.form({
-            title: 'Kirim Pesanan',
-            message: 'Pilih metode pengiriman dan masukkan referensi.',
-            fields: [
-                { name: 'metode_pengiriman', label: 'Metode', type: 'select', required: true, options: [{value:'resi',label:'Nomor Resi'},{value:'no_hp',label:'Nomor HP Pengiriman'}] },
-                { name: 'referensi_pengiriman', label: 'Referensi', type: 'text', required: true, placeholder: 'Masukkan nomor resi atau nomor HP...' }
-            ],
-            submitText: 'Kirim Pesanan',
-            onsubmit: (data) => submitPost(BASE + '/kirim', data)
-        });
+        try {
+            MahenDialog.form({
+                title: 'Kirim Pesanan',
+                message: 'Pilih metode pengiriman dan masukkan referensi.',
+                fields: [
+                    { name: 'metode_pengiriman', label: 'Metode', type: 'select', required: true, options: [{value:'resi',label:'Nomor Resi'},{value:'no_hp',label:'Nomor HP Pengiriman'}] },
+                    { name: 'referensi_pengiriman', label: 'Referensi', type: 'text', required: true, placeholder: 'Masukkan nomor resi atau nomor HP...' }
+                ],
+                submitText: 'Kirim Pesanan',
+                onsubmit: (data) => {
+                    const metode = data.metode_pengiriman || '';
+                    const ref = data.referensi_pengiriman || '';
+                    if (!metode || !ref) {
+                        MahenDialog.error({ title: 'Validasi', message: 'Metode dan Referensi wajib diisi.' });
+                        return;
+                    }
+                    submitPost(BASE + '/kirim', { metode_pengiriman: metode, referensi_pengiriman: ref });
+                }
+            });
+        } catch (e) {
+            console.error('Kirim dialog error:', e);
+            // Fallback: prompt manual
+            const metode = prompt('Metode pengiriman (resi / no_hp):');
+            if (!metode) return;
+            const ref = prompt('Nomor referensi:');
+            if (!ref) return;
+            submitPost(BASE + '/kirim', { metode_pengiriman: metode, referensi_pengiriman: ref });
+        }
     });
 
     // SELESAI
