@@ -36,8 +36,8 @@ if (!function_exists('status_badge_class')) {
     function status_badge_class(?string $status): string
     {
         return match ($status) {
-            'aktif', 'dibayar', 'dikirim_manual', 'disetujui', 'selesai', 'dikirim' => 'success',
-            'lunas' => 'primary',
+            'aktif', 'dibayar', 'dikirim_manual', 'disetujui', 'selesai', 'lunas' => 'success',
+            'dikirim', 'diterima' => 'primary',
             'terlambat', 'gagal', 'dibatalkan', 'ditolak' => 'danger',
             'sebagian' => 'warning',
             'dibuka', 'diproses' => 'info',
@@ -120,9 +120,6 @@ if (!function_exists('is_pelanggan_logged_in')) {
     }
 }
 
-// ============================================================
-// UPDATED: pesanan_status_label — label tampilan dari status DB
-// ============================================================
 if (!function_exists('pesanan_status_label')) {
     function pesanan_status_label(?string $status, ?string $metode = null, int $uangMuka = 0, ?string $payStatus = null): string
     {
@@ -134,6 +131,7 @@ if (!function_exists('pesanan_status_label')) {
             'diproses'   => 'Menunggu Verifikasi',
             'disetujui'  => 'Menunggu Dikirim',
             'dikirim'    => 'Dikirim',
+            'diterima'   => 'Diterima',
             'selesai'    => 'Selesai',
             'ditolak'    => 'Ditolak',
             'dibatalkan' => 'Dibatalkan',
@@ -142,9 +140,6 @@ if (!function_exists('pesanan_status_label')) {
     }
 }
 
-// ============================================================
-// UPDATED: pesanan_badge_class — badge color untuk status pesanan
-// ============================================================
 if (!function_exists('pesanan_badge_class')) {
     function pesanan_badge_class(?string $status, ?string $metode = null, int $uangMuka = 0, ?string $payStatus = null): string
     {
@@ -156,6 +151,7 @@ if (!function_exists('pesanan_badge_class')) {
             'diproses'   => 'warning',
             'disetujui'  => 'info',
             'dikirim'    => 'primary',
+            'diterima'   => 'primary',
             'selesai'    => 'success',
             'ditolak'    => 'danger',
             'dibatalkan' => 'secondary',
@@ -164,26 +160,21 @@ if (!function_exists('pesanan_badge_class')) {
     }
 }
 
-// ============================================================
-// UPDATED: pesanan_status_step — nomor step (1-4) untuk stepper
-// ============================================================
 if (!function_exists('pesanan_status_step')) {
     function pesanan_status_step(?string $status): int
     {
         return match ($status) {
-            'baru', 'diproses' => 1,  // Menunggu Verifikasi
-            'disetujui'        => 2,  // Menunggu Dikirim
-            'dikirim'          => 3,  // Dikirim
-            'selesai'          => 4,  // Selesai
+            'baru', 'diproses' => 1,
+            'disetujui'        => 2,
+            'dikirim'          => 3,
+            'diterima'         => 4,
+            'selesai'          => 5,
             'ditolak', 'dibatalkan' => 0,
             default            => 1,
         };
     }
 }
 
-// ============================================================
-// UPDATED: pesanan_status_steps — definisi lengkap stepper Shopee-like
-// ============================================================
 if (!function_exists('pesanan_status_steps')) {
     function pesanan_status_steps(): array
     {
@@ -191,14 +182,12 @@ if (!function_exists('pesanan_status_steps')) {
             ['label' => 'Menunggu Verifikasi', 'icon' => 'bi-clock-history'],
             ['label' => 'Menunggu Dikirim',    'icon' => 'bi-check2-circle'],
             ['label' => 'Dikirim',             'icon' => 'bi-truck'],
+            ['label' => 'Diterima',            'icon' => 'bi-box-seam'],
             ['label' => 'Selesai',             'icon' => 'bi-check-circle-fill'],
         ];
     }
 }
 
-// ============================================================
-// UPDATED: kredit_state — return array untuk color coding baris tabel kredit
-// ============================================================
 if (!function_exists('kredit_state')) {
     function kredit_state(array $jadwal): array
     {
@@ -214,7 +203,6 @@ if (!function_exists('kredit_state')) {
             $diff    = (int) $today->diff($dueDate)->format('%r%a');
 
             if ($diff < 0) {
-                // Overdue — merah + jumlah hari telat
                 return [
                     'class' => 'row-overdue',
                     'label' => abs($diff) . ' hari telat',
@@ -222,7 +210,6 @@ if (!function_exists('kredit_state')) {
                 ];
             }
             if ($diff <= 3) {
-                // H-3 — warning/oranye
                 return [
                     'class' => 'row-h3',
                     'label' => 'H-' . $diff . ' jatuh tempo',
@@ -235,9 +222,6 @@ if (!function_exists('kredit_state')) {
     }
 }
 
-// ============================================================
-// UPDATED: email_status_label — label untuk email notifikasi status
-// ============================================================
 if (!function_exists('email_status_label')) {
     function email_status_label(?string $status): string
     {
@@ -246,6 +230,7 @@ if (!function_exists('email_status_label')) {
             'diproses'   => 'Menunggu Verifikasi',
             'disetujui'  => 'Menunggu Dikirim',
             'dikirim'    => 'Sedang Dikirim ke Alamat Anda',
+            'diterima'   => 'Diterima Pelanggan',
             'selesai'    => 'Selesai',
             'ditolak'    => 'Ditolak',
             'dibatalkan' => 'Dibatalkan',
