@@ -124,25 +124,22 @@ class KreditController extends BaseAdminController
     {
         try {
             $this->creditService->cancel($id);
-            return $this->respondSuccess('Kredit berhasil dibatalkan.', '/admin/kredit/' . $id);
-        } catch (Throwable $e) {
-            return $this->respondError($e->getMessage(), 400);
+            return $this->respondOk('Kredit berhasil dibatalkan.', '/admin/kredit/' . $id);
+        } catch (\Exception $e) {
+            return $this->respondFail($e->getMessage(), 400);
         }
     }
 
-    public function reminder(int $kreditId, int $jadwalId)
+    public function remind(int $kreditId, int $jadwalId)
     {
         try {
-            $reminderService = new \App\Services\ReminderAngsuranService();
-            $result = $reminderService->sendManual($kreditId, $jadwalId, (int) current_admin()['id']);
-
-            if ($result['success']) {
-                return $this->respondSuccess('Pengingat berhasil dikirim ke pelanggan.', '/admin/kredit/' . $kreditId);
-            }
-
-            return $this->respondError('Pengingat gagal dikirim. Coba lagi nanti.', 400);
-        } catch (\Throwable $e) {
-            return $this->respondError($e->getMessage(), 400);
+            $this->kreditModel->sendReminder($kreditId, $jadwalId, current_admin()['id']);
+            return $this->respondOk('Pengingat berhasil dikirim ke pelanggan.', '/admin/kredit/' . $kreditId);
+        } catch (\RuntimeException $e) {
+            log_message('error', 'Gagal mengirim pengingat: ' . $e->getMessage());
+            return $this->respondFail('Pengingat gagal dikirim. Coba lagi nanti.', 400);
+        } catch (\Exception $e) {
+            return $this->respondFail($e->getMessage(), 400);
         }
     }
 }

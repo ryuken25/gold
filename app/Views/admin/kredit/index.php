@@ -31,23 +31,24 @@
                         $badgeText = '';
                         $badgeClass = '';
                         if ($row['status'] === 'lunas') {
-                            $rowClass = 'row-lunas';
+                            $rowClass = 'row-lunas clickable-row';
                             $badgeText = 'Lunas';
                             $badgeClass = 'bg-success';
                         } elseif ($row['status'] === 'aktif' && !empty($row['is_terlambat'])) {
-                            $rowClass = 'row-overdue';
+                            $rowClass = 'row-overdue clickable-row';
                             $badgeText = 'Terlambat';
                             $badgeClass = 'bg-danger';
                         } elseif ($row['status'] === 'aktif') {
+                            $rowClass = 'row-aktif clickable-row';
                             $badgeText = 'Aktif';
                             $badgeClass = 'bg-primary';
                         } else {
-                            $rowClass = 'row-h3';
+                            $rowClass = 'row-h3 clickable-row';
                             $badgeText = ucfirst($row['status']);
                             $badgeClass = 'bg-warning text-dark';
                         }
                         ?>
-                        <tr class="<?= esc($rowClass); ?>">
+                        <tr class="<?= esc($rowClass); ?>" data-href="<?= base_url('/admin/kredit/' . $row['id']); ?>" tabindex="0" role="link">
                             <td><?= esc($row['kode_kredit']); ?></td>
                             <td><?= esc($row['nama_nasabah']); ?></td>
                             <td><?= esc($row['nama_produk']); ?></td>

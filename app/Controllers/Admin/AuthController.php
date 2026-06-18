@@ -41,6 +41,7 @@ class AuthController extends BaseAdminController
             ]);
         }
 
+        session()->regenerate(true);
         session()->setFlashdata('success', 'Logout berhasil.');
         return redirect()->to('/login');
     }

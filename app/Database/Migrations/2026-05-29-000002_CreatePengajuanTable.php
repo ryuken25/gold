@@ -65,7 +65,7 @@ class CreatePengajuanTable extends Migration
             ],
             'status' => [
                 'type'       => 'ENUM',
-                'constraint' => ['baru', 'diproses', 'disetujui', 'ditolak', 'selesai'],
+                'constraint' => ['baru', 'diproses', 'disetujui', 'dikirim', 'ditolak', 'dibatalkan', 'selesai'],
                 'default'    => 'baru',
                 'null'       => false,
             ],

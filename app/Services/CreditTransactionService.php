@@ -141,6 +141,13 @@ class CreditTransactionService
             ];
         }
 
+        // Cek schema sebelum insert
+        if (!$this->db->fieldExists('pengajuan_id', 'kredit') || 
+            !$this->db->fieldExists('uang_muka', 'kredit') || 
+            !$this->db->fieldExists('sisa_pokok_kredit', 'kredit')) {
+            throw new RuntimeException('Skema database kredit belum diperbarui. Harap jalankan migrasi.');
+        }
+
         $produk = $this->produkModel->find((int) $pengajuan['produk_emas_id']);
         if (!$produk) {
             throw new RuntimeException('Produk emas tidak ditemukan.');

@@ -21,7 +21,7 @@ class CreateBuktiPembayaranTable extends Migration
             ],
             'tipe' => [
                 'type'       => 'ENUM',
-                'constraint' => ['cash', 'cicilan'],
+                'constraint' => ['cash', 'cicilan', 'dp'],
                 'null'       => false,
             ],
             'pengajuan_id' => [

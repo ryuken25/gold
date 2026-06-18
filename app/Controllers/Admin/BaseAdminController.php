@@ -28,15 +28,16 @@ abstract class BaseAdminController extends BaseController
     /**
      * Success response — JSON untuk AJAX, redirect untuk non-AJAX.
      */
-    protected function respondSuccess(string $message, ?string $redirect = null)
+    protected function respondOk(string $message, ?string $redirect = null, array $extra = [])
     {
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
+            $payload = [
                 'success'  => true,
                 'message'  => $message,
                 'redirect' => $redirect,
                 'csrf'     => ['name' => csrf_token(), 'hash' => csrf_hash()],
-            ]);
+            ];
+            return $this->response->setJSON(array_merge($payload, $extra));
         }
         return redirect()->to($redirect ?? current_url())->with('success', $message);
     }
@@ -44,7 +45,7 @@ abstract class BaseAdminController extends BaseController
     /**
      * Error response — JSON 422/400/500 untuk AJAX, redirect dengan error untuk non-AJAX.
      */
-    protected function respondError(string $message, int $statusCode = 400, array $errors = [])
+    protected function respondFail(string $message, int $statusCode = 400, array $errors = [], array $extra = [])
     {
         if ($this->request->isAJAX()) {
             $payload = [
@@ -55,7 +56,7 @@ abstract class BaseAdminController extends BaseController
             if ($errors) {
                 $payload['errors'] = $errors;
             }
-            return $this->response->setStatusCode($statusCode)->setJSON($payload);
+            return $this->response->setStatusCode($statusCode)->setJSON(array_merge($payload, $extra));
         }
         return redirect()->back()->withInput()->with('error', $message);
     }

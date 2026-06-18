@@ -46,18 +46,18 @@ class AuditRoutes extends BaseCommand
         CLI::newLine();
 
         // Check expected GET routes
-        // Admin routes are inside group('admin'), so the raw pattern is without 'admin/' prefix
         $expectedGet = [
             '/'                 => ['/'],
             'login'             => ['login'],
             'register'          => ['register'],
             'akun'              => ['akun', '/'],
-            'admin'             => ['/'],
+            'admin'             => ['admin', '/'],
             'admin/dashboard'   => ['dashboard'],
             'admin/pengajuan'   => ['pengajuan'],
-            'admin/transaksi'   => ['transaksi'],
-            'admin/kredit'      => ['kredit'],
             'admin/pembayaran'  => ['pembayaran'],
+            'admin/kredit'      => ['kredit'],
+            'admin/produk'      => ['produk'],
+            'admin/nasabah'     => ['nasabah'],
         ];
         foreach ($expectedGet as $label => $patterns) {
             $found = false;

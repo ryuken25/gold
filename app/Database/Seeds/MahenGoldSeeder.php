@@ -54,6 +54,7 @@ class MahenGoldSeeder extends Seeder
             ['email' => 'demo.rejected@mahengold.test',    'nama' => 'Made Rejected',         'no_telepon' => '6281200000008'],
             ['email' => 'demo.overdue@mahengold.test',     'nama' => 'Ketut Overdue',         'no_telepon' => '6281200000009'],
             ['email' => 'demo.lunas@mahengold.test',       'nama' => 'Wayan Lunas',           'no_telepon' => '6281200000010'],
+            ['email' => 'demo.other@mahengold.test',       'nama' => 'I Wayan Other',         'no_telepon' => '6281200000011'],
         ] as $plg) {
             $existing = $this->userModel->where('email', $plg['email'])->first();
             if (!$existing) {
@@ -93,6 +94,8 @@ class MahenGoldSeeder extends Seeder
             ['kode_produk' => 'MGD-008', 'nama_produk' => 'Anting Anak 0.5 Gram',  'jenis_emas' => 'Perhiasan',  'kadar' => '22K', 'berat_gram' => 0.50,  'harga_pokok' => 800000,   'stok' => 10],
             ['kode_produk' => 'MGD-009', 'nama_produk' => 'Kalung Premium 5 Gram', 'jenis_emas' => 'Perhiasan',  'kadar' => '24K', 'berat_gram' => 5.00,  'harga_pokok' => 8000000,  'stok' => 10],
             ['kode_produk' => 'MGD-010', 'nama_produk' => 'Paket Investasi Emas 10 Gram', 'jenis_emas' => 'Logam Mulia', 'kadar' => '24K', 'berat_gram' => 10.00, 'harga_pokok' => 15000000, 'stok' => 10],
+            ['kode_produk' => 'MGD-011', 'nama_produk' => 'Logam Mulia 10 Gram',          'jenis_emas' => 'Logam Mulia', 'kadar' => '24K', 'berat_gram' => 10.00, 'harga_pokok' => 14500000, 'stok' => 10],
+            ['kode_produk' => 'MGD-012', 'nama_produk' => 'Gelang Premium 7 Gram',         'jenis_emas' => 'Perhiasan',   'kadar' => '24K', 'berat_gram' => 7.00,  'harga_pokok' => 11000000, 'stok' => 10],
         ] as $produk) {
             $existing = $this->produkModel->withDeleted()->where('kode_produk', $produk['kode_produk'])->first();
             if ($existing) {

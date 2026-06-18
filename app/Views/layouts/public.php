@@ -24,6 +24,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="<?= base_url('assets/js/mahengold.js'); ?>"></script>
+    <script src="<?= base_url('assets/js/mahengold-dialog.js'); ?>"></script>
+    <script src="<?= base_url('assets/js/mahengold-ajax.js'); ?>"></script>
     <?= $this->include('partials/mahengold_dialog'); ?>
     <?= $this->renderSection('scripts'); ?>
 </body>

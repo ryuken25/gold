@@ -1979,59 +1979,58 @@ h6 {
 }
 
 /* ============================================================
-   Color coding — gradient ONLY on first column (td:first-child)
-   Other cells stay normal/white/cream.
+   Color coding — soft background on entire row
    ============================================================ */
-.table tbody tr.row-lunas > *:first-child,
-.table-modern tbody tr.row-lunas > *:first-child {
-    background: linear-gradient(90deg, rgba(25,184,90,.20) 0%, rgba(25,184,90,.11) 45%, rgba(25,184,90,.03) 100%) !important;
+.table tbody tr.row-lunas > td,
+.table-modern tbody tr.row-lunas > td {
+    background-color: rgba(25,184,90,.06) !important;
+}
+.table tbody tr.row-lunas > td:first-child,
+.table-modern tbody tr.row-lunas > td:first-child {
     border-left: 4px solid #19B85A !important;
 }
-.table tbody tr.row-lunas:hover > *:first-child,
-.table-modern tbody tr.row-lunas:hover > *:first-child {
-    background: linear-gradient(90deg, rgba(25,184,90,.26) 0%, rgba(25,184,90,.15) 45%, rgba(25,184,90,.05) 100%) !important;
+.table tbody tr.row-lunas:hover > td,
+.table-modern tbody tr.row-lunas:hover > td {
+    background-color: rgba(25,184,90,.12) !important;
 }
 
-.table tbody tr.row-aktif > *:first-child,
-.table-modern tbody tr.row-aktif > *:first-child {
-    background: linear-gradient(90deg, rgba(13,110,253,.18) 0%, rgba(13,110,253,.10) 45%, rgba(13,110,253,.03) 100%) !important;
+.table tbody tr.row-aktif > td,
+.table-modern tbody tr.row-aktif > td {
+    background-color: rgba(13,110,253,.06) !important;
+}
+.table tbody tr.row-aktif > td:first-child,
+.table-modern tbody tr.row-aktif > td:first-child {
     border-left: 4px solid #0D6EFD !important;
 }
-.table tbody tr.row-aktif:hover > *:first-child,
-.table-modern tbody tr.row-aktif:hover > *:first-child {
-    background: linear-gradient(90deg, rgba(13,110,253,.24) 0%, rgba(13,110,253,.14) 45%, rgba(13,110,253,.05) 100%) !important;
+.table tbody tr.row-aktif:hover > td,
+.table-modern tbody tr.row-aktif:hover > td {
+    background-color: rgba(13,110,253,.12) !important;
 }
 
-.table tbody tr.row-overdue > *:first-child,
-.table-modern tbody tr.row-overdue > *:first-child {
-    background: linear-gradient(90deg, rgba(220,53,69,.20) 0%, rgba(220,53,69,.10) 45%, rgba(220,53,69,.03) 100%) !important;
+.table tbody tr.row-overdue > td,
+.table-modern tbody tr.row-overdue > td {
+    background-color: rgba(220,53,69,.06) !important;
+}
+.table tbody tr.row-overdue > td:first-child,
+.table-modern tbody tr.row-overdue > td:first-child {
     border-left: 4px solid #DC3545 !important;
 }
-.table tbody tr.row-overdue:hover > *:first-child,
-.table-modern tbody tr.row-overdue:hover > *:first-child {
-    background: linear-gradient(90deg, rgba(220,53,69,.26) 0%, rgba(220,53,69,.14) 45%, rgba(220,53,69,.05) 100%) !important;
+.table tbody tr.row-overdue:hover > td,
+.table-modern tbody tr.row-overdue:hover > td {
+    background-color: rgba(220,53,69,.12) !important;
 }
 
-.table tbody tr.row-h3 > *:first-child,
-.table-modern tbody tr.row-h3 > *:first-child {
-    background: linear-gradient(90deg, rgba(255,193,7,.18) 0%, rgba(255,193,7,.10) 45%, rgba(255,193,7,.03) 100%) !important;
+.table tbody tr.row-h3 > td,
+.table-modern tbody tr.row-h3 > td {
+    background-color: rgba(255,193,7,.06) !important;
+}
+.table tbody tr.row-h3 > td:first-child,
+.table-modern tbody tr.row-h3 > td:first-child {
     border-left: 4px solid #ffc107 !important;
 }
-.table tbody tr.row-h3:hover > *:first-child,
-.table-modern tbody tr.row-h3:hover > *:first-child {
-    background: linear-gradient(90deg, rgba(255,193,7,.24) 0%, rgba(255,193,7,.14) 45%, rgba(255,193,7,.05) 100%) !important;
-}
-
-/* Non-first-child cells stay transparent/normal */
-.table tbody tr.row-lunas > *:not(:first-child),
-.table tbody tr.row-aktif > *:not(:first-child),
-.table tbody tr.row-overdue > *:not(:first-child),
-.table tbody tr.row-h3 > *:not(:first-child),
-.table-modern tbody tr.row-lunas > *:not(:first-child),
-.table-modern tbody tr.row-aktif > *:not(:first-child),
-.table-modern tbody tr.row-overdue > *:not(:first-child),
-.table-modern tbody tr.row-h3 > *:not(:first-child) {
-    background: transparent !important;
+.table tbody tr.row-h3:hover > td,
+.table-modern tbody tr.row-h3:hover > td {
+    background-color: rgba(255,193,7,.12) !important;
 }
 
 /* ============================================================

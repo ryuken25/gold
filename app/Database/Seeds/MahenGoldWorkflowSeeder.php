@@ -40,6 +40,7 @@ class MahenGoldWorkflowSeeder extends Seeder
         $rejectedId    = $this->upsertUser($db, 'demo.rejected@mahengold.test');
         $overdueId     = $this->upsertUser($db, 'demo.overdue@mahengold.test');
         $lunasId       = $this->upsertUser($db, 'demo.lunas@mahengold.test');
+        $otherId       = $this->upsertUser($db, 'demo.other@mahengold.test');
 
         // ============================================================
         // 2. NASABAH — idempotent by user_id
@@ -54,6 +55,7 @@ class MahenGoldWorkflowSeeder extends Seeder
         $nsbRejected  = $this->upsertNasabah($db, $rejectedId, 'Made Rejected', '6281200000008');
         $nsbOverdue   = $this->upsertNasabah($db, $overdueId, 'Ketut Overdue', '6281200000009');
         $nsbLunas     = $this->upsertNasabah($db, $lunasId, 'Wayan Lunas', '6281200000010');
+        $nsbOther     = $this->upsertNasabah($db, $otherId, 'I Wayan Other', '6281200000011');
 
         // ============================================================
         // 3. PRODUK — get active products
@@ -377,7 +379,18 @@ class MahenGoldWorkflowSeeder extends Seeder
     protected function upsertUser($db, string $email): int
     {
         $existing = $db->table('users')->where('email', $email)->get()->getRowArray();
-        return $existing ? (int) $existing['id'] : (int) $db->insertID();
+        if ($existing) {
+            return (int) $existing['id'];
+        }
+        // Insert minimal user row — MahenGoldSeeder handles full fields
+        $db->table('users')->insert([
+            'email'         => $email,
+            'nama'          => $email,
+            'password_hash' => password_hash('demo1234', PASSWORD_DEFAULT),
+            'role'          => 'pelanggan',
+            'is_active'     => 1,
+        ]);
+        return (int) $db->insertID();
     }
 
     protected function upsertNasabah($db, int $userId, string $nama, string $noTelepon): int

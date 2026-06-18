@@ -82,27 +82,27 @@ class PengajuanController extends BaseAdminController
         try {
             $workflow = new \App\Services\PengajuanWorkflowService();
             $workflow->verify($id, (int) current_admin()['id']);
-            return $this->respondSuccess('Pesanan diverifikasi & email konfirmasi dikirim.', '/admin/pengajuan/' . $id);
+            return $this->respondOk('Pesanan diverifikasi & email konfirmasi dikirim.', '/admin/pengajuan/' . $id);
         } catch (\Throwable $e) {
             log_message('error', 'Verifikasi pengajuan ' . $id . ' gagal: ' . $e->getMessage());
-            return $this->respondError('Gagal memverifikasi: ' . $e->getMessage(), 400);
+            return $this->respondFail('Gagal memverifikasi: ' . $e->getMessage(), 409);
         }
     }
 
     public function tolak(int $id)
     {
         if (!$this->validate(['alasan' => 'required|max_length[1000]'])) {
-            return $this->respondError('Alasan penolakan wajib diisi.', 422, $this->validator->getErrors());
+            return $this->respondFail('Alasan penolakan wajib diisi.', 422, $this->validator->getErrors());
         }
 
         try {
             $workflow = new \App\Services\PengajuanWorkflowService();
             $alasan = (string) $this->request->getPost('alasan');
             $workflow->reject($id, (int) current_admin()['id'], $alasan);
-            return $this->respondSuccess('Pesanan ditolak.', '/admin/pengajuan/' . $id);
+            return $this->respondOk('Pesanan ditolak.', '/admin/pengajuan/' . $id);
         } catch (\Throwable $e) {
             log_message('error', 'Tolak pengajuan ' . $id . ' gagal: ' . $e->getMessage());
-            return $this->respondError('Gagal menolak: ' . $e->getMessage(), 400);
+            return $this->respondFail('Gagal menolak: ' . $e->getMessage(), 409);
         }
     }
 
@@ -115,7 +115,7 @@ class PengajuanController extends BaseAdminController
             'metode_pengiriman'   => 'required|in_list[resi,no_hp]',
             'referensi_pengiriman'=> 'required|max_length[255]',
         ])) {
-            return $this->respondError('Validasi gagal: ' . implode(', ', $this->validator->getErrors()), 422, $this->validator->getErrors());
+            return $this->respondFail('Validasi gagal: ' . implode(', ', $this->validator->getErrors()), 422, $this->validator->getErrors());
         }
 
         try {
@@ -126,10 +126,10 @@ class PengajuanController extends BaseAdminController
                 (string) $this->request->getPost('metode_pengiriman'),
                 (string) $this->request->getPost('referensi_pengiriman')
             );
-            return $this->respondSuccess('Pesanan berhasil dikirim.', '/admin/pengajuan/' . $id);
+            return $this->respondOk('Pesanan berhasil dikirim.', '/admin/pengajuan/' . $id);
         } catch (\Throwable $e) {
             log_message('error', 'Kirim pengajuan ' . $id . ' gagal: ' . $e->getMessage());
-            return $this->respondError('Gagal mengirim: ' . $e->getMessage(), 400);
+            return $this->respondFail('Gagal mengirim: ' . $e->getMessage(), 409);
         }
     }
 
@@ -141,10 +141,10 @@ class PengajuanController extends BaseAdminController
         try {
             $workflow = new \App\Services\PengajuanWorkflowService();
             $workflow->complete($id, (int) current_admin()['id']);
-            return $this->respondSuccess('Pesanan selesai.', '/admin/pengajuan/' . $id);
+            return $this->respondOk('Pesanan selesai.', '/admin/pengajuan/' . $id);
         } catch (\Throwable $e) {
             log_message('error', 'Selesai pengajuan ' . $id . ' gagal: ' . $e->getMessage());
-            return $this->respondError('Gagal menyelesaikan: ' . $e->getMessage(), 400);
+            return $this->respondFail('Gagal menyelesaikan: ' . $e->getMessage(), 409);
         }
     }
 
@@ -158,7 +158,7 @@ class PengajuanController extends BaseAdminController
         $this->pengajuanModel->update($id, ['status' => 'dibatalkan']);
         $this->aktivitasModel->log($id, 'dibatalkan', 'Pesanan dibatalkan oleh admin.', $this->adminName());
 
-        return $this->respondSuccess('Pesanan dibatalkan.', '/admin/pengajuan/' . $id);
+        return $this->respondOk('Pesanan dibatalkan.', '/admin/pengajuan/' . $id);
     }
 
     /**
