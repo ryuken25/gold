@@ -129,4 +129,23 @@ class KreditController extends BaseAdminController
             return redirect()->to('/admin/kredit/' . $id)->with('error', $e->getMessage());
         }
     }
+
+    public function reminder(int $kreditId, int $jadwalId)
+    {
+        try {
+            $reminderService = new \App\Services\ReminderAngsuranService();
+            $result = $reminderService->sendManual($kreditId, $jadwalId, (int) current_admin()['id']);
+
+            if ($result['success']) {
+                return redirect()->to('/admin/kredit/' . $kreditId)
+                    ->with('success', 'Pengingat berhasil dikirim ke pelanggan.');
+            }
+
+            return redirect()->to('/admin/kredit/' . $kreditId)
+                ->with('warning', 'Pengingat gagal dikirim. Coba lagi nanti.');
+        } catch (\Throwable $e) {
+            return redirect()->to('/admin/kredit/' . $kreditId)
+                ->with('error', $e->getMessage());
+        }
+    }
 }

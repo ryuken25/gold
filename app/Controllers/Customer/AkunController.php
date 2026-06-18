@@ -148,6 +148,33 @@ class AkunController extends BaseController
     }
 
     /**
+     * Daftar kredit milik pelanggan yang sedang login.
+     */
+    public function kredit(): string
+    {
+        $userId = (int) current_pelanggan()['id'];
+        $nasabahIds = $this->nasabahIds($userId);
+
+        $kreditList = [];
+        if ($nasabahIds !== []) {
+            $kreditList = (new KreditModel())
+                ->select('kredit.*, produk_emas.nama_produk, produk_emas.kode_produk')
+                ->join('produk_emas', 'produk_emas.id = kredit.produk_emas_id', 'left')
+                ->whereIn('kredit.nasabah_id', $nasabahIds)
+                ->orderBy('kredit.created_at', 'DESC')
+                ->findAll();
+        }
+
+        return view('public/akun/kredit', [
+            'pageTitle'  => 'Kredit Saya - MahenGold',
+            'pengaturan' => $this->pengaturan(),
+            'pelanggan'  => current_pelanggan(),
+            'kredit'     => $kreditList,
+            'activeTab'  => 'kredit',
+        ]);
+    }
+
+    /**
      * Sajikan foto KTP milik pelanggan sendiri (scoped ke user_id).
      */
     public function ktp(int $id)

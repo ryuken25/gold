@@ -2007,3 +2007,52 @@ h6 {
 .row-lunas:hover {
     background: rgba(25, 184, 90, .12) !important;
 }
+
+/* ============================================================
+   Responsive table — card mode on mobile
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .table-responsive-stack thead {
+        display: none !important;
+    }
+
+    .table-responsive-stack tbody tr,
+    .table-responsive-stack .clickable-row {
+        display: block;
+        margin-bottom: 12px;
+        padding: 14px 16px;
+        border: 1px solid var(--mg-line);
+        border-radius: 16px;
+        background: var(--mg-white);
+        box-shadow: var(--mg-shadow-sm);
+    }
+
+    .table-responsive-stack tbody tr td,
+    .table-responsive-stack .clickable-row td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        border: none;
+        white-space: normal;
+    }
+
+    .table-responsive-stack tbody tr td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: var(--mg-muted);
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        flex: 0 0 40%;
+    }
+
+    .table-responsive-stack tbody tr td:last-child {
+        justify-content: flex-end;
+    }
+
+    .table-responsive-stack tbody tr td .btn {
+        min-height: 38px;
+        font-size: .82rem;
+    }
+}

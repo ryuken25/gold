@@ -7,6 +7,7 @@ $tab = $activeTab ?? 'dashboard';
 $items = [
     'dashboard' => ['label' => 'Dashboard', 'url' => base_url('/akun'), 'icon' => '🏠'],
     'pesanan'   => ['label' => 'Pesanan',   'url' => base_url('/akun/pesanan'), 'icon' => '🧾'],
+    'kredit'    => ['label' => 'Kredit',    'url' => base_url('/akun/kredit'), 'icon' => '💳'],
     'profil'    => ['label' => 'Profil',     'url' => base_url('/akun/profil'), 'icon' => '👤'],
 ];
 ?>
