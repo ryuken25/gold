@@ -127,3 +127,22 @@ vendor/
 
 # Modules Testing
 _modules/*
+
+#-------------------------
+# Project artifacts (not runtime)
+#-------------------------
+BabIvAssets/
+BabIvAssets.rar
+*.zip
+outputnadiari.zip
+MahenGold-siap-pakai.zip
+MEGAPROMPT_*.md
+ultimate_laporan.py
+skills/
+writable/e2e_*/
+writable/seed_check/
+writable/form_dp/
+writable/build_*.py
+writable/verify_*.py
+writable/verify_seed.py
+.claude/

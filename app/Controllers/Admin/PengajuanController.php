@@ -27,7 +27,14 @@ class PengajuanController extends BaseAdminController
     public function index(): string
     {
         $db = Database::connect();
-        $status = (string) $this->request->getGet('status');
+        $bucket = (string) $this->request->getGet('bucket');
+
+        // Count per bucket
+        $counts = [
+            'perlu'   => $db->table('pengajuan')->whereIn('status', ['baru', 'diproses'])->countAllResults(),
+            'proses'  => $db->table('pengajuan')->whereIn('status', ['disetujui', 'dikirim', 'selesai'])->countAllResults(),
+            'ditolak' => $db->table('pengajuan')->whereIn('status', ['ditolak', 'dibatalkan'])->countAllResults(),
+        ];
 
         $builder = $db->table('pengajuan pg')
             ->select('pg.*, p.nama_produk, p.kode_produk, u.nama as nama_user, u.email as email_user')
@@ -35,15 +42,19 @@ class PengajuanController extends BaseAdminController
             ->join('users u', 'u.id = pg.user_id', 'left')
             ->orderBy('pg.created_at', 'DESC');
 
-        if ($status !== '') {
-            $builder->where('pg.status', $status);
+        if ($bucket === 'perlu') {
+            $builder->whereIn('pg.status', ['baru', 'diproses']);
+        } elseif ($bucket === 'proses') {
+            $builder->whereIn('pg.status', ['disetujui', 'dikirim', 'selesai']);
+        } elseif ($bucket === 'ditolak') {
+            $builder->whereIn('pg.status', ['ditolak', 'dibatalkan']);
         }
 
         return $this->render('admin/pengajuan/index', [
-            'pageTitle'  => 'Pengajuan Masuk',
+            'pageTitle'  => 'Pengajuan',
             'pengajuan'  => $builder->get()->getResultArray(),
-            'status'     => $status,
-            'statusList' => $this->statusList(),
+            'bucket'     => $bucket,
+            'counts'     => $counts,
         ]);
     }
 
