@@ -1,0 +1,106 @@
+<?php
+
+namespace App\Controllers\Admin;
+
+use Config\Database;
+
+class TransaksiController extends BaseAdminController
+{
+    /**
+     * Halaman gabungan Transaksi (kredit + cash + pembayaran).
+     * Chip filter: Semua | Cash | Kredit
+     */
+    public function index(): string
+    {
+        $db   = Database::connect();
+        $tipe = (string) $this->request->getGet('tipe');
+        $today = date('Y-m-d');
+
+        // Ambil data gabungan
+        $rows = [];
+
+        // 1. Data kredit
+        $kreditBuilder = $db->table('kredit k')
+            ->select("k.*, n.nama as nama_nasabah, p.nama_produk, 'kredit' as tipe_transaksi")
+            ->join('nasabah n', 'n.id = k.nasabah_id')
+            ->join('produk_emas p', 'p.id = k.produk_emas_id');
+
+        if ($tipe === 'cash') {
+            // Skip kredit
+        } else {
+            $kreditList = $kreditBuilder->orderBy('k.created_at', 'DESC')->get()->getResultArray();
+            // Tambah flag is_terlambat
+            $jadwalModel = new \App\Models\JadwalAngsuranModel();
+            foreach ($kreditList as &$k) {
+                $k['is_terlambat'] = false;
+                if ($k['status'] === 'aktif') {
+                    $angsuran = $jadwalModel->where('kredit_id', $k['id'])
+                        ->where('status !=', 'dibayar')
+                        ->orderBy('tanggal_jatuh_tempo', 'ASC')->first();
+                    if ($angsuran) {
+                        $k['is_terlambat'] = strtotime($angsuran['tanggal_jatuh_tempo']) < strtotime('today');
+                    }
+                }
+                // Cek bukti pending
+                $k['bukti_pending'] = $db->table('bukti_pembayaran')
+                    ->where('kredit_id', $k['id'])->where('status', 'menunggu')->countAllResults();
+            }
+            unset($k);
+            $rows = array_merge($rows, $kreditList);
+        }
+
+        // 2. Data cash pengajuan
+        if ($tipe !== 'kredit') {
+            $cashBuilder = $db->table('pengajuan pg')
+                ->select("pg.*, p.nama_produk, p.harga_pokok AS harga_produk, u.nama as nama_user, 'cash' as tipe_transaksi")
+                ->join('produk_emas p', 'p.id = pg.produk_emas_id', 'left')
+                ->join('users u', 'u.id = pg.user_id', 'left')
+                ->where('pg.metode_pembayaran', 'cash')
+                ->orderBy('pg.created_at', 'DESC');
+
+            $cashList = $cashBuilder->get()->getResultArray();
+            foreach ($cashList as &$c) {
+                $harga = (float) ($c['harga_produk'] ?? 0);
+                $terbayar = (float) $db->table('bukti_pembayaran')
+                    ->selectSum('nominal')
+                    ->where('pengajuan_id', $c['id'])
+                    ->where('tipe', 'cash')
+                    ->where('status', 'terverifikasi')
+                    ->get()->getRow('nominal') ?? 0;
+                $c['total_pembayaran'] = $harga;
+                $c['total_terbayar']   = $terbayar;
+                $c['sisa_piutang']     = max(0, $harga - $terbayar);
+                $c['is_terlambat']     = false;
+                $c['bukti_pending']    = $db->table('bukti_pembayaran')
+                    ->where('pengajuan_id', $c['id'])->where('status', 'menunggu')->countAllResults();
+            }
+            unset($c);
+            $rows = array_merge($rows, $cashList);
+        }
+
+        // Sort by created_at DESC
+        usort($rows, fn($a, $b) => strtotime($b['created_at']) - strtotime($a['created_at']));
+
+        return $this->render('admin/transaksi/index', [
+            'pageTitle' => 'Transaksi',
+            'rows'      => $rows,
+            'tipe'      => $tipe,
+        ]);
+    }
+
+    /**
+     * Backward compat: /admin/kredit redirect ke /admin/transaksi?tipe=kredit
+     */
+    public function redirectKredit()
+    {
+        return redirect()->to('/admin/transaksi?tipe=kredit');
+    }
+
+    /**
+     * Backward compat: /admin/pembayaran redirect ke /admin/transaksi
+     */
+    public function redirectPembayaran()
+    {
+        return redirect()->to('/admin/transaksi');
+    }
+}

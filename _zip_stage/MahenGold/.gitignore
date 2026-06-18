@@ -1,0 +1,148 @@
+#-------------------------
+# Operating Specific Junk Files
+#-------------------------
+
+# OS X
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+
+#-------------------------
+# Environment Files
+#-------------------------
+# .env SENGAJA TIDAK DI-IGNORE karena project ini full localhost,
+# tidak ada credential production yang sensitif.
+# .env
+.vagrant
+Vagrantfile
+
+#-------------------------
+# Dokumen / Laporan / Materi tidak diperlukan untuk runtime
+#-------------------------
+docs/
+audit/
+diagram/
+contoh/
+screenshots/
+ci4tmp/
+/builds
+tools/
+*.docx
+!usage.docx
+*.pdf
+Proposal_*
+
+# Env lokal: JANGAN di-track supaya `git pull` tidak pernah bentrok karena .env.
+# Salin dari .env.example saat setup (setup-windows.* otomatis melakukannya).
+/.env
+
+# Composer yang diunduh otomatis oleh setup-windows.*
+/composer.phar
+/composer-setup.php
+
+# Backup .env sementara dari setup-windows.* (saat git pull)
+/.env.local.bak
+/.env.bak
+
+# .env khusus mac (berisi credential lokal) — JANGAN di-push
+/.env.mac
+
+#-------------------------
+# Temporary Files (CodeIgniter 4)
+#-------------------------
+/writable/cache/*
+!/writable/cache/index.html
+
+/writable/logs/*
+!/writable/logs/index.html
+
+/writable/session/*
+!/writable/session/index.html
+
+/writable/uploads/*
+!/writable/uploads/index.html
+!/writable/uploads/ktp/
+/writable/uploads/ktp/*
+!/writable/uploads/ktp/index.html
+
+/writable/debugbar/*
+!/writable/debugbar/index.html
+
+php_errors.log
+
+#-------------------------
+# Test Files
+#-------------------------
+/tests/coverage*
+/phpunit
+/results/
+/phpunit*.xml
+
+#-------------------------
+# Composer
+#-------------------------
+vendor/
+
+#-------------------------
+# IDE / Editor
+#-------------------------
+.idea/
+*.iml
+.vscode/
+.php-version
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+*.sublime-workspace
+*.sublime-project
+.phpintel
+/api/
+
+# NetBeans
+/nbproject/
+/build/
+/nbbuild/
+/dist/
+/nbdist/
+/nbactions.xml
+/nb-configuration.xml
+/.nb-gradle/
+
+# Modules Testing
+_modules/*
+
+#-------------------------
+# Project artifacts (not runtime)
+#-------------------------
+BabIvAssets/
+BabIvAssets.rar
+*.zip
+outputnadiari.zip
+MahenGold-siap-pakai.zip
+MEGAPROMPT_*.md
+ultimate_laporan.py
+skills/
+writable/e2e_*/
+writable/seed_check/
+writable/form_dp/
+writable/build_*.py
+writable/verify_*.py
+writable/verify_seed.py
+.claude/

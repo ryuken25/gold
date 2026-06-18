@@ -13,6 +13,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link href="<?= base_url('assets/css/mahengold.css'); ?>" rel="stylesheet">
+    <meta name="csrf-token-name" content="<?= csrf_token() ?>">
+    <meta name="csrf-token-value" content="<?= csrf_hash() ?>">
 </head>
 
 <body class="admin-body">
@@ -29,6 +31,8 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="<?= base_url('assets/js/mahengold.js'); ?>"></script>
+    <script src="<?= base_url('assets/js/mahengold-dialog.js'); ?>"></script>
+    <script src="<?= base_url('assets/js/mahengold-ajax.js'); ?>"></script>
     <?= $this->include('partials/mahengold_dialog'); ?>
     <?= $this->renderSection('scripts'); ?>
 </body>

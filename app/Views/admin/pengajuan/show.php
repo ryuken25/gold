@@ -202,40 +202,7 @@ $relatif = static function ($datetime): string {
 <?= $this->section('scripts'); ?>
 <script>
 (function() {
-    const CSRF_NAME = '<?= csrf_token() ?>';
-    const CSRF_HASH = '<?= csrf_hash() ?>';
     const BASE = '<?= base_url('/admin/pengajuan/' . $pengajuan['id']) ?>';
-
-    function submitPost(url, fields) {
-        const fd = new FormData();
-        fd.append(CSRF_NAME, CSRF_HASH);
-        for (const [k, v] of Object.entries(fields || {})) fd.append(k, String(v));
-
-        fetch(url, {
-            method: 'POST',
-            body: fd,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                MahenDialog.success({
-                    title: 'Berhasil',
-                    message: data.message || 'Operasi berhasil.',
-                    onConfirm: () => { window.location.href = data.redirect || BASE; }
-                });
-            } else {
-                MahenDialog.error({
-                    title: 'Gagal',
-                    message: data.message || 'Terjadi kesalahan.'
-                });
-            }
-        })
-        .catch(err => {
-            console.error('AJAX error:', err);
-            MahenDialog.error({ title: 'Kesalahan Jaringan', message: 'Gagal menghubungi server.' });
-        });
-    }
 
     // VERIFIKASI
     document.getElementById('btnVerifikasi')?.addEventListener('click', () => {
@@ -246,7 +213,16 @@ $relatif = static function ($datetime): string {
                 : "'Verifikasi pesanan ini?'" ?>,
             confirmText: 'Ya, Verifikasi',
             confirmClass: 'btn-gold',
-            onConfirm: () => submitPost(BASE + '/verifikasi', {})
+            onConfirm: async (helpers) => {
+                try {
+                    const res = await MahenAjax.post(BASE + '/verifikasi');
+                    helpers.close();
+                    MahenDialog.success({ title: 'Berhasil', message: res.message, onConfirm: () => window.location.href = res.redirect || BASE });
+                } catch (err) {
+                    helpers.finish();
+                    MahenDialog.error({ title: 'Gagal', message: err.message });
+                }
+            }
         });
     });
 
@@ -254,10 +230,19 @@ $relatif = static function ($datetime): string {
     document.getElementById('btnTolak')?.addEventListener('click', () => {
         MahenDialog.form({
             title: 'Tolak Pesanan',
-            fields: [{ name: 'alasan', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan agar dapat dipahami oleh pelanggan.', rows: 3 }],
+            fields: [{ name: 'alasan', label: 'Alasan Penolakan', type: 'textarea', required: true, minlength: 5, maxlength: 1000, placeholder: 'Jelaskan alasan penolakan agar dapat dipahami oleh pelanggan.', rows: 3 }],
             submitText: 'Tolak Pesanan',
             submitClass: 'btn-danger',
-            onsubmit: (data) => submitPost(BASE + '/tolak', { alasan: data.alasan || '' })
+            onsubmit: async (data, helpers) => {
+                try {
+                    const res = await MahenAjax.post(BASE + '/tolak', { alasan: data.alasan || '' });
+                    helpers.close();
+                    MahenDialog.success({ title: 'Pesanan Ditolak', message: res.message, onConfirm: () => window.location.href = res.redirect || BASE });
+                } catch (err) {
+                    helpers.setError(err.message);
+                    helpers.finish();
+                }
+            }
         });
     });
 
@@ -271,18 +256,27 @@ $relatif = static function ($datetime): string {
                 { name: 'referensi_pengiriman', label: 'Referensi', type: 'text', required: true, placeholder: 'Masukkan nomor resi atau nomor HP...' }
             ],
             submitText: 'Kirim Pesanan',
-            onsubmit: (data) => {
+            onsubmit: async (data, helpers) => {
                 const metode = String(data.metode_pengiriman || '').trim();
                 const ref = String(data.referensi_pengiriman || '').trim();
                 if (!['resi', 'no_hp'].includes(metode)) {
-                    MahenDialog.error({ title: 'Metode Tidak Valid', message: 'Pilih Nomor Resi atau Nomor HP Pengiriman.' });
+                    helpers.setError('Pilih metode pengiriman yang valid.');
+                    helpers.finish();
                     return;
                 }
                 if (!ref) {
-                    MahenDialog.error({ title: 'Referensi Kosong', message: 'Nomor resi atau nomor HP wajib diisi.' });
+                    helpers.setError('Referensi pengiriman wajib diisi.');
+                    helpers.finish();
                     return;
                 }
-                submitPost(BASE + '/kirim', { metode_pengiriman: metode, referensi_pengiriman: ref });
+                try {
+                    const res = await MahenAjax.post(BASE + '/kirim', { metode_pengiriman: metode, referensi_pengiriman: ref });
+                    helpers.close();
+                    MahenDialog.success({ title: 'Pesanan Dikirim', message: res.message, onConfirm: () => window.location.href = res.redirect || BASE });
+                } catch (err) {
+                    helpers.setError(err.message);
+                    helpers.finish();
+                }
             }
         });
     });
@@ -294,7 +288,16 @@ $relatif = static function ($datetime): string {
             message: 'Tandai pesanan ini sebagai selesai? Pastikan pesanan telah diterima oleh pelanggan.',
             confirmText: 'Ya, Selesai',
             confirmClass: 'btn-gold',
-            onConfirm: () => submitPost(BASE + '/selesai', {})
+            onConfirm: async (helpers) => {
+                try {
+                    const res = await MahenAjax.post(BASE + '/selesai');
+                    helpers.close();
+                    MahenDialog.success({ title: 'Selesai', message: res.message, onConfirm: () => window.location.href = res.redirect || BASE });
+                } catch (err) {
+                    helpers.finish();
+                    MahenDialog.error({ title: 'Gagal', message: err.message });
+                }
+            }
         });
     });
 })();

@@ -52,24 +52,6 @@
 <?= $this->section('scripts'); ?>
 <script>
 (function() {
-    const CSRF_NAME = '<?= csrf_token() ?>';
-    const CSRF_HASH = '<?= csrf_hash() ?>';
-
-    function ajaxPost(url) {
-        const fd = new FormData();
-        fd.append(CSRF_NAME, CSRF_HASH);
-        fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    MahenDialog.success({ title: 'Berhasil', message: data.message, onConfirm: () => { window.location.href = data.redirect || '/admin/nasabah'; } });
-                } else {
-                    MahenDialog.error({ title: 'Gagal', message: data.message || 'Terjadi kesalahan.' });
-                }
-            })
-            .catch(() => MahenDialog.error({ title: 'Kesalahan', message: 'Gagal menghubungi server.' }));
-    }
-
     document.querySelectorAll('.js-hapus-nasabah').forEach(btn => {
         btn.addEventListener('click', () => {
             MahenDialog.confirm({
@@ -77,7 +59,13 @@
                 message: 'Apakah Anda yakin ingin menghapus nasabah ' + btn.dataset.nama + '? Data yang dihapus tidak dapat dikembalikan.',
                 confirmText: 'Ya, Hapus',
                 confirmClass: 'btn-danger',
-                onConfirm: () => ajaxPost('/admin/nasabah/' + btn.dataset.id + '/delete')
+                onConfirm: async (helpers) => {
+                    try {
+                        const res = await MahenAjax.post('/admin/nasabah/' + btn.dataset.id + '/delete');
+                        helpers.close();
+                        MahenDialog.success({ title: 'Dihapus', message: res.message, onConfirm: () => window.location.href = res.redirect || '/admin/nasabah' });
+                    } catch (err) { helpers.finish(); MahenDialog.error({ title: 'Gagal', message: err.message }); }
+                }
             });
         });
     });
