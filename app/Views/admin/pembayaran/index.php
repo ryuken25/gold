@@ -111,19 +111,20 @@
     const CSRF_NAME = '<?= csrf_token() ?>';
     const CSRF_HASH = '<?= csrf_hash() ?>';
 
-    function submitPost(url, fields) {
-        const f = document.createElement('form');
-        f.method = 'POST'; f.action = url; f.style.display = 'none';
-        const cs = document.createElement('input');
-        cs.type = 'hidden'; cs.name = CSRF_NAME; cs.value = CSRF_HASH;
-        f.appendChild(cs);
-        for (const [k, v] of Object.entries(fields || {})) {
-            const inp = document.createElement('input');
-            inp.type = 'hidden'; inp.name = k; inp.value = v;
-            f.appendChild(inp);
-        }
-        document.body.appendChild(f);
-        f.submit();
+    function ajaxPost(url, fields) {
+        const fd = new FormData();
+        fd.append(CSRF_NAME, CSRF_HASH);
+        for (const [k, v] of Object.entries(fields || {})) fd.append(k, String(v));
+        fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    MahenDialog.success({ title: 'Berhasil', message: data.message, onConfirm: () => { window.location.href = data.redirect || '/admin/pembayaran'; } });
+                } else {
+                    MahenDialog.error({ title: 'Gagal', message: data.message || 'Terjadi kesalahan.' });
+                }
+            })
+            .catch(() => MahenDialog.error({ title: 'Kesalahan', message: 'Gagal menghubungi server.' }));
     }
 
     document.querySelectorAll('.js-verif-bukti').forEach(btn => {
@@ -132,7 +133,7 @@
                 title: 'Verifikasi Pembayaran',
                 message: 'Pastikan nominal, rekening pengirim, dan bukti pembayaran sudah sesuai sebelum melanjutkan.',
                 confirmText: 'Ya, Verifikasi',
-                onConfirm: () => submitPost('/admin/pembayaran/' + btn.dataset.id + '/verifikasi', {})
+                onConfirm: () => ajaxPost('/admin/pembayaran/' + btn.dataset.id + '/verifikasi', {})
             });
         });
     });
@@ -144,7 +145,7 @@
                 fields: [{ name: 'catatan_admin', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan...', rows: 3 }],
                 submitText: 'Tolak',
                 submitClass: 'btn-danger',
-                onsubmit: (data) => submitPost('/admin/pembayaran/' + btn.dataset.id + '/tolak', { catatan_admin: data.catatan_admin })
+                onsubmit: (data) => ajaxPost('/admin/pembayaran/' + btn.dataset.id + '/tolak', { catatan_admin: data.catatan_admin || '' })
             });
         });
     });
