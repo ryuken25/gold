@@ -108,15 +108,15 @@
 <?= $this->section('scripts'); ?>
 <script>
 (function() {
-    const CSRF = '<?= csrf_token() ?>';
-    const CSRF_VAL = '<?= csrf_hash() ?>';
+    const CSRF_NAME = '<?= csrf_token() ?>';
+    const CSRF_HASH = '<?= csrf_hash() ?>';
 
     async function postAjax(url, body) {
         const fd = new FormData();
-        fd.append(CSRF, CSRF_VAL);
+        fd.append(CSRF_NAME, CSRF_HASH);
         for (const [k, v] of Object.entries(body || {})) fd.append(k, v);
-        const res = await fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        window.location.reload();
+        const res = await fetch(url, { method: 'POST', body: fd });
+        window.location.href = res.url || '/admin/pembayaran';
     }
 
     // VERIFIKASI BUKTI
@@ -127,7 +127,7 @@
                 title: 'Verifikasi Pembayaran',
                 message: 'Pastikan nominal, rekening pengirim, dan bukti pembayaran sudah sesuai sebelum melanjutkan.',
                 confirmText: 'Ya, Verifikasi',
-                onConfirm: (finish) => { postAjax('/admin/pembayaran/' + id + '/verifikasi', {}); finish(); }
+                onConfirm: async (finish) => { await postAjax('/admin/pembayaran/' + id + '/verifikasi', {}); finish(); }
             });
         });
     });
@@ -141,7 +141,7 @@
                 fields: [{ name: 'catatan_admin', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan...', rows: 3 }],
                 submitText: 'Tolak',
                 submitClass: 'btn-danger',
-                onsubmit: (data, finish) => { postAjax('/admin/pembayaran/' + id + '/tolak', { catatan_admin: data.catatan_admin }); finish(); }
+                onsubmit: async (data, finish) => { await postAjax('/admin/pembayaran/' + id + '/tolak', { catatan_admin: data.catatan_admin }); finish(); }
             });
         });
     });

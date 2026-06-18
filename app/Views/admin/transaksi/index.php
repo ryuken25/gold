@@ -98,10 +98,10 @@
         </div>
 
         <!-- Legend -->
-        <div class="mt-3 d-flex flex-wrap gap-3 small text-muted-mg">
-            <span><span class="badge bg-success">■</span> Lunas</span>
-            <span><span class="badge bg-primary">■</span> Aktif — Lancar</span>
-            <span><span class="badge bg-danger">■</span> Aktif — Terlambat</span>
+        <div class="mt-3 d-flex flex-wrap gap-3 small">
+            <span class="legend-lunas px-3 py-1 rounded">Lunas</span>
+            <span class="legend-aktif px-3 py-1 rounded">Aktif — Lancar</span>
+            <span class="legend-terlambat px-3 py-1 rounded">Aktif — Terlambat</span>
         </div>
     <?php else: ?>
         <?= view('partials/empty_state', ['title' => 'Belum ada transaksi']); ?>

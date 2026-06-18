@@ -202,24 +202,21 @@ $relatif = static function ($datetime): string {
 <?= $this->section('scripts'); ?>
 <script>
 (function() {
-    const CSRF = '<?= csrf_token() ?>';
-    const CSRF_VAL = '<?= csrf_hash() ?>';
-    const ID = <?= (int) $pengajuan['id'] ?>;
+    const CSRF_NAME = '<?= csrf_token() ?>';
+    const CSRF_HASH = '<?= csrf_hash() ?>';
     const BASE = '<?= base_url('/admin/pengajuan/' . $pengajuan['id']) ?>';
 
     async function postAction(url, body) {
         const fd = new FormData();
-        fd.append(CSRF, CSRF_VAL);
-        for (const [k, v] of Object.entries(body)) fd.append(k, v);
-        const res = await fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        if (res.redirected || res.ok) { window.location.reload(); return; }
-        const data = await res.json().catch(() => ({}));
-        if (window.MahenDialog) MahenDialog.error({ title: 'Gagal', message: data.error || data.message || 'Terjadi kesalahan.' });
+        fd.append(CSRF_NAME, CSRF_HASH);
+        for (const [k, v] of Object.entries(body || {})) fd.append(k, v);
+        const res = await fetch(url, { method: 'POST', body: fd });
+        // Server returns redirect (302) — follow it and reload
+        window.location.href = res.url || BASE;
     }
 
     // VERIFIKASI
-    const btnVerif = document.getElementById('btnVerifikasi');
-    if (btnVerif) btnVerif.addEventListener('click', () => {
+    document.getElementById('btnVerifikasi')?.addEventListener('click', () => {
         MahenDialog.confirm({
             title: 'Verifikasi Pesanan',
             message: <?= $pengajuan['metode_pembayaran'] === 'kredit'
@@ -227,25 +224,23 @@ $relatif = static function ($datetime): string {
                 : "'Verifikasi pesanan ini?'" ?>,
             confirmText: 'Ya, Verifikasi',
             confirmClass: 'btn-gold',
-            onConfirm: (finish) => { postAction(BASE + '/verifikasi', {}); finish(); }
+            onConfirm: async (finish) => { await postAction(BASE + '/verifikasi', {}); finish(); }
         });
     });
 
     // TOLAK
-    const btnTolak = document.getElementById('btnTolak');
-    if (btnTolak) btnTolak.addEventListener('click', () => {
+    document.getElementById('btnTolak')?.addEventListener('click', () => {
         MahenDialog.form({
             title: 'Tolak Pesanan',
             fields: [{ name: 'alasan', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan agar dapat dipahami oleh pelanggan.', rows: 3 }],
             submitText: 'Tolak Pesanan',
             submitClass: 'btn-danger',
-            onsubmit: (data, finish) => { postAction(BASE + '/tolak', { alasan: data.alasan }); finish(); }
+            onsubmit: async (data, finish) => { await postAction(BASE + '/tolak', { alasan: data.alasan }); finish(); }
         });
     });
 
     // KIRIM
-    const btnKirim = document.getElementById('btnKirim');
-    if (btnKirim) btnKirim.addEventListener('click', () => {
+    document.getElementById('btnKirim')?.addEventListener('click', () => {
         MahenDialog.form({
             title: 'Kirim Pesanan',
             message: 'Pilih metode pengiriman dan masukkan referensi.',
@@ -254,19 +249,18 @@ $relatif = static function ($datetime): string {
                 { name: 'referensi_pengiriman', label: 'Referensi', type: 'text', required: true, placeholder: 'Masukkan nomor resi atau nomor HP...' }
             ],
             submitText: 'Kirim Pesanan',
-            onsubmit: (data, finish) => { postAction(BASE + '/kirim', data); finish(); }
+            onsubmit: async (data, finish) => { await postAction(BASE + '/kirim', data); finish(); }
         });
     });
 
     // SELESAI
-    const btnSelesai = document.getElementById('btnSelesai');
-    if (btnSelesai) btnSelesai.addEventListener('click', () => {
+    document.getElementById('btnSelesai')?.addEventListener('click', () => {
         MahenDialog.confirm({
             title: 'Tandai Selesai',
             message: 'Tandai pesanan ini sebagai selesai? Pastikan pesanan telah diterima oleh pelanggan.',
             confirmText: 'Ya, Selesai',
             confirmClass: 'btn-gold',
-            onConfirm: (finish) => { postAction(BASE + '/selesai', {}); finish(); }
+            onConfirm: async (finish) => { await postAction(BASE + '/selesai', {}); finish(); }
         });
     });
 })();
