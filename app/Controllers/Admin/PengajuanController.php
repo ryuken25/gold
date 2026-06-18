@@ -68,55 +68,71 @@ class PengajuanController extends BaseAdminController
 
     public function verifikasi(int $id)
     {
-        $pengajuan = $this->ambilPengajuan($id);
-        if (!$pengajuan) {
-            throw PageNotFoundException::forPageNotFound('Pengajuan tidak ditemukan.');
+        try {
+            $workflow = new \App\Services\PengajuanWorkflowService();
+            $workflow->verify($id, (int) current_admin()['id']);
+            return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan diverifikasi & email konfirmasi dikirim.');
+        } catch (\Throwable $e) {
+            return redirect()->to('/admin/pengajuan/' . $id)->with('error', $e->getMessage());
         }
-
-        $this->pengajuanModel->update($id, ['status' => 'disetujui']);
-        $this->aktivitasModel->log($id, 'diverifikasi', 'Pesanan disetujui admin.', $this->adminName());
-
-        // Untuk kredit: otomatis bentuk nasabah + kredit + jadwal angsuran.
-        if ($pengajuan['metode_pembayaran'] === 'kredit') {
-            try {
-                $marginDefault = (float) $this->pengaturanModel->getPengaturan()['margin_default'];
-                $hasil = (new CreditTransactionService())->createFromPengajuan($pengajuan, $marginDefault);
-                if (!empty($hasil['kredit'])) {
-                    $this->aktivitasModel->log($id, 'kredit_dibuat', 'Kredit otomatis dibuat: ' . $hasil['kredit']['kode_kredit'], $this->adminName());
-                }
-            } catch (\Throwable $e) {
-                log_message('error', 'Auto-create kredit gagal (pengajuan ' . $id . '): ' . $e->getMessage());
-                session()->setFlashdata('warning', 'Pesanan disetujui, tetapi pembuatan kredit otomatis gagal: ' . $e->getMessage());
-            }
-        }
-
-        $this->kirimEmailVerifikasi($pengajuan);
-
-        return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan diverifikasi & email konfirmasi dikirim.');
     }
 
     public function tolak(int $id)
     {
-        $pengajuan = $this->pengajuanModel->find($id);
-        if (!$pengajuan) {
-            throw PageNotFoundException::forPageNotFound('Pengajuan tidak ditemukan.');
-        }
-
-        if (!in_array($pengajuan['status'], ['baru', 'diproses'], true)) {
-            return redirect()->to('/admin/pengajuan/' . $id)
-                ->with('error', 'Pesanan sudah diproses/diverifikasi, tidak bisa ditolak.');
-        }
-
         if (!$this->validate(['alasan' => 'required|max_length[1000]'])) {
             return redirect()->to('/admin/pengajuan/' . $id)
                 ->with('error', 'Alasan penolakan wajib diisi.');
         }
 
-        $alasan = (string) $this->request->getPost('alasan');
-        $this->pengajuanModel->update($id, ['status' => 'ditolak', 'catatan' => $alasan]);
-        $this->aktivitasModel->log($id, 'ditolak', $alasan, $this->adminName());
+        try {
+            $workflow = new \App\Services\PengajuanWorkflowService();
+            $alasan = (string) $this->request->getPost('alasan');
+            $workflow->reject($id, (int) current_admin()['id'], $alasan);
+            return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan ditolak.');
+        } catch (\Throwable $e) {
+            return redirect()->to('/admin/pengajuan/' . $id)->with('error', $e->getMessage());
+        }
+    }
 
-        return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan ditolak.');
+    /**
+     * Transisi → dikirim (dari form modal pengiriman).
+     */
+    public function kirim(int $id)
+    {
+        if (!$this->validate([
+            'metode_pengiriman'   => 'required|in_list[resi,no_hp]',
+            'referensi_pengiriman'=> 'required|max_length[255]',
+        ])) {
+            return redirect()->to('/admin/pengajuan/' . $id)
+                ->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        try {
+            $workflow = new \App\Services\PengajuanWorkflowService();
+            $workflow->ship(
+                $id,
+                (int) current_admin()['id'],
+                (string) $this->request->getPost('metode_pengiriman'),
+                (string) $this->request->getPost('referensi_pengiriman')
+            );
+            return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan berhasil dikirim.');
+        } catch (\Throwable $e) {
+            return redirect()->to('/admin/pengajuan/' . $id)->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Transisi → selesai.
+     */
+    public function selesai(int $id)
+    {
+        try {
+            $workflow = new \App\Services\PengajuanWorkflowService();
+            $workflow->complete($id, (int) current_admin()['id']);
+            return redirect()->to('/admin/pengajuan/' . $id)->with('success', 'Pesanan selesai.');
+        } catch (\Throwable $e) {
+            return redirect()->to('/admin/pengajuan/' . $id)->with('error', $e->getMessage());
+        }
     }
 
     public function batalkan(int $id)

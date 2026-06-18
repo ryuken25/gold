@@ -83,15 +83,36 @@
                                 <a href="<?= base_url('/admin/pembayaran/' . $r['id'] . '/bukti'); ?>" target="_blank"
                                     rel="noopener" class="btn btn-sm btn-outline-gold rounded-pill">Bukti</a>
                                 <?php if ($r['status'] === 'menunggu'): ?>
-                                    <form action="<?= base_url('/admin/pembayaran/' . $r['id'] . '/verifikasi'); ?>" method="post"
-                                        class="d-inline" onsubmit="return confirm('Verifikasi pembayaran ini?');">
+                                    <button type="button" class="btn btn-sm btn-gold rounded-pill"
+                                        onclick="MahenDialog.confirm({
+                                            title: 'Verifikasi Pembayaran',
+                                            message: 'Pastikan nominal, rekening pengirim, dan bukti pembayaran sudah sesuai sebelum melanjutkan.',
+                                            confirmText: 'Ya, Verifikasi',
+                                            onConfirm: function(finish) {
+                                                document.getElementById('formVerif<?= esc($r['id']); ?>').submit();
+                                                finish();
+                                            }
+                                        })">Verifikasi</button>
+                                    <form id="formVerif<?= esc($r['id']); ?>" action="<?= base_url('/admin/pembayaran/' . $r['id'] . '/verifikasi'); ?>" method="post" class="d-none">
                                         <?= csrf_field(); ?>
-                                        <button class="btn btn-sm btn-gold rounded-pill">Verifikasi</button>
                                     </form>
-                                    <form action="<?= base_url('/admin/pembayaran/' . $r['id'] . '/tolak'); ?>" method="post" class="d-inline js-tolak">
+
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill"
+                                        onclick="var self = this; MahenDialog.form({
+                                            title: 'Tolak Bukti Pembayaran',
+                                            fields: [{ name: 'catatan_admin', label: 'Alasan Penolakan', type: 'textarea', required: true, placeholder: 'Jelaskan alasan penolakan...', rows: 3 }],
+                                            submitText: 'Tolak',
+                                            submitClass: 'btn-danger',
+                                            onsubmit: function(data, finish) {
+                                                var input = document.getElementById('catatanAdmin<?= esc($r['id']); ?>');
+                                                input.value = data.catatan_admin;
+                                                document.getElementById('formTolak<?= esc($r['id']); ?>').submit();
+                                                finish();
+                                            }
+                                        });">Tolak</button>
+                                    <form id="formTolak<?= esc($r['id']); ?>" action="<?= base_url('/admin/pembayaran/' . $r['id'] . '/tolak'); ?>" method="post" class="d-none">
                                         <?= csrf_field(); ?>
-                                        <input type="hidden" name="catatan_admin">
-                                        <button class="btn btn-sm btn-outline-danger rounded-pill">Tolak</button>
+                                        <input type="hidden" id="catatanAdmin<?= esc($r['id']); ?>" name="catatan_admin" value="">
                                     </form>
                                 <?php elseif ($r['status'] === 'terverifikasi'): ?>
                                     <span class="badge bg-success">Terverifikasi</span>
@@ -110,14 +131,4 @@
 </div>
 <?= $this->endSection(); ?>
 
-<?= $this->section('scripts'); ?>
-<script>
-    document.querySelectorAll('form.js-tolak').forEach((f) => {
-        f.addEventListener('submit', (e) => {
-            const alasan = prompt('Alasan penolakan bukti pembayaran:');
-            if (!alasan) { e.preventDefault(); return; }
-            f.querySelector('input[name="catatan_admin"]').value = alasan;
-        });
-    });
-</script>
 <?= $this->endSection(); ?>

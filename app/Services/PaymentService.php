@@ -67,14 +67,15 @@ class PaymentService
         $this->db->transStart();
 
         $paymentId = $this->pembayaranModel->insert([
-            'kode_pembayaran' => 'PENDING',
-            'kredit_id' => $kredit['id'],
-            'jadwal_angsuran_id' => $selectedId ?: null,
-            'tanggal_bayar' => $input['tanggal_bayar'],
-            'nominal_bayar' => $nominalBayar,
-            'metode_pembayaran' => $input['metode_pembayaran'],
-            'keterangan' => $input['keterangan'] ?? null,
-            'dicatat_oleh' => $adminId,
+            'kode_pembayaran'      => 'PENDING',
+            'kredit_id'            => $kredit['id'],
+            'jadwal_angsuran_id'   => $selectedId ?: null,
+            'bukti_pembayaran_id'  => $input['bukti_pembayaran_id'] ?? null,
+            'tanggal_bayar'        => $input['tanggal_bayar'],
+            'nominal_bayar'        => $nominalBayar,
+            'metode_pembayaran'    => $input['metode_pembayaran'],
+            'keterangan'           => $input['keterangan'] ?? null,
+            'dicatat_oleh'         => $adminId,
         ], true);
 
         $this->pembayaranModel->update($paymentId, ['kode_pembayaran' => generate_kode('BYR', $paymentId)]);
@@ -114,7 +115,9 @@ class PaymentService
         }
 
         $totalTerbayar = (int) round((float) $kredit['total_terbayar']) + $nominalBayar;
-        $sisaPiutangBaru = max(0, (int) round((float) $kredit['total_harga_kredit']) - $totalTerbayar);
+        // UPDATED: Gunakan sisa_pokok_kredit (bukan total_harga_kredit) agar DP tidak dihitung sebagai utang
+        $sisaPokok = (int) round((float) ($kredit['sisa_pokok_kredit'] ?? $kredit['total_harga_kredit']));
+        $sisaPiutangBaru = max(0, $sisaPokok - $totalTerbayar);
         $statusKredit = $sisaPiutangBaru <= 0 ? 'lunas' : 'aktif';
 
         $this->refreshScheduleStatuses($kredit['id'], $today);

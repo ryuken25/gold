@@ -31,9 +31,23 @@
                         href="<?= base_url('/admin/pembayaran/create?kredit_id=' . $kredit['id']); ?>">Catat
                         Pembayaran</a><?php endif; ?>
                 <?php if ($kredit['status'] === 'aktif'): ?>
-                    <form action="<?= base_url('/admin/kredit/' . $kredit['id'] . '/batalkan'); ?>" method="post"
-                        onsubmit="return confirm('Batalkan kredit ini?');"><?= csrf_field(); ?><button
-                            class="btn btn-outline-danger rounded-pill w-100">Batalkan Kredit</button></form><?php endif; ?>
+                    <button type="button" class="btn btn-outline-danger rounded-pill w-100"
+                        onclick="MahenDialog.confirm({
+                            title: 'Batalkan Kredit',
+                            message: 'Apakah Anda yakin ingin membatalkan kredit ini? Tindakan ini dapat memengaruhi stok dan tidak dapat dibatalkan secara otomatis.',
+                            confirmText: 'Ya, Batalkan',
+                            confirmClass: 'btn-danger',
+                            onConfirm: function(finish) {
+                                document.getElementById('formBatalkan').submit();
+                                finish();
+                            }
+                        })">
+                        <i class="bi bi-x-circle"></i> Batalkan Kredit
+                    </button>
+                    <form id="formBatalkan" action="<?= base_url('/admin/kredit/' . $kredit['id'] . '/batalkan'); ?>" method="post" class="d-none">
+                        <?= csrf_field(); ?>
+                    </form>
+                <?php endif; ?>
                 <div class="alert alert-info mb-0 small">
                     <i class="bi bi-envelope-check"></i> Notifikasi otomatis via email.
                 </div>

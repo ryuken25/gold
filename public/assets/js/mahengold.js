@@ -174,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
             if (noTeleponInput && noTeleponInput.value.trim().length < 8) {
-                alert('Nomor telepon wajib diisi (minimal 8 digit).');
+                if (window.MahenDialog) MahenDialog.error({ title: 'Validasi Gagal', message: 'Nomor telepon wajib diisi (minimal 8 digit).' });
                 noTeleponInput.focus();
                 return;
             }
@@ -182,21 +182,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dpMin = parseFloat(uangMukaInput.min || '0') || 0;
                 const dp = parseFloat(uangMukaInput.value || '0') || 0;
                 const total = lastKalkulasi ? Number(lastKalkulasi.total_harga_kredit) : null;
-                if (dp < dpMin) { alert('Uang muka minimal ' + currency(dpMin) + '.'); uangMukaInput.focus(); return; }
+                if (dp < dpMin) { if (window.MahenDialog) MahenDialog.error({ title: 'Validasi Gagal', message: 'Uang muka minimal ' + currency(dpMin) + '.' }); uangMukaInput.focus(); return; }
                 if (total !== null && dp >= total) {
-                    alert('Uang muka harus lebih kecil dari total harga kredit (' + currency(total) + ').');
+                    if (window.MahenDialog) MahenDialog.error({ title: 'Validasi Gagal', message: 'Uang muka harus lebih kecil dari total harga kredit (' + currency(total) + ').' });
                     uangMukaInput.focus();
                     return;
                 }
             }
             // UPDATED: KTP wajib untuk semua metode
             if (ktpInput && !ktpInput.files.length) {
-                alert('Foto KTP wajib diunggah untuk semua metode pembelian.');
+                if (window.MahenDialog) MahenDialog.error({ title: 'Validasi Gagal', message: 'Foto KTP wajib diunggah untuk semua metode pembelian.' });
                 ktpInput.focus();
                 return;
             }
             if (buktiInput && !buktiInput.files.length) {
-                alert('Bukti pembayaran wajib diunggah.');
+                if (window.MahenDialog) MahenDialog.error({ title: 'Validasi Gagal', message: 'Bukti pembayaran wajib diunggah.' });
                 buktiInput.focus();
                 return;
             }
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (!response.ok) {
                     const messages = data.errors ? Object.values(data.errors) : [data.message || 'Terjadi kesalahan. Coba muat ulang halaman.'];
-                    alert(messages.join('\n'));
+                    if (window.MahenDialog) MahenDialog.error({ title: 'Gagal Mengirim', message: messages.join('\n') });
                     return;
                 }
                 // UPDATED: Sukses — tutup modal, tampilkan popup sukses, lalu redirect.
@@ -239,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.location.href = data.redirect || '/akun/pesanan';
                 }
             } catch (e) {
-                alert('Gagal menghubungi server. Periksa koneksi lalu coba lagi.');
+                if (window.MahenDialog) MahenDialog.error({ title: 'Kesalahan Jaringan', message: 'Gagal menghubungi server. Periksa koneksi lalu coba lagi.' });
             } finally {
                 if (submitBtn) submitBtn.disabled = false;
             }

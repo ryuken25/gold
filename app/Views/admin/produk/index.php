@@ -37,10 +37,19 @@
                             <td class="text-end">
                                 <a href="<?= base_url('/admin/produk/' . $row['id'] . '/edit'); ?>"
                                     class="btn btn-sm btn-outline-gold rounded-pill">Edit</a>
-                                <form action="<?= base_url('/admin/produk/' . $row['id'] . '/delete'); ?>" method="post"
-                                    class="d-inline" onsubmit="return confirm('Hapus produk ini?');">
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill"
+                                    onclick="MahenDialog.confirm({
+                                        title: 'Hapus Produk',
+                                        message: 'Apakah Anda yakin ingin menghapus produk <?= esc(addslashes($row['nama_produk'])); ?>? Data yang dihapus tidak dapat dikembalikan.',
+                                        confirmText: 'Ya, Hapus',
+                                        confirmClass: 'btn-danger',
+                                        onConfirm: function(finish) {
+                                            document.getElementById('formHapusProduk<?= esc($row['id']); ?>').submit();
+                                            finish();
+                                        }
+                                    })">Hapus</button>
+                                <form id="formHapusProduk<?= esc($row['id']); ?>" action="<?= base_url('/admin/produk/' . $row['id'] . '/delete'); ?>" method="post" class="d-none">
                                     <?= csrf_field(); ?>
-                                    <button class="btn btn-sm btn-outline-danger rounded-pill">Hapus</button>
                                 </form>
                             </td>
                         </tr>
