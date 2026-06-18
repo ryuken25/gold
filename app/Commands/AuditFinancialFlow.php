@@ -164,6 +164,47 @@ class AuditFinancialFlow extends BaseCommand
         foreach ($mismatchedKreditPayments as $r) {
             $issues[] = "Total terbayar kredit {$r['kode_kredit']} ({$r['total_terbayar']}) tidak cocok dengan jumlah pembayaran ({$r['real_terbayar']})";
         }
+        
+        // 17. Audit nama & kode skenario/demo yang dilarang di UI
+        $forbiddenNames = ['Demo Pelanggan', 'DP Pending', 'DP Ready', 'Cash Pending', 'Cash Ready', 'Overdue', 'Lunas', 'Rejected', 'Shipped'];
+        
+        foreach ($forbiddenNames as $name) {
+            $badUsers = $db->table('users')->like('nama', $name)->get()->getResultArray();
+            foreach ($badUsers as $u) {
+                $issues[] = "Nama user mengandung label skenario: {$u['nama']} (ID: {$u['id']})";
+            }
+        }
+        
+        foreach ($forbiddenNames as $name) {
+            $badNasabahs = $db->table('nasabah')->like('nama', $name)->get()->getResultArray();
+            foreach ($badNasabahs as $n) {
+                $issues[] = "Nama nasabah mengandung label skenario: {$n['nama']} (ID: {$n['id']})";
+            }
+        }
+
+        foreach ($forbiddenNames as $name) {
+            $badPengajuans = $db->table('pengajuan')->like('nama', $name)->get()->getResultArray();
+            foreach ($badPengajuans as $p) {
+                $issues[] = "Nama pengajuan mengandung label skenario: {$p['nama']} (ID: {$p['id']})";
+            }
+        }
+
+        $badOrderCodes = $db->query("SELECT id, kode_pesanan FROM pengajuan WHERE kode_pesanan LIKE '%MG-DEMO%' OR kode_pesanan LIKE '%MG-KR%'")->getResultArray();
+        foreach ($badOrderCodes as $r) {
+            $issues[] = "Kode pesanan mengandung label skenario: {$r['kode_pesanan']} (ID: {$r['id']})";
+        }
+
+        $badKreditCodes = $db->query("SELECT id, kode_kredit FROM kredit WHERE kode_kredit LIKE '%MG-DEMO%' OR kode_kredit LIKE '%MG-KR%'")->getResultArray();
+        foreach ($badKreditCodes as $r) {
+            $issues[] = "Kode kredit mengandung label skenario: {$r['kode_kredit']} (ID: {$r['id']})";
+        }
+
+        $kreditPattern = $db->query("SELECT id, kode_kredit FROM kredit")->getResultArray();
+        foreach ($kreditPattern as $r) {
+            if (!preg_match('/^KRD-\d{4,}$/', $r['kode_kredit'])) {
+                $issues[] = "Kode kredit tidak sesuai format generator (KRD-xxxx): {$r['kode_kredit']} (ID: {$r['id']})";
+            }
+        }
 
         // Output
         CLI::newLine();

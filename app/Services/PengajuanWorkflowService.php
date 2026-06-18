@@ -43,6 +43,7 @@ class PengajuanWorkflowService
             'status'            => 'disetujui',
             'diverifikasi_pada' => date('Y-m-d H:i:s'),
             'diverifikasi_oleh' => $adminId,
+            'pembayaran_status' => 'terverifikasi',
         ]);
         if (!$ok) {
             $this->db->transRollback();
@@ -50,6 +51,32 @@ class PengajuanWorkflowService
         }
 
         $this->aktivitasModel->log($pengajuanId, 'diverifikasi', 'Pesanan disetujui admin.', 'admin');
+
+        // Auto-verify any pending DP or cash payment proof if it exists
+        $buktiPending = $this->db->table('bukti_pembayaran')
+            ->where('pengajuan_id', $pengajuanId)
+            ->whereIn('tipe', ['dp', 'cash'])
+            ->where('status', 'menunggu')
+            ->get()->getResultArray();
+
+        foreach ($buktiPending as $b) {
+            $this->db->table('bukti_pembayaran')
+                ->where('id', $b['id'])
+                ->update([
+                    'status'            => 'terverifikasi',
+                    'diverifikasi_oleh' => $adminId,
+                    'diverifikasi_pada' => date('Y-m-d H:i:s'),
+                ]);
+            
+            $this->aktivitasModel->log($pengajuanId, 'pembayaran_diverifikasi', 
+                'Pembayaran ' . strtoupper($b['tipe']) . ' otomatis diverifikasi saat pesanan disetujui.', 'admin');
+        }
+
+        if (!empty($buktiPending)) {
+            $this->pengajuanModel->update($pengajuanId, [
+                'pembayaran_status' => 'terverifikasi',
+            ]);
+        }
 
         // Auto-create kredit untuk metode kredit
         if ($pengajuan['metode_pembayaran'] === 'kredit') {

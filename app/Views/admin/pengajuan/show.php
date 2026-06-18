@@ -121,9 +121,15 @@ $relatif = static function ($datetime): string {
                                 <?php endif; ?>
                             </a>
                             <div class="small text-muted-mg mt-1">
-                                <?= esc(ucfirst($b['tipe'])); ?> — <?= esc(ucfirst($b['status'])); ?>
+                                <?= esc(ucfirst($b['tipe'])); ?> — <span class="badge text-bg-<?= $b['status'] === 'terverifikasi' ? 'success' : ($b['status'] === 'ditolak' ? 'danger' : 'warning'); ?>"><?= esc(ucfirst($b['status'])); ?></span>
                                 <?php if (!empty($b['nominal'])): ?>
                                     <br><?= esc(format_rupiah($b['nominal'])); ?>
+                                <?php endif; ?>
+                                <?php if ($b['status'] === 'menunggu'): ?>
+                                    <div class="mt-2 d-flex gap-1 justify-content-center">
+                                        <button type="button" class="btn btn-xs btn-gold rounded-pill px-2 py-0 js-verif-bukti" data-id="<?= esc($b['id']); ?>" style="font-size: 0.75rem;">Verif</button>
+                                        <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0 js-tolak-bukti" data-id="<?= esc($b['id']); ?>" style="font-size: 0.75rem;">Tolak</button>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -350,6 +356,43 @@ $relatif = static function ($datetime): string {
                     MahenDialog.error({ title: 'Gagal', message: err.message });
                 }
             }
+        });
+    });
+
+    // VERIFIKASI BUKTI PEMBAYARAN INLINE
+    document.querySelectorAll('.js-verif-bukti').forEach(btn => {
+        btn.addEventListener('click', () => {
+            MahenDialog.confirm({
+                title: 'Verifikasi Pembayaran',
+                message: 'Pastikan nominal, rekening pengirim, dan bukti pembayaran sudah sesuai sebelum melanjutkan.',
+                confirmText: 'Ya, Verifikasi',
+                onConfirm: async (helpers) => {
+                    try {
+                        const res = await MahenAjax.post('/admin/pembayaran/' + btn.dataset.id + '/verifikasi');
+                        helpers.close();
+                        MahenDialog.success({ title: 'Berhasil', message: res.message, onConfirm: () => window.location.reload() });
+                    } catch (err) { helpers.finish(); MahenDialog.error({ title: 'Gagal', message: err.message }); }
+                }
+            });
+        });
+    });
+
+    // TOLAK BUKTI PEMBAYARAN INLINE
+    document.querySelectorAll('.js-tolak-bukti').forEach(btn => {
+        btn.addEventListener('click', () => {
+            MahenDialog.form({
+                title: 'Tolak Bukti Pembayaran',
+                fields: [{ name: 'catatan_admin', label: 'Alasan Penolakan', type: 'textarea', required: true, minlength: 5, placeholder: 'Jelaskan alasan penolakan...', rows: 3 }],
+                submitText: 'Tolak',
+                submitClass: 'btn-danger',
+                onsubmit: async (data, helpers) => {
+                    try {
+                        const res = await MahenAjax.post('/admin/pembayaran/' + btn.dataset.id + '/tolak', { catatan_admin: data.catatan_admin || '' });
+                        helpers.close();
+                        MahenDialog.success({ title: 'Ditolak', message: res.message, onConfirm: () => window.location.reload() });
+                    } catch (err) { helpers.setError(err.message); helpers.finish(); }
+                }
+            });
         });
     });
 })();

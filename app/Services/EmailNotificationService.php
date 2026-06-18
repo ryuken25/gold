@@ -255,7 +255,6 @@ class EmailNotificationService
         $namaTujuan  = $user['nama'];
 
         if (ENVIRONMENT === 'development' || ENVIRONMENT === 'testing') {
-            $tujuanEmail = 'winayaarya@gmail.com';
             $subjek = '[MahenGold TEST] ' . $subjek;
         }
 
