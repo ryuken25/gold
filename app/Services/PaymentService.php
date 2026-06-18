@@ -35,11 +35,8 @@ class PaymentService
     {
         $this->db->transStart();
 
-        // Lock kredit
-        $kredit = $this->db->table('kredit')
-            ->where('id', (int) $input['kredit_id'])
-            ->forUpdate()
-            ->get()->getRowArray();
+        // Lock kredit — raw SQL for SELECT ... FOR UPDATE
+        $kredit = $this->db->query("SELECT * FROM kredit WHERE id = ? FOR UPDATE", [(int) $input['kredit_id']])->getRowArray();
 
         if (!$kredit || $kredit['status'] !== 'aktif') {
             $this->db->transRollback();
