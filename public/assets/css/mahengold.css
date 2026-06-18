@@ -1982,30 +1982,30 @@ h6 {
    UPDATED: Color coding baris tabel kredit
    ============================================================ */
 .row-overdue {
-    background: rgba(220, 53, 69, .08) !important;
+    background: linear-gradient(90deg, rgba(220,53,69,.17) 0%, rgba(220,53,69,.075) 45%, rgba(220,53,69,.02) 100%) !important;
     border-left: 4px solid var(--mg-danger);
 }
 
 .row-overdue:hover {
-    background: rgba(220, 53, 69, .14) !important;
+    background: linear-gradient(90deg, rgba(220,53,69,.22) 0%, rgba(220,53,69,.12) 45%, rgba(220,53,69,.05) 100%) !important;
 }
 
 .row-h3 {
-    background: rgba(255, 193, 7, .08) !important;
+    background: linear-gradient(90deg, rgba(255,193,7,.15) 0%, rgba(255,193,7,.06) 45%, rgba(255,193,7,.02) 100%) !important;
     border-left: 4px solid #ffc107;
 }
 
 .row-h3:hover {
-    background: rgba(255, 193, 7, .14) !important;
+    background: linear-gradient(90deg, rgba(255,193,7,.2) 0%, rgba(255,193,7,.1) 45%, rgba(255,193,7,.04) 100%) !important;
 }
 
 .row-lunas {
-    background: rgba(25, 184, 90, .06) !important;
+    background: linear-gradient(90deg, rgba(25,184,90,.18) 0%, rgba(25,184,90,.08) 45%, rgba(25,184,90,.02) 100%) !important;
     border-left: 4px solid var(--mg-green);
 }
 
 .row-lunas:hover {
-    background: rgba(25, 184, 90, .12) !important;
+    background: linear-gradient(90deg, rgba(25,184,90,.24) 0%, rgba(25,184,90,.12) 45%, rgba(25,184,90,.04) 100%) !important;
 }
 
 /* ============================================================
