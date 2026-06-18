@@ -264,12 +264,20 @@ if errorlevel 1 (
 
 :: ---- Verifikasi produk + fallback: impor SQL dump bila masih 0 ----
 set "PRODUK=0"
-for /f "usebackq delims=" %%C in (`""%MYSQL_CMD%" -u root -N -B -e "SELECT COUNT(*) FROM mahengold_demo.produk_emas WHERE status='aktif';" 2^>nul`) do set "PRODUK=%%C"
+"%MYSQL_CMD%" -u root -N -B -e "SELECT COUNT(*) FROM mahengold_demo.produk_emas WHERE status='aktif';" > temp_count.txt 2>nul
+if exist temp_count.txt (
+    set /p PRODUK=<temp_count.txt
+    del temp_count.txt >nul 2>&1
+)
 if not "!PRODUK!"=="0" goto :produk_ok
 echo [WARN] Produk masih 0 - mencoba impor database\mahengold_demo.sql ^(fallback^)...
 if exist "database\mahengold_demo.sql" (
     "%MYSQL_CMD%" -u root mahengold_demo < "database\mahengold_demo.sql" 2>nul
-    for /f "usebackq delims=" %%C in (`""%MYSQL_CMD%" -u root -N -B -e "SELECT COUNT(*) FROM mahengold_demo.produk_emas WHERE status='aktif';" 2^>nul`) do set "PRODUK=%%C"
+    "%MYSQL_CMD%" -u root -N -B -e "SELECT COUNT(*) FROM mahengold_demo.produk_emas WHERE status='aktif';" > temp_count.txt 2>nul
+    if exist temp_count.txt (
+        set /p PRODUK=<temp_count.txt
+        del temp_count.txt >nul 2>&1
+    )
 ) else (
     echo [WARN] File database\mahengold_demo.sql tidak ditemukan.
 )
