@@ -6,11 +6,11 @@
             <select name="status" class="form-select">
                 <option value="">Semua Status</option>
                 <?php
+                // UPDATED: hapus filter "Jatuh Tempo Hari Ini"
                 $opsi = [
                     'aktif'       => 'Aktif',
                     'lunas'       => 'Lunas',
                     'dibatalkan'  => 'Dibatalkan',
-                    'jatuh_tempo' => 'Jatuh Tempo Hari Ini',
                     'terlambat'   => 'Terlambat',
                 ];
                 foreach ($opsi as $val => $label): ?>

@@ -109,7 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const applyMetodePembayaran = () => {
             const isKredit = getMetode() === 'kredit';
             kreditFields.forEach((el) => { el.style.display = isKredit ? '' : 'none'; });
-            if (ktpInput) ktpInput.required = isKredit;
+            // UPDATED: KTP wajib untuk semua metode
+            if (ktpInput) ktpInput.required = true;
             if (buktiInput) buktiInput.required = true;
             if (buktiLabel) {
                 buktiLabel.firstChild.textContent = isKredit
@@ -117,9 +118,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     : 'Bukti Pembayaran Lunas ';
             }
             if (buktiHelp) {
-                buktiHelp.innerHTML = isKredit
-                    ? `Transfer DP <strong>Rp ${currency(200000).replace('Rp ', '')}</strong> lebih dulu, lalu unggah buktinya (JPG/PNG/PDF, maks. 3 MB).`
-                    : 'Unggah bukti pembayaran lunas (JPG/PNG/PDF, maks. 3 MB). Pesanan akan diverifikasi admin.';
+                if (isKredit) {
+                    buktiHelp.innerHTML = 'Terima kasih telah mempercayai MahenGold sebagai mitra investasi emas Anda. '
+                        + 'Untuk melanjutkan proses pembelian, mohon transfer Uang Muka (DP) ke rekening resmi MahenGold, '
+                        + 'lalu unggah bukti pembayaran dalam format JPG, PNG, atau PDF (maks. 3 MB). '
+                        + 'Tim admin kami akan melakukan verifikasi dalam 1×24 jam kerja. '
+                        + 'Anda akan menerima email notifikasi otomatis begitu status pesanan diperbarui.';
+                } else {
+                    buktiHelp.innerHTML = 'Terima kasih telah mempercayai MahenGold. '
+                        + 'Untuk melanjutkan proses pembelian, mohon transfer pembayaran lunas ke rekening resmi MahenGold, '
+                        + 'lalu unggah bukti pembayaran dalam format JPG, PNG, atau PDF (maks. 3 MB). '
+                        + 'Tim admin kami akan melakukan verifikasi dalam 1×24 jam kerja. '
+                        + 'Anda akan menerima email notifikasi otomatis begitu status pesanan diperbarui.';
+                }
             }
             syncMetodeCards();
             updatePreview();
@@ -178,8 +189,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
             }
-            if (getMetode() === 'kredit' && ktpInput && !ktpInput.files.length) {
-                alert('Foto KTP wajib diunggah untuk pengajuan kredit.');
+            // UPDATED: KTP wajib untuk semua metode
+            if (ktpInput && !ktpInput.files.length) {
+                alert('Foto KTP wajib diunggah untuk semua metode pembelian.');
                 ktpInput.focus();
                 return;
             }
@@ -205,11 +217,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert(messages.join('\n'));
                     return;
                 }
-                // Sukses: tutup modal & arahkan ke halaman pesanan (tanpa WhatsApp).
+                // UPDATED: Sukses — tutup modal, tampilkan popup sukses, lalu redirect.
                 if (window.bootstrap && bootstrap.Modal) {
                     (bootstrap.Modal.getInstance(waModal) || bootstrap.Modal.getOrCreateInstance(waModal)).hide();
                 }
-                window.location.href = data.redirect || '/akun/pesanan';
+                // Tampilkan popup sukses SEBELUM redirect
+                const successModal = document.getElementById('orderSuccessModal');
+                if (successModal && window.bootstrap && bootstrap.Modal) {
+                    const sm = bootstrap.Modal.getOrCreateInstance(successModal);
+                    sm.show();
+                    const okBtn = document.getElementById('orderSuccessOk');
+                    if (okBtn) {
+                        okBtn.onclick = () => {
+                            sm.hide();
+                            window.location.href = data.redirect || '/akun/pesanan';
+                        };
+                    }
+                    // Auto redirect setelah 5 detik
+                    setTimeout(() => { window.location.href = data.redirect || '/akun/pesanan'; }, 5000);
+                } else {
+                    window.location.href = data.redirect || '/akun/pesanan';
+                }
             } catch (e) {
                 alert('Gagal menghubungi server. Periksa koneksi lalu coba lagi.');
             } finally {

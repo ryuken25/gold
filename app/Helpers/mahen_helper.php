@@ -119,3 +119,130 @@ if (!function_exists('is_pelanggan_logged_in')) {
         return current_pelanggan() !== null;
     }
 }
+
+// ============================================================
+// UPDATED: pesanan_status_label — label tampilan dari status DB
+// ============================================================
+if (!function_exists('pesanan_status_label')) {
+    function pesanan_status_label(?string $status): string
+    {
+        return match ($status) {
+            'baru'       => 'Menunggu',
+            'diproses'   => 'Di Verifikasi',
+            'disetujui'  => 'Di Verifikasi',
+            'dikirim'    => 'Sedang Dikirim',
+            'selesai'    => 'Selesai',
+            'ditolak'    => 'Ditolak',
+            'dibatalkan' => 'Dibatalkan',
+            default      => 'Menunggu',
+        };
+    }
+}
+
+// ============================================================
+// UPDATED: pesanan_badge_class — badge color untuk status pesanan
+// ============================================================
+if (!function_exists('pesanan_badge_class')) {
+    function pesanan_badge_class(?string $status): string
+    {
+        return match ($status) {
+            'baru'       => 'warning',
+            'diproses'   => 'info',
+            'disetujui'  => 'info',
+            'dikirim'    => 'primary',
+            'selesai'    => 'success',
+            'ditolak'    => 'danger',
+            'dibatalkan' => 'danger',
+            default      => 'secondary',
+        };
+    }
+}
+
+// ============================================================
+// UPDATED: pesanan_status_step — nomor step (1-4) untuk stepper
+// ============================================================
+if (!function_exists('pesanan_status_step')) {
+    function pesanan_status_step(?string $status): int
+    {
+        return match ($status) {
+            'baru', 'diproses', 'disetujui' => 1,
+            'dikirim'                        => 3,
+            'selesai'                        => 4,
+            'ditolak', 'dibatalkan'          => 0,
+            default                          => 1,
+        };
+    }
+}
+
+// ============================================================
+// UPDATED: pesanan_status_steps — definisi lengkap stepper Shopee-like
+// ============================================================
+if (!function_exists('pesanan_status_steps')) {
+    function pesanan_status_steps(): array
+    {
+        return [
+            ['label' => 'Menunggu',          'icon' => 'bi-clock-history'],
+            ['label' => 'Di Verifikasi',     'icon' => 'bi-check2-circle'],
+            ['label' => 'Sedang Dikirim',    'icon' => 'bi-truck'],
+            ['label' => 'Selesai',           'icon' => 'bi-check-circle-fill'],
+        ];
+    }
+}
+
+// ============================================================
+// UPDATED: kredit_state — return array untuk color coding baris tabel kredit
+// ============================================================
+if (!function_exists('kredit_state')) {
+    function kredit_state(array $jadwal): array
+    {
+        $status = $jadwal['status'] ?? '';
+        if ($status === 'dibayar') {
+            return ['class' => 'row-lunas',      'label' => 'Lunas',  'icon' => ''];
+        }
+
+        $jatuhTempo = $jadwal['tanggal_jatuh_tempo'] ?? '';
+        if ($jatuhTempo !== '' && $status !== 'dibayar') {
+            $today   = new \DateTime('today');
+            $dueDate = new \DateTime($jatuhTempo);
+            $diff    = (int) $today->diff($dueDate)->format('%r%a');
+
+            if ($diff < 0) {
+                // Overdue — merah + jumlah hari telat
+                return [
+                    'class' => 'row-overdue',
+                    'label' => abs($diff) . ' hari telat',
+                    'icon'  => '🔴',
+                ];
+            }
+            if ($diff <= 3) {
+                // H-3 — warning/oranye
+                return [
+                    'class' => 'row-h3',
+                    'label' => 'H-' . $diff . ' jatuh tempo',
+                    'icon'  => '⚠️',
+                ];
+            }
+        }
+
+        return ['class' => '', 'label' => '', 'icon' => ''];
+    }
+}
+
+// ============================================================
+// UPDATED: email_status_label — label untuk email notifikasi status
+// ============================================================
+if (!function_exists('email_status_label')) {
+    function email_status_label(?string $status): string
+    {
+        return match ($status) {
+            'baru'       => 'Menunggu Verifikasi',
+            'diproses'   => 'Sedang Diproses',
+            'disetujui'  => 'Telah Disetujui',
+            'dikirim'    => 'Sedang Dikirim ke Alamat Anda',
+            'selesai'    => 'Selesai',
+            'ditolak'    => 'Ditolak',
+            'dibatalkan' => 'Dibatalkan',
+            default      => 'Diperbarui',
+        };
+    }
+}

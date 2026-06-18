@@ -124,9 +124,7 @@
                                     </td>
                                     <td><?= esc(format_tanggal($row['tanggal_jatuh_tempo'])); ?></td>
                                     <td><?= esc(format_rupiah($row['nominal_tagihan'])); ?></td>
-                                    <td><a class="btn btn-sm btn-whatsapp rounded-pill"
-                                            href="<?= base_url('/admin/kredit/' . $row['kredit_id'] . '/wa-pengingat/' . $row['id']); ?>">WA</a>
-                                    </td>
+                                    <td><span class="badge bg-warning text-dark">H-3</span></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -170,34 +168,34 @@
     </div>
     <div class="col-12">
         <div class="premium-card p-4">
-            <h5 class="fw-bold mb-3">Log WhatsApp Terbaru</h5>
-            <?php if ($recentLogs): ?>
+            <h5 class="fw-bold mb-3">Log Email Terbaru</h5>
+            <?php if (!empty($recentLogs)): ?>
                 <div class="table-responsive">
                     <table class="table table-modern align-middle">
                         <thead>
                             <tr>
                                 <th>Tipe</th>
-                                <th>Target</th>
+                                <th>Penerima</th>
                                 <th>Status</th>
-                                <th>Pesan</th>
+                                <th>Subjek</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($recentLogs as $row): ?>
                                 <tr>
                                     <td><?= esc($row['tipe']); ?></td>
-                                    <td><?= esc($row['nama_tujuan'] ?: $row['target']); ?></td>
+                                    <td><?= esc($row['nama_tujuan'] ?? $row['tujuan_email'] ?? '-'); ?></td>
                                     <td><span
                                             class="badge text-bg-<?= esc(status_badge_class($row['status'])); ?>"><?= esc($row['status']); ?></span>
                                     </td>
-                                    <td class="small"><?= esc(character_limiter($row['pesan'], 120)); ?></td>
+                                    <td class="small"><?= esc(mb_substr($row['subjek'] ?? '', 0, 120)); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
             <?php else: ?>
-                <?= view('partials/empty_state', ['title' => 'Belum ada log WhatsApp']); ?>
+                <?= view('partials/empty_state', ['title' => 'Belum ada log email']); ?>
             <?php endif; ?>
         </div>
     </div>

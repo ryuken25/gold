@@ -9,7 +9,6 @@ $aksiIcon = [
     'diverifikasi'          => 'bi-check-circle',
     'ditolak'               => 'bi-x-circle',
     'dibatalkan'            => 'bi-slash-circle',
-    'wa_konfirmasi_dikirim' => 'bi-whatsapp',
     'status_diubah'         => 'bi-arrow-repeat',
 ];
 $relatif = static function ($datetime): string {
@@ -85,54 +84,62 @@ $relatif = static function ($datetime): string {
                 </div>
             <?php endif; ?>
 
-            <?php if ($pengajuan['metode_pembayaran'] === 'kredit'): ?>
+            <?php // UPDATED: Foto KTP ditampilkan untuk SEMUA metode (cash & kredit) ?>
+            <hr class="my-3">
+            <h6 class="fw-bold mb-2">Foto KTP</h6>
+            <?php if (!empty($pengajuan['foto_ktp'])): ?>
+                <a href="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/ktp'); ?>" target="_blank" rel="noopener">
+                    <img src="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/ktp'); ?>" alt="Foto KTP"
+                        style="max-height:180px;width:auto;" class="rounded border">
+                </a>
+            <?php else: ?>
+                <div class="alert alert-warning mb-0">KTP belum diunggah.</div>
+            <?php endif; ?>
+
+            <?php // UPDATED: Bukti Pembayaran ditampilkan untuk SEMUA metode ?>
+            <?php
+            $buktiModel = new \App\Models\BuktiPembayaranModel();
+            $buktiList = $buktiModel->where('pengajuan_id', $pengajuan['id'])->orderBy('id', 'DESC')->findAll();
+            ?>
+            <?php if (!empty($buktiList)): ?>
                 <hr class="my-3">
-                <h6 class="fw-bold mb-2">Foto KTP</h6>
-                <?php if (!empty($pengajuan['foto_ktp'])): ?>
-                    <a href="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/ktp'); ?>" target="_blank" rel="noopener">
-                        <img src="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/ktp'); ?>" alt="Foto KTP"
-                            style="max-height:180px;width:auto;" class="rounded border">
-                    </a>
-                <?php else: ?>
-                    <div class="alert alert-warning mb-0">KTP belum diunggah.</div>
-                <?php endif; ?>
+                <h6 class="fw-bold mb-2">Bukti Pembayaran</h6>
+                <div class="d-flex flex-wrap gap-3">
+                    <?php foreach ($buktiList as $b): ?>
+                        <div class="text-center">
+                            <a href="<?= base_url('/admin/pembayaran/' . $b['id'] . '/bukti'); ?>" target="_blank" rel="noopener">
+                                <?php
+                                $ext = pathinfo($b['file_path'], PATHINFO_EXTENSION);
+                                if (in_array(strtolower($ext), ['jpg', 'jpeg', 'png'])):
+                                ?>
+                                    <img src="<?= base_url('/admin/pembayaran/' . $b['id'] . '/bukti'); ?>" alt="Bukti <?= esc($b['tipe']); ?>"
+                                        style="max-height:150px;width:auto;" class="rounded border">
+                                <?php else: ?>
+                                    <div class="btn btn-sm btn-outline-gold rounded-pill">
+                                        <i class="bi bi-file-earmark-pdf"></i> Lihat PDF
+                                    </div>
+                                <?php endif; ?>
+                            </a>
+                            <div class="small text-muted-mg mt-1">
+                                <?= esc(ucfirst($b['tipe'])); ?> — <?= esc(ucfirst($b['status'])); ?>
+                                <?php if (!empty($b['nominal'])): ?>
+                                    <br><?= esc(format_rupiah($b['nominal'])); ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             <?php endif; ?>
         </div>
 
-        <?php // Panel WhatsApp manual ?>
+        <?php // UPDATED: Panel notifikasi email (pengganti WA manual) ?>
         <div class="premium-card p-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0">Pesan WhatsApp (Manual)</h5>
-                <?php if ($waTenor): ?>
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-gold active" data-wa-tab="#wa-panel-konfirmasi">Konfirmasi</button>
-                        <button type="button" class="btn btn-outline-gold" data-wa-tab="#wa-panel-tenor">Info Tenor</button>
-                    </div>
-                <?php endif; ?>
-            </div>
-
-            <div data-wa-panel id="wa-panel-konfirmasi">
-                <textarea id="wa-msg-konfirmasi" class="form-control font-monospace small mb-2" rows="9" readonly><?= esc($waKonfirmasi['message']); ?></textarea>
-                <div class="d-flex gap-2 flex-wrap">
-                    <button type="button" class="btn btn-sm btn-outline-gold" data-copy-target="#wa-msg-konfirmasi">Salin pesan</button>
-                    <a href="<?= esc($waKonfirmasi['wa_url']); ?>" target="_blank" rel="noopener" class="btn btn-sm btn-whatsapp">Buka WhatsApp</a>
-                </div>
-            </div>
-
-            <?php if ($waTenor): ?>
-                <div data-wa-panel id="wa-panel-tenor" class="d-none">
-                    <textarea id="wa-msg-tenor" class="form-control font-monospace small mb-2" rows="9" readonly><?= esc($waTenor['message']); ?></textarea>
-                    <div class="d-flex gap-2 flex-wrap">
-                        <button type="button" class="btn btn-sm btn-outline-gold" data-copy-target="#wa-msg-tenor">Salin pesan</button>
-                        <a href="<?= esc($waTenor['wa_url']); ?>" target="_blank" rel="noopener" class="btn btn-sm btn-whatsapp">Buka WhatsApp</a>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <form action="<?= base_url('/admin/pengajuan/' . $pengajuan['id'] . '/wa-terkirim'); ?>" method="post" class="mt-3">
-                <?= csrf_field(); ?>
-                <button type="submit" class="btn btn-sm btn-gold rounded-pill">Tandai sudah dikirim</button>
-            </form>
+            <h5 class="fw-bold mb-3">Notifikasi</h5>
+            <p class="text-muted-mg mb-0">
+                <i class="bi bi-envelope-check text-gold-soft"></i>
+                Notifikasi email otomatis dikirim ke pelanggan setiap perubahan status.
+                Tidak ada alur penagihan via WhatsApp.
+            </p>
         </div>
     </div>
 
