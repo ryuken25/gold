@@ -5,11 +5,9 @@
  * Include this in layouts AFTER bootstrap.js and mahengold.js:
  *   <?= $this->include('partials/mahengold_dialog'); ?>
  *
- * It loads mahengold-dialog.js and auto-renders any session flash messages
- * as MahenToast or MahenDialog popups.
+ * Dialog JS loaded by layout; this partial only renders flash messages.
  */
 ?>
-<script src="<?= base_url('assets/js/mahengold-dialog.js'); ?>"></script>
 <script>
 (function () {
     <?php

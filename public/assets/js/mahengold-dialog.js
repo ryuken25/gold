@@ -250,8 +250,25 @@
                 confirmBtn.textContent = origText;
             }
 
+            var helpers = {
+                close: function () {
+                    hideDialog(opts._ref.instance, opts._ref.onEsc);
+                },
+                finish: finish,
+                setLoading: function (loading) {
+                    if (loading) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.innerHTML = '';
+                        confirmBtn.appendChild(spinner());
+                        confirmBtn.appendChild(document.createTextNode(' Memproses...'));
+                    } else {
+                        finish();
+                    }
+                }
+            };
+
             if (typeof opts.onConfirm === 'function') {
-                var result = opts.onConfirm(finish);
+                var result = opts.onConfirm(helpers);
                 // If onConfirm returns a thenable, auto-finish
                 if (result && typeof result.then === 'function') {
                     result.then(finish, finish);

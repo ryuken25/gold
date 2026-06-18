@@ -16,19 +16,32 @@
 
     function updateCsrf(csrf) {
         if (!csrf) return;
+
         var valEl = document.querySelector('meta[name="csrf-token-value"]');
         var nameEl = document.querySelector('meta[name="csrf-token-name"]');
 
-        // Object format: { name: "...", hash: "..." }
+        var oldName = nameEl ? nameEl.content : null;
+        var name = oldName;
+        var hash = null;
+
         if (typeof csrf === 'object') {
-            if (csrf.name && nameEl) nameEl.content = csrf.name;
-            if (csrf.hash && valEl) valEl.content = csrf.hash;
-            return;
+            name = csrf.name || oldName;
+            hash = csrf.hash || null;
+        } else if (typeof csrf === 'string') {
+            hash = csrf;
         }
-        // String legacy: just the hash
-        if (typeof csrf === 'string' && valEl) {
-            valEl.content = csrf;
-        }
+
+        if (!name || !hash) return;
+
+        if (nameEl) nameEl.content = name;
+        if (valEl) valEl.content = hash;
+
+        document.querySelectorAll('input[type="hidden"]').forEach(function (input) {
+            if (input.name === oldName || input.name === name || input.name.indexOf('csrf') === 0) {
+                input.name = name;
+                input.value = hash;
+            }
+        });
     }
 
     function parseError(res, body) {

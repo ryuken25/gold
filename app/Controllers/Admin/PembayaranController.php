@@ -115,9 +115,12 @@ class PembayaranController extends BaseAdminController
 
             $this->kirimNotifPembayaran($result['payment']);
 
+            $payment = $result['payment'] ?? [];
+            $credit  = $result['credit'] ?? [];
+
             return $this->respondOk(
-                'Pembayaran ' . $jenisTitle . ' berhasil dicatat dengan kode: ' . $bukti['kode_bukti'],
-                '/admin/pembayaran'
+                'Pembayaran berhasil dicatat. Kode: ' . ($payment['kode_pembayaran'] ?? '-'),
+                '/admin/kredit/' . ($credit['id'] ?? (int) $this->request->getPost('kredit_id'))
             );
         } catch (\Exception $e) {
             return $this->respondFail('Gagal mencatat pembayaran: ' . $e->getMessage(), 400);
@@ -186,13 +189,21 @@ class PembayaranController extends BaseAdminController
         if ($bukti['status'] !== 'menunggu') {
             return $this->respondFail('Bukti ini sudah diproses.', 409);
         }
-        if (!$this->validate(['alasan_penolakan' => 'required'])) {
-            return $this->respondFail('Alasan penolakan wajib diisi.', 422, $this->validator->getErrors());
+        if (!$this->validate([
+            'catatan_admin' => 'required|min_length[5]|max_length[1000]',
+        ])) {
+            return $this->respondFail(
+                'Alasan penolakan minimal 5 karakter.',
+                422,
+                $this->validator->getErrors()
+            );
         }
+
+        $catatan = trim((string) $this->request->getPost('catatan_admin'));
 
         $this->buktiModel->update($id, [
             'status'            => 'ditolak',
-            'catatan_admin'     => $this->request->getPost('catatan_admin'),
+            'catatan_admin'     => $catatan,
             'diverifikasi_oleh' => current_admin()['id'] ?? null,
             'diverifikasi_pada' => date('Y-m-d H:i:s'),
         ]);

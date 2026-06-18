@@ -71,7 +71,9 @@ class MigrateFresh extends BaseCommand
 
         // 5. Run migrations
         CLI::write('Running migrations...', 'yellow');
-        $this->call('migrate', $params);
+        $migrateParams = $params;
+        unset($migrateParams['seed'], $migrateParams['--seed']);
+        $this->call('migrate', $migrateParams);
 
         // 5. Run seeder if --seed flag
         if (array_key_exists('seed', $params) || CLI::getOption('seed')) {
