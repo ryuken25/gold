@@ -64,7 +64,21 @@ $persen    = $sisaPokok > 0 ? min(100, round($terbayar / $sisaPokok * 100)) : 0;
 
         <div class="feature-card p-4">
             <h5 class="fw-bold mb-3">Jadwal Angsuran</h5>
-            <?php if (empty($jadwal)): ?>
+            <?php
+            $dpStatus = $kredit['dp_status'] ?? 'belum';
+            $dpDibutuhkan = (int)($kredit['uang_muka'] ?? 0) > 0;
+            $dpBelumVerified = $dpDibutuhkan && $dpStatus !== 'terverifikasi';
+            ?>
+            <?php if ($dpBelumVerified): ?>
+                <div class="alert alert-warning mb-0 p-4 rounded-3 text-center">
+                    <i class="bi bi-clock-history fs-3 d-block mb-2 text-warning"></i>
+                    <h6 class="fw-bold">Menunggu Verifikasi DP</h6>
+                    <p class="mb-0 small">Jadwal angsuran belum aktif karena pembayaran Uang Muka (DP) belum diverifikasi oleh admin.</p>
+                    <?php if ($dpStatus === 'ditolak'): ?>
+                        <p class="mt-2 mb-0 text-danger fw-bold">Bukti DP sebelumnya ditolak. Silakan unggah ulang bukti DP dari menu <a href="<?= base_url('/akun/pesanan/' . $kredit['pengajuan_id']); ?>">Riwayat Pesanan</a>.</p>
+                    <?php endif; ?>
+                </div>
+            <?php elseif (empty($jadwal)): ?>
                 <p class="text-muted-mg mb-0">Jadwal angsuran belum tersedia.</p>
             <?php else: ?>
                 <div class="table-responsive">

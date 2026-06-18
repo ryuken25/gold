@@ -148,6 +148,19 @@ class EmailNotificationService
         );
     }
 
+    public function kirimReminderManual(array $p): bool
+    {
+        $messageHtml = '<p style="font-size:15px;line-height:1.6;color:#2b2b2b;">' . esc($p['message']) . '</p>';
+        return $this->kirim(
+            'reminder_manual',
+            (int) $p['user_id'],
+            $p['subject'],
+            'Halo ' . esc($p['nama']) . ',',
+            $messageHtml,
+            (int) $p['kredit_id']
+        );
+    }
+
     // ------------------------------------------------------------------
 
     /**
@@ -238,6 +251,14 @@ class EmailNotificationService
             return false;
         }
 
+        $tujuanEmail = $user['email'];
+        $namaTujuan  = $user['nama'];
+
+        if (ENVIRONMENT === 'development' || ENVIRONMENT === 'testing') {
+            $tujuanEmail = 'winayaarya@gmail.com';
+            $subjek = '[MahenGold TEST] ' . $subjek;
+        }
+
         $body   = $this->render($subjek, $pembuka, $isiHtml);
         $status = 'terkirim';
         $error  = null;
@@ -249,8 +270,8 @@ class EmailNotificationService
         if ($cfg->protocol === 'smtp' && trim((string) $cfg->SMTPHost) === '') {
             $this->logModel->insert([
                 'tipe'         => $tipe,
-                'tujuan_email' => $user['email'],
-                'nama_tujuan'  => $user['nama'],
+                'tujuan_email' => $tujuanEmail,
+                'nama_tujuan'  => $namaTujuan,
                 'subjek'       => $subjek,
                 'body'         => $body,
                 'status'       => 'gagal',
@@ -265,7 +286,7 @@ class EmailNotificationService
             $email = Services::email(null, false);
             $email->clear(); // UPDATED: WAJIB clear sebelum setiap kirim baru
             $email->setFrom($cfg->fromEmail ?: 'no-reply@mahengold.test', $cfg->fromName ?: 'Mahen Gold');
-            $email->setTo($user['email']);
+            $email->setTo($tujuanEmail);
             $email->setSubject($subjek);
             $email->setMailType('html');
             $email->setMessage($body);
@@ -281,8 +302,8 @@ class EmailNotificationService
 
         $this->logModel->insert([
             'tipe'         => $tipe,
-            'tujuan_email' => $user['email'],
-            'nama_tujuan'  => $user['nama'],
+            'tujuan_email' => $tujuanEmail,
+            'nama_tujuan'  => $namaTujuan,
             'subjek'       => $subjek,
             'body'         => $body,
             'status'       => $status,

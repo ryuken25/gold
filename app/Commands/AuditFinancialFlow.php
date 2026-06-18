@@ -128,6 +128,43 @@ class AuditFinancialFlow extends BaseCommand
             $issues[] = "Pengajuan kredit disetujui tanpa kredit: {$r['kode_pesanan']}";
         }
 
+        // 14. Pesanan dikirim/selesai tapi DP belum terverifikasi (kredit)
+        $dpPendingShipped = $db->query("
+            SELECT id, kode_pesanan, status, pembayaran_status 
+            FROM pengajuan 
+            WHERE metode_pembayaran = 'kredit' 
+            AND uang_muka > 0 
+            AND status IN ('dikirim', 'selesai') 
+            AND pembayaran_status != 'terverifikasi'
+        ")->getResultArray();
+        foreach ($dpPendingShipped as $r) {
+            $issues[] = "Pesanan {$r['kode_pesanan']} berstatus {$r['status']} tapi DP belum terverifikasi";
+        }
+
+        // 15. Pesanan cash dikirim/selesai tapi pembayaran belum terverifikasi
+        $cashUnpaid = $db->query("
+            SELECT id, kode_pesanan, status, pembayaran_status 
+            FROM pengajuan 
+            WHERE metode_pembayaran = 'cash' 
+            AND status IN ('dikirim', 'selesai') 
+            AND pembayaran_status != 'terverifikasi'
+        ")->getResultArray();
+        foreach ($cashUnpaid as $r) {
+            $issues[] = "Pesanan cash {$r['kode_pesanan']} berstatus {$r['status']} tapi pembayaran belum terverifikasi";
+        }
+
+        // 16. Total terbayar di kredit tidak cocok dengan jumlah pembayaran terverifikasi
+        $mismatchedKreditPayments = $db->query("
+            SELECT k.id, k.kode_kredit, k.total_terbayar, COALESCE(SUM(pa.nominal_bayar), 0) as real_terbayar
+            FROM kredit k
+            LEFT JOIN pembayaran_angsuran pa ON pa.kredit_id = k.id
+            GROUP BY k.id
+            HAVING k.total_terbayar != real_terbayar
+        ")->getResultArray();
+        foreach ($mismatchedKreditPayments as $r) {
+            $issues[] = "Total terbayar kredit {$r['kode_kredit']} ({$r['total_terbayar']}) tidak cocok dengan jumlah pembayaran ({$r['real_terbayar']})";
+        }
+
         // Output
         CLI::newLine();
         if (empty($issues)) {

@@ -74,8 +74,18 @@
                             }
                         } else {
                             $href = base_url('/admin/pengajuan/' . $row['id']);
-                            $statusText = pesanan_status_label($row['status']);
-                            $statusBadge = 'bg-' . pesanan_badge_class($row['status']);
+                            $statusText = pesanan_status_label(
+                                $row['status'],
+                                $row['metode_pembayaran'] ?? null,
+                                (int) ($row['uang_muka'] ?? 0),
+                                $row['pembayaran_status'] ?? null
+                            );
+                            $statusBadge = 'bg-' . pesanan_badge_class(
+                                $row['status'],
+                                $row['metode_pembayaran'] ?? null,
+                                (int) ($row['uang_muka'] ?? 0),
+                                $row['pembayaran_status'] ?? null
+                            );
                             // Cash row class based on status
                             if (in_array($row['status'], ['selesai'])) {
                                 $rowClass = 'row-lunas';

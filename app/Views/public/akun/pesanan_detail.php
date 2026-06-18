@@ -19,8 +19,8 @@
                             <span class="section-eyebrow d-block mb-1"><?= esc($pengajuan['kode_pesanan'] ?? '-'); ?></span>
                             <h4 class="fw-black mb-0"><?= esc($pengajuan['nama_produk'] ?? 'Produk'); ?></h4>
                         </div>
-                        <span class="badge bg-<?= esc(pesanan_badge_class($pengajuan['status'])); ?>">
-                            <?= esc(pesanan_status_label($pengajuan['status'])); ?>
+                        <span class="badge bg-<?= esc(pesanan_badge_class($pengajuan['status'], $pengajuan['metode_pembayaran'], (int)($pengajuan['uang_muka'] ?? 0), $pengajuan['pembayaran_status'] ?? 'belum')); ?>">
+                            <?= esc(pesanan_status_label($pengajuan['status'], $pengajuan['metode_pembayaran'], (int)($pengajuan['uang_muka'] ?? 0), $pengajuan['pembayaran_status'] ?? 'belum')); ?>
                         </span>
                     </div>
 

@@ -82,10 +82,22 @@ class AkunController extends BaseController
 
         if ($nasabahIds !== []) {
             $kreditAktif = (new KreditModel())
-                ->whereIn('nasabah_id', $nasabahIds)
-                ->where('status', 'aktif')
-                ->orderBy('tanggal_kredit', 'DESC')
+                ->select('kredit.*, pengajuan.pembayaran_status as dp_status')
+                ->join('pengajuan', 'pengajuan.id = kredit.pengajuan_id', 'left')
+                ->whereIn('kredit.nasabah_id', $nasabahIds)
+                ->where('kredit.status', 'aktif')
+                ->orderBy('kredit.tanggal_kredit', 'DESC')
                 ->findAll();
+
+            $kreditAktif = array_filter($kreditAktif, function($k) {
+                $uangMuka = (int) ($k['uang_muka'] ?? 0);
+                $dpStatus = $k['dp_status'] ?? 'belum';
+                if ($uangMuka > 0 && $dpStatus !== 'terverifikasi') {
+                    return false;
+                }
+                return true;
+            });
+            $kreditAktif = array_values($kreditAktif);
 
             $kreditIds = array_map(static fn ($k) => (int) $k['id'], $kreditAktif);
 
@@ -158,11 +170,22 @@ class AkunController extends BaseController
         $kreditList = [];
         if ($nasabahIds !== []) {
             $kreditList = (new KreditModel())
-                ->select('kredit.*, produk_emas.nama_produk, produk_emas.kode_produk')
+                ->select('kredit.*, produk_emas.nama_produk, produk_emas.kode_produk, pengajuan.pembayaran_status as dp_status')
                 ->join('produk_emas', 'produk_emas.id = kredit.produk_emas_id', 'left')
+                ->join('pengajuan', 'pengajuan.id = kredit.pengajuan_id', 'left')
                 ->whereIn('kredit.nasabah_id', $nasabahIds)
                 ->orderBy('kredit.created_at', 'DESC')
                 ->findAll();
+
+            $kreditList = array_filter($kreditList, function($k) {
+                $uangMuka = (int) ($k['uang_muka'] ?? 0);
+                $dpStatus = $k['dp_status'] ?? 'belum';
+                if ($uangMuka > 0 && $dpStatus !== 'terverifikasi') {
+                    return false;
+                }
+                return true;
+            });
+            $kreditList = array_values($kreditList);
         }
 
         return view('public/akun/kredit', [
@@ -210,9 +233,10 @@ class AkunController extends BaseController
         $nasabahIds = $this->nasabahIds((int) $pelanggan['id']);
 
         $kredit = (new KreditModel())
-            ->select('kredit.*, nasabah.nama AS nama_nasabah, produk_emas.nama_produk, produk_emas.kode_produk')
+            ->select('kredit.*, nasabah.nama AS nama_nasabah, produk_emas.nama_produk, produk_emas.kode_produk, pengajuan.pembayaran_status as dp_status')
             ->join('nasabah', 'nasabah.id = kredit.nasabah_id', 'left')
             ->join('produk_emas', 'produk_emas.id = kredit.produk_emas_id', 'left')
+            ->join('pengajuan', 'pengajuan.id = kredit.pengajuan_id', 'left')
             ->where('kredit.id', $id)
             ->first();
 

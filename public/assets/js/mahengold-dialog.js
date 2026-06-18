@@ -188,7 +188,7 @@
             if (firstBtn) firstBtn.focus();
         }, 100);
 
-        return { instance: instance, onEsc: onEsc };
+        return { instance: instance, modalEl: bsModal, onEsc: onEsc };
     }
 
     function hideDialog(instance, onEsc) {
@@ -197,11 +197,22 @@
         instance.hide();
     }
 
-    function cleanupAfterHide(bsModal, onEsc) {
-        bsModal.addEventListener('hidden.bs.modal', function handler() {
-            if (onEsc) document.removeEventListener('keydown', onEsc);
-            if (activeReleaseTrap) { activeReleaseTrap(); activeReleaseTrap = null; }
-            bsModal.removeEventListener('hidden.bs.modal', handler);
+    function cleanupAfterHide(ref) {
+        if (!ref || !ref.modalEl || typeof ref.modalEl.addEventListener !== 'function') {
+            return;
+        }
+
+        ref.modalEl.addEventListener('hidden.bs.modal', function handler() {
+            if (ref.onEsc) {
+                document.removeEventListener('keydown', ref.onEsc);
+            }
+
+            if (activeReleaseTrap) {
+                activeReleaseTrap();
+                activeReleaseTrap = null;
+            }
+
+            ref.modalEl.removeEventListener('hidden.bs.modal', handler);
         });
     }
 
@@ -458,28 +469,28 @@
             opts = Object.assign({ type: 'success', confirmText: 'OK' }, opts);
             var ref = showDialog(opts);
             opts._ref = ref;
-            cleanupAfterHide(ref.instance, ref.onEsc);
+            cleanupAfterHide(ref);
         },
 
         error: function (opts) {
             opts = Object.assign({ type: 'error', confirmText: 'OK' }, opts);
             var ref = showDialog(opts);
             opts._ref = ref;
-            cleanupAfterHide(ref.instance, ref.onEsc);
+            cleanupAfterHide(ref);
         },
 
         warning: function (opts) {
             opts = Object.assign({ type: 'warning', confirmText: 'OK' }, opts);
             var ref = showDialog(opts);
             opts._ref = ref;
-            cleanupAfterHide(ref.instance, ref.onEsc);
+            cleanupAfterHide(ref);
         },
 
         info: function (opts) {
             opts = Object.assign({ type: 'info', confirmText: 'OK' }, opts);
             var ref = showDialog(opts);
             opts._ref = ref;
-            cleanupAfterHide(ref.instance, ref.onEsc);
+            cleanupAfterHide(ref);
         },
 
         confirm: function (opts) {
@@ -489,14 +500,14 @@
             if (!opts.confirmClass) opts.confirmClass = 'btn-gold';
             var ref = showDialog(opts);
             opts._ref = ref;
-            cleanupAfterHide(ref.instance, ref.onEsc);
+            cleanupAfterHide(ref);
         },
 
         form: function (opts) {
             opts = Object.assign({ _isForm: true, submitText: 'Simpan', cancelText: 'Batal' }, opts);
             var ref = showDialog(opts);
             opts._ref = ref;
-            cleanupAfterHide(ref.instance, ref.onEsc);
+            cleanupAfterHide(ref);
         }
     };
 

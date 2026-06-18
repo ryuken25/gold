@@ -62,8 +62,8 @@
                                 </span>
                             </td>
                             <td>
-                                <span class="badge bg-<?= esc(pesanan_badge_class($row['status'])); ?>">
-                                    <?= esc(pesanan_status_label($row['status'])); ?>
+                                <span class="badge bg-<?= esc(pesanan_badge_class($row['status'], $row['metode_pembayaran'], (int)($row['uang_muka'] ?? 0), $row['pembayaran_status'] ?? 'belum')); ?>">
+                                    <?= esc(pesanan_status_label($row['status'], $row['metode_pembayaran'], (int)($row['uang_muka'] ?? 0), $row['pembayaran_status'] ?? 'belum')); ?>
                                 </span>
                             </td>
                         </tr>

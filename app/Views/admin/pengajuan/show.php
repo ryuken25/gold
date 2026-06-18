@@ -148,6 +148,28 @@ $relatif = static function ($datetime): string {
         <div class="premium-card p-4 mb-4">
             <h5 class="fw-bold mb-3">Aksi</h5>
 
+            <?php
+            $terakhirDikirim = false;
+            if (!empty($aktivitas)) {
+                foreach ($aktivitas as $act) {
+                    if ($act['aksi'] === 'dikirim') {
+                        $terakhirDikirim = true;
+                        break;
+                    }
+                    // If there are other main workflow status changes after it, don't trigger warning.
+                    if (in_array($act['aksi'], ['diverifikasi', 'ditolak', 'dibatalkan'], true)) {
+                        break;
+                    }
+                }
+            }
+            $statusKetidaksesuaian = $terakhirDikirim && !in_array($pengajuan['status'], ['dikirim', 'selesai'], true);
+            ?>
+            <?php if ($statusKetidaksesuaian): ?>
+                <div class="alert alert-danger mb-3 small">
+                    <i class="bi bi-exclamation-octagon-fill"></i> Data tidak sinkron: aktivitas dikirim ada, tetapi status belum dikirim.
+                </div>
+            <?php endif; ?>
+
             <?php if ($statusFinal): ?>
                 <div class="alert alert-secondary mb-0">Pesanan sudah final (<?= esc(pesanan_status_label($pengajuan['status'])); ?>). Aksi tidak tersedia.</div>
 

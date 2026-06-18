@@ -61,14 +61,14 @@
                         <div class="col-md-6">
                             <label class="form-label">Alokasi Ke Jadwal</label>
                             <select name="jadwal_angsuran_id" class="form-select">
-                                <option value="0">Otomatis (FIFO)</option>
+                                <option value="0" data-sisa="<?= isset($jadwal[0]) ? (int)($jadwal[0]['nominal_tagihan'] - $jadwal[0]['nominal_dibayar']) : 0; ?>">Otomatis (FIFO)</option>
                                 <?php foreach ($jadwal as $j): ?>
                                     <?php
                                     $tagihan = (float) $j['nominal_tagihan'];
                                     $dibayar = (float) $j['nominal_dibayar'];
                                     $sisa = $tagihan - $dibayar;
                                     ?>
-                                    <option value="<?= esc($j['id']); ?>">
+                                    <option value="<?= esc($j['id']); ?>" data-sisa="<?= (int)$sisa; ?>">
                                         Angsuran ke-<?= esc($j['angsuran_ke']); ?>
                                         (Sisa: <?= esc(format_rupiah($sisa)); ?>)
                                         — Jatuh Tempo: <?= esc(format_tanggal($j['tanggal_jatuh_tempo'])); ?>
@@ -82,6 +82,32 @@
                                 placeholder="Catatan untuk pembayaran ini...">
                         </div>
                     </div>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            var selectJadwal = document.querySelector('select[name="jadwal_angsuran_id"]');
+                            var inputNominal = document.querySelector('input[name="nominal_bayar"]');
+                            
+                            if (selectJadwal && inputNominal) {
+                                function updateNominal() {
+                                    var selectedOption = selectJadwal.options[selectJadwal.selectedIndex];
+                                    if (selectedOption) {
+                                        var sisa = selectedOption.getAttribute('data-sisa');
+                                        if (sisa) {
+                                            inputNominal.value = sisa;
+                                        }
+                                    }
+                                }
+                                
+                                selectJadwal.addEventListener('change', updateNominal);
+                                
+                                // Auto-run on page load if nominal is empty
+                                if (!inputNominal.value) {
+                                    updateNominal();
+                                }
+                            }
+                        });
+                    </script>
 
                     <div class="mt-4 d-flex gap-2">
                         <button type="submit" class="btn btn-gold rounded-pill px-4"

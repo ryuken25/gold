@@ -111,11 +111,20 @@ class KreditController extends BaseAdminController
         $jadwal = (new JadwalAngsuranModel())->where('kredit_id', $id)->orderBy('angsuran_ke', 'ASC')->findAll();
         $payments = (new PembayaranAngsuranModel())->where('kredit_id', $id)->orderBy('tanggal_bayar', 'DESC')->findAll();
 
+        $bukti = $db->table('bukti_pembayaran')->where('kredit_id', $id)->get()->getResultArray();
+        $buktiByJadwal = [];
+        foreach ($bukti as $b) {
+            if ($b['jadwal_angsuran_id']) {
+                $buktiByJadwal[(int)$b['jadwal_angsuran_id']] = $b;
+            }
+        }
+
         return $this->render('admin/kredit/show', [
             'pageTitle' => 'Detail Kredit',
             'kredit' => $kredit,
             'jadwal' => $jadwal,
             'payments' => $payments,
+            'buktiByJadwal' => $buktiByJadwal,
             'jadwalPertama' => $jadwal[0]['tanggal_jatuh_tempo'] ?? null,
         ]);
     }
@@ -130,16 +139,22 @@ class KreditController extends BaseAdminController
         }
     }
 
-    public function remind(int $kreditId, int $jadwalId)
+    public function reminder(int $kreditId, int $jadwalId)
     {
         try {
-            $this->kreditModel->sendReminder($kreditId, $jadwalId, current_admin()['id']);
-            return $this->respondOk('Pengingat berhasil dikirim ke pelanggan.', '/admin/kredit/' . $kreditId);
-        } catch (\RuntimeException $e) {
-            log_message('error', 'Gagal mengirim pengingat: ' . $e->getMessage());
-            return $this->respondFail('Pengingat gagal dikirim. Coba lagi nanti.', 400);
-        } catch (\Exception $e) {
-            return $this->respondFail($e->getMessage(), 400);
+            $service = new \App\Services\CreditReminderService();
+            $adminId = (int) current_admin()['id'];
+            $res = $service->sendManualReminder($kreditId, $jadwalId, $adminId);
+
+            if ($res['success']) {
+                return $this->respondOk($res['message'], '/admin/kredit/' . $kreditId);
+            } else {
+                // Return success but warning since email sending failed but log saved
+                return $this->respondOk($res['message'], '/admin/kredit/' . $kreditId, ['warning' => true]);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Gagal mengirim pengingat manual: ' . $e->getMessage());
+            return $this->respondFail('Gagal mengirim pengingat: ' . $e->getMessage(), 400);
         }
     }
 }

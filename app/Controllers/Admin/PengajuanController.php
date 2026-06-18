@@ -81,8 +81,13 @@ class PengajuanController extends BaseAdminController
     {
         try {
             $workflow = new \App\Services\PengajuanWorkflowService();
-            $workflow->verify($id, (int) current_admin()['id']);
-            return $this->respondOk('Pesanan diverifikasi & email konfirmasi dikirim.', '/admin/pengajuan/' . $id);
+            $updated = $workflow->verify($id, (int) current_admin()['id']);
+            
+            $msg = 'Pesanan diverifikasi & email konfirmasi dikirim.';
+            if (($updated['metode_pembayaran'] ?? '') === 'kredit' && (int)($updated['uang_muka'] ?? 0) > 0 && ($updated['pembayaran_status'] ?? '') !== 'terverifikasi') {
+                $msg = 'Pengajuan berhasil disetujui dan kredit dibuat. DP masih menunggu verifikasi, pesanan belum bisa dikirim.';
+            }
+            return $this->respondOk($msg, '/admin/pengajuan/' . $id);
         } catch (\Throwable $e) {
             log_message('error', 'Verifikasi pengajuan ' . $id . ' gagal: ' . $e->getMessage());
             return $this->respondFail('Gagal memverifikasi: ' . $e->getMessage(), 409);
@@ -129,7 +134,13 @@ class PengajuanController extends BaseAdminController
             return $this->respondOk('Pesanan berhasil dikirim.', '/admin/pengajuan/' . $id);
         } catch (\Throwable $e) {
             log_message('error', 'Kirim pengajuan ' . $id . ' gagal: ' . $e->getMessage());
-            return $this->respondFail('Gagal mengirim: ' . $e->getMessage(), 409);
+            $extra = [];
+            $msg = $e->getMessage();
+            if (strpos($msg, 'DP belum terverifikasi') !== false || strpos($msg, 'Uang muka (DP) belum terverifikasi') !== false) {
+                $extra['reason'] = 'dp_pending';
+                $msg = 'DP belum terverifikasi. Verifikasi pembayaran DP terlebih dahulu.';
+            }
+            return $this->respondFail($msg, 409, [], $extra);
         }
     }
 

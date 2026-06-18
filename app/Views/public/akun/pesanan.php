@@ -51,8 +51,8 @@
                                             </td>
                                             <td><?= esc(format_tanggal($p['created_at'], 'd M Y')); ?></td>
                                             <td>
-                                                <span class="badge bg-<?= esc(pesanan_badge_class($p['status'])); ?>">
-                                                    <?= esc(pesanan_status_label($p['status'])); ?>
+                                                <span class="badge bg-<?= esc(pesanan_badge_class($p['status'], $p['metode_pembayaran'], (int)($p['uang_muka'] ?? 0), $p['pembayaran_status'] ?? 'belum')); ?>">
+                                                    <?= esc(pesanan_status_label($p['status'], $p['metode_pembayaran'], (int)($p['uang_muka'] ?? 0), $p['pembayaran_status'] ?? 'belum')); ?>
                                                 </span>
                                             </td>
                                         </tr>

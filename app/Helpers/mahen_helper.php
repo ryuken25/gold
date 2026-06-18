@@ -124,8 +124,11 @@ if (!function_exists('is_pelanggan_logged_in')) {
 // UPDATED: pesanan_status_label — label tampilan dari status DB
 // ============================================================
 if (!function_exists('pesanan_status_label')) {
-    function pesanan_status_label(?string $status): string
+    function pesanan_status_label(?string $status, ?string $metode = null, int $uangMuka = 0, ?string $payStatus = null): string
     {
+        if ($status === 'disetujui' && $metode === 'kredit' && $uangMuka > 0 && $payStatus !== 'terverifikasi') {
+            return 'Menunggu Verifikasi DP';
+        }
         return match ($status) {
             'baru'       => 'Menunggu Verifikasi',
             'diproses'   => 'Menunggu Verifikasi',
@@ -143,8 +146,11 @@ if (!function_exists('pesanan_status_label')) {
 // UPDATED: pesanan_badge_class — badge color untuk status pesanan
 // ============================================================
 if (!function_exists('pesanan_badge_class')) {
-    function pesanan_badge_class(?string $status): string
+    function pesanan_badge_class(?string $status, ?string $metode = null, int $uangMuka = 0, ?string $payStatus = null): string
     {
+        if ($status === 'disetujui' && $metode === 'kredit' && $uangMuka > 0 && $payStatus !== 'terverifikasi') {
+            return 'warning';
+        }
         return match ($status) {
             'baru'       => 'warning',
             'diproses'   => 'warning',

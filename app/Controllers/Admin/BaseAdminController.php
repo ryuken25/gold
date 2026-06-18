@@ -22,6 +22,7 @@ abstract class BaseAdminController extends BaseController
             'admin' => current_admin(),
             'pengaturan' => $this->pengaturanModel->getPengaturan(),
             'pengajuanBaru' => (new PengajuanModel())->where('status', 'baru')->countAllResults(),
+            'transaksiPending' => (new \App\Models\BuktiPembayaranModel())->where('status', 'menunggu')->countAllResults(),
         ], $data));
     }
 

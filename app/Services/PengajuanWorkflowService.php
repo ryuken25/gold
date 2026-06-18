@@ -39,11 +39,15 @@ class PengajuanWorkflowService
 
         $this->assertTransition($pengajuan, ['baru', 'diproses'], 'disetujui');
 
-        $this->pengajuanModel->update($pengajuanId, [
+        $ok = $this->pengajuanModel->update($pengajuanId, [
             'status'            => 'disetujui',
             'diverifikasi_pada' => date('Y-m-d H:i:s'),
             'diverifikasi_oleh' => $adminId,
         ]);
+        if (!$ok) {
+            $this->db->transRollback();
+            throw new RuntimeException('Gagal menyetujui pesanan.');
+        }
 
         $this->aktivitasModel->log($pengajuanId, 'diverifikasi', 'Pesanan disetujui admin.', 'admin');
 
@@ -94,12 +98,16 @@ class PengajuanWorkflowService
 
         $this->assertTransition($pengajuan, ['baru', 'diproses'], 'ditolak');
 
-        $this->pengajuanModel->update($pengajuanId, [
+        $ok = $this->pengajuanModel->update($pengajuanId, [
             'status'         => 'ditolak',
             'catatan'        => $reason,
             'ditolak_pada'   => date('Y-m-d H:i:s'),
             'ditolak_oleh'   => $adminId,
         ]);
+        if (!$ok) {
+            $this->db->transRollback();
+            throw new RuntimeException('Gagal menolak pesanan.');
+        }
 
         $this->aktivitasModel->log($pengajuanId, 'ditolak', $reason, 'admin');
 
@@ -145,13 +153,17 @@ class PengajuanWorkflowService
         // Cek pembayaran terverifikasi
         $this->assertPaymentPrerequisite($pengajuan);
 
-        $this->pengajuanModel->update($pengajuanId, [
+        $ok = $this->pengajuanModel->update($pengajuanId, [
             'status'                 => 'dikirim',
             'metode_pengiriman'      => $method,
             'referensi_pengiriman'   => $reference,
             'dikirim_pada'           => date('Y-m-d H:i:s'),
             'dikirim_oleh'           => $adminId,
         ]);
+        if (!$ok) {
+            $this->db->transRollback();
+            throw new RuntimeException('Gagal menandai pesanan dikirim.');
+        }
 
         $this->aktivitasModel->log($pengajuanId, 'dikirim',
             'Pesanan dikirim via ' . $method . ': ' . $reference, 'admin');
@@ -178,11 +190,15 @@ class PengajuanWorkflowService
 
         $this->assertTransition($pengajuan, ['dikirim'], 'selesai');
 
-        $this->pengajuanModel->update($pengajuanId, [
+        $ok = $this->pengajuanModel->update($pengajuanId, [
             'status'         => 'selesai',
             'selesai_pada'   => date('Y-m-d H:i:s'),
             'selesai_oleh'   => $adminId,
         ]);
+        if (!$ok) {
+            $this->db->transRollback();
+            throw new RuntimeException('Gagal menandai pesanan selesai.');
+        }
 
         $this->aktivitasModel->log($pengajuanId, 'selesai', 'Pesanan selesai.', 'admin');
 
@@ -237,7 +253,7 @@ class PengajuanWorkflowService
             // Kredit: cek DP
             $uangMuka = (int) ($pengajuan['uang_muka'] ?? 0);
             if ($uangMuka > 0 && $payStatus !== 'terverifikasi') {
-                throw new RuntimeException('Uang muka (DP) belum terverifikasi. Verifikasi pembayaran terlebih dahulu.');
+                throw new RuntimeException('DP belum terverifikasi. Verifikasi pembayaran DP terlebih dahulu.');
             }
         }
     }
