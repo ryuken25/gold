@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" preserveAspectRatio="xMidYMid slice">
-  <defs><linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#140A05"/><stop offset="1" stop-color="#3A2412"/></linearGradient><linearGradient id="gold" x1="0" x2="1"><stop offset="0" stop-color="#FFF2A9"/><stop offset=".55" stop-color="#D4A12A"/><stop offset="1" stop-color="#B98213"/></linearGradient></defs>
-  <rect width="900" height="620" fill="url(#bg)"/><circle cx="715" cy="120" r="230" fill="#E7BE55" opacity=".16"/>
-  <g transform="translate(180 345) rotate(-8)" filter="drop-shadow(0 26px 35px rgba(0,0,0,.38))"><rect width="360" height="106" rx="18" fill="url(#gold)"/><rect x="70" y="-88" width="360" height="106" rx="18" fill="url(#gold)"/><rect x="140" y="-176" width="360" height="106" rx="18" fill="url(#gold)"/><text x="180" y="66" text-anchor="middle" font-size="34" font-family="Inter,Arial" font-weight="900" fill="#140A05">GOLD</text></g>
-</svg>
