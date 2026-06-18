@@ -16,13 +16,18 @@
 
     function updateCsrf(csrf) {
         if (!csrf) return;
-        if (csrf.name) {
-            var nameEl = document.querySelector('meta[name="csrf-token-name"]');
-            if (nameEl) nameEl.content = csrf.name;
+        var valEl = document.querySelector('meta[name="csrf-token-value"]');
+        var nameEl = document.querySelector('meta[name="csrf-token-name"]');
+
+        // Object format: { name: "...", hash: "..." }
+        if (typeof csrf === 'object') {
+            if (csrf.name && nameEl) nameEl.content = csrf.name;
+            if (csrf.hash && valEl) valEl.content = csrf.hash;
+            return;
         }
-        if (csrf.hash) {
-            var valEl = document.querySelector('meta[name="csrf-token-value"]');
-            if (valEl) valEl.content = csrf.hash;
+        // String legacy: just the hash
+        if (typeof csrf === 'string' && valEl) {
+            valEl.content = csrf;
         }
     }
 
@@ -34,7 +39,7 @@
 
         // CSRF / 403 / 419
         if (res.status === 403 || res.status === 419) {
-            return 'Sesi keamanan sudah kedaluwarsa. Muat ulang halaman lalu coba lagi.';
+            return 'Sesi keamanan sudah kedaluwarsa. Halaman akan dimuat ulang.';
         }
 
         // 422 Validation
@@ -106,6 +111,19 @@
                 });
             })
             .catch(function (err) {
+                if (err.status === 403 || err.status === 419) {
+                    // CSRF expired — reload after showing message
+                    if (window.MahenDialog) {
+                        MahenDialog.error({
+                            title: 'Sesi Kedaluwarsa',
+                            message: 'Halaman akan dimuat ulang dengan sesi baru.',
+                            onConfirm: function () { window.location.reload(); }
+                        });
+                    } else {
+                        window.location.reload();
+                    }
+                    return;
+                }
                 if (err.message && err.message.indexOf('Server mengembalikan') !== -1) throw err;
                 if (err.status) throw err;
                 // Network error

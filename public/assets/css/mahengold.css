@@ -2033,8 +2033,6 @@ h6 {
 .table-modern tbody tr.row-h3 > *:not(:first-child) {
     background: transparent !important;
 }
-    border-left: 4px solid #ffc107 !important;
-}
 
 /* ============================================================
    Legend badges with gradient matching row colors
