@@ -165,7 +165,16 @@ class PaymentService
                 'jadwal_angsuran_id'     => $schedule['id'],
                 'nominal_alokasi'        => $alokasi,
             ], true);
-            $allocations[] = ['id' => $allocId, 'nominal' => $alokasi];
+            $allocations[] = [
+                'id'                  => $allocId,
+                'nominal'             => $alokasi,
+                'angsuran_ke'         => $schedule['angsuran_ke'],
+                'tanggal_jatuh_tempo' => $schedule['tanggal_jatuh_tempo'],
+                'nominal_tagihan'     => $tagihan,
+                'nominal_alokasi'     => $alokasi,
+                'nominal_dibayar'     => $baruDibayar,
+                'status'              => $status,
+            ];
         }
 
         // Verify allocation sum
@@ -194,6 +203,16 @@ class PaymentService
 
         if (!$this->db->transStatus()) {
             throw new RuntimeException('Gagal mencatat pembayaran.');
+        }
+
+        // Call auto-complete if eligible after transaction is committed
+        if ($kredit['pengajuan_id'] && ($statusKredit === 'lunas' || $sisaPiutangBaru <= 0)) {
+            try {
+                $workflow = new \App\Services\PengajuanWorkflowService();
+                $workflow->autoCompleteIfEligible((int) $kredit['pengajuan_id']);
+            } catch (\Throwable $e) {
+                log_message('error', 'PaymentService auto-complete failed: ' . $e->getMessage());
+            }
         }
 
         return [

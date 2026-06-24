@@ -29,14 +29,19 @@
                     <?php if ($currentStep > 0): ?>
                     <div class="order-stepper mb-4">
                         <?php foreach ($steps as $idx => $step): ?>
-                            <?php $stepNum = $idx + 1; $isCompleted = $stepNum < $currentStep; $isCurrent = $stepNum === $currentStep; ?>
-                            <div class="stepper-item <?= $isCompleted ? 'completed' : ($isCurrent ? 'active' : ''); ?>">
+                            <?php 
+                            $stepNum = $idx + 1; 
+                            $isCompleted = $stepNum <= $currentStep; 
+                            $isCurrent = $stepNum === $currentStep; 
+                            ?>
+                            <div class="stepper-item <?= $isCompleted ? 'completed' : '' ?> <?= $isCurrent ? 'active' : '' ?>">
                                 <div class="stepper-circle">
                                     <i class="bi <?= esc($step['icon']); ?>"></i>
                                 </div>
                                 <div class="stepper-label"><?= esc($step['label']); ?></div>
                                 <?php if ($idx < count($steps) - 1): ?>
-                                    <div class="stepper-line <?= $isCompleted ? 'completed' : ''; ?>"></div>
+                                    <?php $lineCompleted = ($stepNum + 1) <= $currentStep; ?>
+                                    <div class="stepper-line <?= $lineCompleted ? 'completed' : ''; ?>"></div>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
@@ -74,9 +79,11 @@
                         <?php if ($dp > 0): ?>
                             <div class="mb-4">
                                 <h6 class="fw-bold mb-2">1. Uang Muka (DP) — <?= esc(format_rupiah($dp)); ?></h6>
-                                <?php if ($buktiDp && $buktiDp['status'] === 'terverifikasi'): ?>
-                                    <div class="alert alert-success mb-1">Bukti DP terverifikasi. Terima kasih!</div>
-                                    <a href="<?= base_url('/akun/bukti/' . $buktiDp['id']); ?>" target="_blank" rel="noopener" class="small">Lihat bukti DP</a>
+                                <?php if (($pengajuan['pembayaran_status'] ?? '') === 'terverifikasi' || ($buktiDp && $buktiDp['status'] === 'terverifikasi')): ?>
+                                    <div class="alert alert-success mb-1">Uang Muka (DP) terverifikasi. Terima kasih!</div>
+                                    <?php if ($buktiDp): ?>
+                                        <a href="<?= base_url('/akun/bukti/' . $buktiDp['id']); ?>" target="_blank" rel="noopener" class="small">Lihat bukti DP</a>
+                                    <?php endif; ?>
                                 <?php elseif ($buktiDp && $buktiDp['status'] === 'menunggu'): ?>
                                     <div class="alert alert-warning mb-1">Bukti DP sedang menunggu verifikasi admin.</div>
                                     <a href="<?= base_url('/akun/bukti/' . $buktiDp['id']); ?>" target="_blank" rel="noopener" class="small">Lihat bukti DP</a>

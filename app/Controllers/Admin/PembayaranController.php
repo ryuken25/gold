@@ -113,7 +113,7 @@ class PembayaranController extends BaseAdminController
                 'keterangan'         => $this->request->getPost('keterangan'),
             ], (int) current_admin()['id']);
 
-            $this->kirimNotifPembayaran($result['payment']);
+            $this->kirimNotifPembayaran($result['payment'], $result);
 
             $payment = $result['payment'] ?? [];
             $credit  = $result['credit'] ?? [];
@@ -141,8 +141,9 @@ class PembayaranController extends BaseAdminController
         $db->transStart();
 
         try {
+            $result = null;
             if ($bukti['tipe'] === 'cicilan') {
-                $this->paymentService->record([
+                $result = $this->paymentService->record([
                     'kredit_id'          => $bukti['kredit_id'],
                     'jadwal_angsuran_id' => $bukti['jadwal_angsuran_id'],
                     'tanggal_bayar'      => date('Y-m-d'),
@@ -156,12 +157,30 @@ class PembayaranController extends BaseAdminController
                     (new PengajuanModel())->update($bukti['pengajuan_id'], [
                         'pembayaran_status' => 'terverifikasi',
                     ]);
+                    
+                    // Update DP status on kredit table
+                    $kModel = new \App\Models\KreditModel();
+                    $kreditRecord = $kModel->where('pengajuan_id', $bukti['pengajuan_id'])->first();
+                    if ($kreditRecord) {
+                        $kModel->update($kreditRecord['id'], [
+                            'dp_status' => 'terverifikasi',
+                            'dp_verified_at' => date('Y-m-d H:i:s'),
+                        ]);
+                    }
                 }
             } else {
                 if ($bukti['pengajuan_id']) {
                     (new PengajuanModel())->update($bukti['pengajuan_id'], [
                         'pembayaran_status' => 'terverifikasi',
                     ]);
+
+                    // Trigger auto-completion if order status is already diterima
+                    try {
+                        $workflow = new \App\Services\PengajuanWorkflowService();
+                        $workflow->autoCompleteIfEligible((int) $bukti['pengajuan_id']);
+                    } catch (\Throwable $e) {
+                        log_message('error', 'PembayaranController cash verifikasi auto-complete failed: ' . $e->getMessage());
+                    }
                 }
             }
 
@@ -181,11 +200,9 @@ class PembayaranController extends BaseAdminController
             return $this->respondFail('Gagal memverifikasi: ' . $e->getMessage(), 400);
         }
 
-        // Ambil data untuk email (opsional, error diserap jika gagal di production)
-        $pengajuan = $bukti['pengajuan_id'] ? (new \App\Models\PengajuanModel())->find($bukti['pengajuan_id']) : null;
-        if ($pengajuan) {
-            send_payment_received_email($pengajuan, $bukti);
-        }
+        // Kirim email notifikasi setelah pembayaran terverifikasi
+        $buktiUpdated = $this->buktiModel->find($id);
+        $this->kirimNotifPembayaran($buktiUpdated, $result);
 
         return $this->respondOk('Pembayaran terverifikasi & notifikasi dikirim.', '/admin/pembayaran');
     }
@@ -266,29 +283,127 @@ class PembayaranController extends BaseAdminController
     /**
      * Kirim email notifikasi setelah pembayaran terverifikasi.
      */
-    protected function kirimNotifPembayaran(array $bukti): void
+    protected function kirimNotifPembayaran(array $bukti, ?array $recordResult = null): void
     {
-        $user = (new UserModel())->find($bukti['user_id']);
-
+        $isBuktiTable = isset($bukti['tipe']); // bukti_pembayaran has 'tipe'
+        
+        $kreditModel = new KreditModel();
+        $userModel = new UserModel();
+        
+        $userId = $isBuktiTable ? (int) ($bukti['user_id'] ?? 0) : 0;
+        $kreditId = (int) ($bukti['kredit_id'] ?? 0);
+        
+        $kredit = null;
+        if ($kreditId > 0) {
+            $kredit = $kreditModel->find($kreditId);
+            if ($kredit && !$userId) {
+                $nasabah = (new \App\Models\NasabahModel())->find($kredit['nasabah_id']);
+                if ($nasabah) {
+                    $userId = (int) $nasabah['user_id'];
+                }
+            }
+        }
+        
+        $user = $userId > 0 ? $userModel->find($userId) : null;
+        
         $payload = [
-            'user_id'    => (int) $bukti['user_id'],
+            'user_id'    => $userId,
             'nama'       => $user['nama'] ?? 'Pelanggan',
-            'kode'       => $bukti['kode'],
-            'tipe'       => $bukti['tipe'],
-            'nominal'    => $bukti['nominal'],
-            'related_id' => (int) ($bukti['pengajuan_id'] ?: $bukti['kredit_id']),
+            'kode'       => $isBuktiTable ? $bukti['kode'] : ($bukti['kode_pembayaran'] ?? '-'),
+            'tipe'       => $isBuktiTable ? $bukti['tipe'] : 'cicilan',
+            'nominal'    => $isBuktiTable ? $bukti['nominal'] : ($bukti['nominal_bayar'] ?? 0),
+            'related_id' => (int) (($bukti['pengajuan_id'] ?? 0) ?: $kreditId),
         ];
 
-        if ($bukti['tipe'] === 'cicilan') {
-            $kredit = (new KreditModel())->find($bukti['kredit_id']);
-            $jadwal = $bukti['jadwal_angsuran_id'] ? (new JadwalAngsuranModel())->find($bukti['jadwal_angsuran_id']) : null;
+        if ($payload['tipe'] === 'cicilan') {
+            $jadwalModel = new JadwalAngsuranModel();
+            
+            $allocations = [];
+            if ($recordResult && !empty($recordResult['allocations'])) {
+                $allocations = $recordResult['allocations'];
+            } elseif (!$isBuktiTable && !empty($bukti['id'])) {
+                $allocations = (new \App\Models\PembayaranAlokasiModel())
+                    ->where('pembayaran_angsuran_id', $bukti['id'])
+                    ->findAll();
+                foreach ($allocations as &$alloc) {
+                    $sch = $jadwalModel->find($alloc['jadwal_angsuran_id']);
+                    if ($sch) {
+                        $alloc['angsuran_ke'] = $sch['angsuran_ke'];
+                        $alloc['tanggal_jatuh_tempo'] = $sch['tanggal_jatuh_tempo'];
+                        $alloc['nominal_tagihan'] = $sch['nominal_tagihan'];
+                        $alloc['nominal_dibayar'] = $sch['nominal_dibayar'];
+                        $alloc['status'] = $sch['status'];
+                    }
+                }
+                unset($alloc);
+            } elseif ($isBuktiTable && !empty($bukti['id'])) {
+                $pembayaran = (new \App\Models\PembayaranAngsuranModel())
+                    ->where('bukti_pembayaran_id', $bukti['id'])
+                    ->first();
+                if ($pembayaran) {
+                    $allocations = (new \App\Models\PembayaranAlokasiModel())
+                        ->where('pembayaran_angsuran_id', $pembayaran['id'])
+                        ->findAll();
+                    foreach ($allocations as &$alloc) {
+                        $sch = $jadwalModel->find($alloc['jadwal_angsuran_id']);
+                        if ($sch) {
+                            $alloc['angsuran_ke'] = $sch['angsuran_ke'];
+                            $alloc['tanggal_jatuh_tempo'] = $sch['tanggal_jatuh_tempo'];
+                            $alloc['nominal_tagihan'] = $sch['nominal_tagihan'];
+                            $alloc['nominal_dibayar'] = $sch['nominal_dibayar'];
+                            $alloc['status'] = $sch['status'];
+                        }
+                    }
+                    unset($alloc);
+                }
+            }
+
+            $jadwalId = (int) ($bukti['jadwal_angsuran_id'] ?? 0);
+            $jadwal = $jadwalId > 0 ? $jadwalModel->find($jadwalId) : null;
+            
+            if (!$jadwal && !empty($allocations)) {
+                $jadwal = $jadwalModel->find($allocations[0]['jadwal_angsuran_id']);
+            }
+
             $payload += [
-                'kode_kredit'    => $kredit['kode_kredit'] ?? '-',
-                'angsuran_ke'    => $jadwal['angsuran_ke'] ?? null,
-                'total_terbayar' => $kredit['total_terbayar'] ?? 0,
-                'sisa_piutang'   => $kredit['sisa_piutang'] ?? 0,
-                'status_kredit'  => $kredit['status'] ?? 'aktif',
+                'kode_kredit'         => $kredit['kode_kredit'] ?? '-',
+                'angsuran_ke'         => $jadwal['angsuran_ke'] ?? null,
+                'periode_angsuran'    => $kredit['periode_angsuran'] ?? 'bulanan',
+                'tanggal_jatuh_tempo' => $jadwal['tanggal_jatuh_tempo'] ?? null,
+                'tanggal_bayar'       => $isBuktiTable ? date('Y-m-d') : ($bukti['tanggal_bayar'] ?? date('Y-m-d')),
+                'diverifikasi_pada'   => $isBuktiTable ? ($bukti['diverifikasi_pada'] ?? date('Y-m-d H:i:s')) : ($bukti['created_at'] ?? date('Y-m-d H:i:s')),
+                'total_terbayar'      => $kredit['total_terbayar'] ?? 0,
+                'sisa_piutang'        => $kredit['sisa_piutang'] ?? 0,
+                'status_kredit'       => $kredit['status'] ?? 'aktif',
+                'allocations'         => $allocations,
             ];
+        } elseif (($payload['tipe'] ?? '') === 'dp') {
+            $pengajuan = $bukti['pengajuan_id'] ? (new PengajuanModel())->find($bukti['pengajuan_id']) : null;
+            $kredit = $bukti['pengajuan_id'] ? ($kreditModel->where('pengajuan_id', $bukti['pengajuan_id'])->first()) : null;
+            $produk = $pengajuan ? ((new \App\Models\ProdukEmasModel())->find($pengajuan['produk_emas_id'])) : null;
+            
+            $dpPayload = [
+                'user_id'              => $userId,
+                'nama'                 => $user['nama'] ?? 'Pelanggan',
+                'nama_pelanggan'       => $user['nama'] ?? 'Pelanggan',
+                'kode_kredit'          => $kredit['kode_kredit'] ?? '-',
+                'kode_pesanan'         => $pengajuan['kode_pesanan'] ?? '-',
+                'produk'               => $produk ? trim($produk['nama_produk'] . (!empty($produk['kode_produk']) ? ' (' . $produk['kode_produk'] . ')' : '')) : '-',
+                'nominal_dp'           => $bukti['nominal'],
+                'tanggal_bayar_dp'     => format_tanggal_id($bukti['created_at']),
+                'bulan_bayar_dp'       => format_tanggal_id($bukti['created_at'], 'F Y'),
+                'total_harga_kredit'   => $kredit['total_harga_kredit'] ?? 0,
+                'sisa_piutang'         => $kredit['sisa_piutang'] ?? 0,
+                'status_verifikasi_dp' => 'Terverifikasi',
+                'kredit_id'            => $kredit['id'] ?? 0,
+            ];
+
+            try {
+                (new EmailNotificationService())->kirimDpTerverifikasi($dpPayload);
+            } catch (Throwable $e) {
+                log_message('error', 'Email dp_terverifikasi gagal: ' . $e->getMessage());
+            }
+            return;
         } else {
             $pengajuan = $bukti['pengajuan_id'] ? (new PengajuanModel())->find($bukti['pengajuan_id']) : null;
             $payload  += ['kode_pesanan' => $pengajuan['kode_pesanan'] ?? '-'];

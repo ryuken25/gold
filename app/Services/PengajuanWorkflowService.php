@@ -39,13 +39,23 @@ class PengajuanWorkflowService
 
         $this->assertTransition($pengajuan, ['baru', 'diproses'], 'disetujui');
 
-        // Determine pembayaran_status according to rules:
-        // - Preserve existing pembayaran_status
-        // - For credit with uang_muka = 0, auto-set to 'terverifikasi'
-        // - For other credit with uang_muka > 0 and cash, keep existing status
+        // Determine pembayaran_status:
+        // - For credit orders, auto-set to 'terverifikasi' (verif pesanan = dp di-verif otomatis)
+        // - For cash orders, preserve the existing status (waiting for full payment proof verification)
         $pembayaranStatus = $pengajuan['pembayaran_status'] ?? 'belum';
-        if ($pengajuan['metode_pembayaran'] === 'kredit' && (int)($pengajuan['uang_muka'] ?? 0) === 0) {
+        if ($pengajuan['metode_pembayaran'] === 'kredit') {
             $pembayaranStatus = 'terverifikasi';
+
+            // Auto-verify any associated DP payment proofs that are still 'menunggu'
+            $this->db->table('bukti_pembayaran')
+                ->where('pengajuan_id', $pengajuanId)
+                ->where('tipe', 'dp')
+                ->where('status', 'menunggu')
+                ->update([
+                    'status'            => 'terverifikasi',
+                    'diverifikasi_oleh' => $adminId,
+                    'diverifikasi_pada' => date('Y-m-d H:i:s'),
+                ]);
         }
 
         $ok = $this->pengajuanModel->update($pengajuanId, [
@@ -193,37 +203,94 @@ class PengajuanWorkflowService
     }
 
     /**
-     * Transisi dikirim → selesai.
+     * @deprecated Status selesai is now automated by the system. Use receive() to mark received.
      */
     public function complete(int $pengajuanId, int $adminId): array
+    {
+        throw new RuntimeException('Status selesai tidak bisa dilakukan manual. Konfirmasi diterima terlebih dahulu; sistem akan menyelesaikan otomatis saat pembayaran/kredit lunas.');
+    }
+
+    /**
+     * Transisi dikirim → diterima.
+     */
+    public function receive(int $pengajuanId, int $adminId): array
     {
         $this->db->transStart();
 
         $pengajuan = $this->lockPengajuan($pengajuanId);
 
-        $this->assertTransition($pengajuan, ['dikirim'], 'selesai');
+        $this->assertTransition($pengajuan, ['dikirim'], 'diterima');
 
         $ok = $this->pengajuanModel->update($pengajuanId, [
-            'status'         => 'selesai',
-            'selesai_pada'   => date('Y-m-d H:i:s'),
-            'selesai_oleh'   => $adminId,
+            'status'        => 'diterima',
+            'diterima_pada' => date('Y-m-d H:i:s'),
+            'diterima_oleh' => $adminId,
         ]);
         if (!$ok) {
             $this->db->transRollback();
-            throw new RuntimeException('Gagal menandai pesanan selesai.');
+            throw new RuntimeException('Gagal menandai pesanan diterima.');
         }
 
-        $this->aktivitasModel->log($pengajuanId, 'selesai', 'Pesanan selesai.', 'admin');
+        $this->aktivitasModel->log($pengajuanId, 'diterima', 'Pesanan dikonfirmasi sudah diterima pelanggan.', 'admin');
+
+        // Check and trigger auto-completion immediately inside transition if eligible
+        $this->autoCompleteIfEligible($pengajuanId);
 
         $this->db->transComplete();
 
         if (!$this->db->transStatus()) {
-            throw new RuntimeException('Gagal menandai pesanan selesai.');
+            throw new RuntimeException('Gagal menandai pesanan diterima.');
         }
 
-        $this->kirimEmailStatusUpdate($pengajuan, 'selesai');
+        // Send appropriate status email outside transaction
+        $updatedPengajuan = $this->pengajuanModel->find($pengajuanId);
+        if ($updatedPengajuan['status'] === 'selesai') {
+            $this->kirimEmailStatusUpdate($updatedPengajuan, 'selesai');
+        } else {
+            $this->kirimEmailStatusUpdate($updatedPengajuan, 'diterima');
+        }
 
-        return $this->pengajuanModel->find($pengajuanId);
+        return $updatedPengajuan;
+    }
+
+    /**
+     * Selesaikan pesanan secara otomatis jika pembayaran atau kredit telah lunas.
+     */
+    public function autoCompleteIfEligible(int $pengajuanId): ?array
+    {
+        $pengajuan = $this->pengajuanModel->find($pengajuanId);
+        if (!$pengajuan || $pengajuan['status'] !== 'diterima') {
+            return null;
+        }
+
+        $eligible = false;
+        if ($pengajuan['metode_pembayaran'] === 'cash') {
+            $eligible = ($pengajuan['pembayaran_status'] === 'terverifikasi');
+        } elseif ($pengajuan['metode_pembayaran'] === 'kredit') {
+            $credit = $this->db->table('kredit')->where('pengajuan_id', $pengajuanId)->get()->getRowArray();
+            if ($credit) {
+                $eligible = ($credit['status'] === 'lunas' || (float)$credit['sisa_piutang'] <= 0);
+            }
+        }
+
+        if ($eligible) {
+            $this->db->transStart();
+            $this->pengajuanModel->update($pengajuanId, [
+                'status'       => 'selesai',
+                'selesai_pada' => date('Y-m-d H:i:s'),
+                'selesai_oleh' => null, // system-driven
+            ]);
+            $this->aktivitasModel->log($pengajuanId, 'selesai', 'Pesanan selesai otomatis karena pembayaran/kredit sudah lunas.', 'system');
+            $this->db->transComplete();
+
+            if ($this->db->transStatus()) {
+                $updated = $this->pengajuanModel->find($pengajuanId);
+                $this->kirimEmailStatusUpdate($updated, 'selesai');
+                return $updated;
+            }
+        }
+
+        return null;
     }
 
     // ------------------------------------------------------------------
@@ -297,6 +364,36 @@ class PengajuanWorkflowService
             }
 
             $this->emailService->kirimPesananDiverifikasi($payload);
+
+            // Trigger DP verified email if it is credit and DP is required
+            if ($pengajuan['metode_pembayaran'] === 'kredit' && (int) ($pengajuan['uang_muka'] ?? 0) > 0) {
+                $kredit = $this->db->table('kredit')
+                    ->where('pengajuan_id', $pengajuan['id'])
+                    ->get()->getRowArray();
+
+                $bukti = $this->db->table('bukti_pembayaran')
+                    ->where('pengajuan_id', $pengajuan['id'])
+                    ->where('tipe', 'dp')
+                    ->where('status', 'terverifikasi')
+                    ->get()->getRowArray();
+
+                $dpPayload = [
+                    'user_id'              => (int) $pengajuan['user_id'],
+                    'nama'                 => $pengajuan['nama'],
+                    'nama_pelanggan'       => $pengajuan['nama'],
+                    'kode_kredit'          => $kredit['kode_kredit'] ?? '-',
+                    'kode_pesanan'         => $pengajuan['kode_pesanan'],
+                    'produk'               => trim(($produk['nama_produk'] ?? '-') . (!empty($produk['kode_produk']) ? ' (' . $produk['kode_produk'] . ')' : '')),
+                    'nominal_dp'           => $pengajuan['uang_muka'],
+                    'tanggal_bayar_dp'     => !empty($bukti['created_at']) ? format_tanggal_id($bukti['created_at']) : format_tanggal_id(date('Y-m-d H:i:s')),
+                    'bulan_bayar_dp'       => !empty($bukti['created_at']) ? format_tanggal_id($bukti['created_at'], 'F Y') : format_tanggal_id(date('Y-m-d H:i:s'), 'F Y'),
+                    'total_harga_kredit'   => $kredit['total_harga_kredit'] ?? 0,
+                    'sisa_piutang'         => $kredit['sisa_piutang'] ?? 0,
+                    'status_verifikasi_dp' => 'Terverifikasi',
+                    'kredit_id'            => $kredit['id'] ?? 0,
+                ];
+                $this->emailService->kirimDpTerverifikasi($dpPayload);
+            }
         } catch (\Throwable $e) {
             log_message('error', 'Email verifikasi gagal: ' . $e->getMessage());
         }

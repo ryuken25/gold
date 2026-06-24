@@ -10,9 +10,9 @@ class TestEmailAll extends BaseCommand
 {
     protected $group       = 'email';
     protected $name        = 'email:test-all';
-    protected $description = 'Test SEMUA flow email notifikasi ke kadeknadi98 & winayaarya';
+    protected $description = 'Test SEMUA flow email notifikasi ke kadeknadi98';
 
-    private array $testEmails = ['kadeknadi98@gmail.com', 'winayaarya@gmail.com'];
+    private array $testEmails = ['kadeknadi98@gmail.com'];
 
     public function run(array $params)
     {
@@ -75,7 +75,7 @@ class TestEmailAll extends BaseCommand
         } else {
             CLI::write('⚠️  Ada yang gagal — cek log di atas', 'red');
         }
-        CLI::write('Ke: kadeknadi98@gmail.com, winayaarya@gmail.com', 'cyan');
+        CLI::write('Ke: kadeknadi98@gmail.com', 'cyan');
     }
 
     private function basePayload(string $kode): array

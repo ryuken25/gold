@@ -109,6 +109,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const applyMetodePembayaran = () => {
             const isKredit = getMetode() === 'kredit';
             kreditFields.forEach((el) => { el.style.display = isKredit ? '' : 'none'; });
+
+            // Disable DP options larger than or equal to product base price
+            if (isKredit && uangMukaInput && uangMukaInput.tagName === 'SELECT') {
+                let firstEnabledValue = null;
+                let defaultOption = null;
+                Array.from(uangMukaInput.options).forEach((option) => {
+                    const optVal = parseFloat(option.value);
+                    if (optVal >= currentHargaPokok) {
+                        option.disabled = true;
+                    } else {
+                        option.disabled = false;
+                        if (firstEnabledValue === null) {
+                            firstEnabledValue = option.value;
+                        }
+                        if (optVal === 200000) {
+                            defaultOption = option;
+                        }
+                    }
+                });
+
+                // Auto-select option: default is 200k if enabled, otherwise the first enabled option
+                if (defaultOption && !defaultOption.disabled) {
+                    defaultOption.selected = true;
+                } else if (firstEnabledValue !== null) {
+                    uangMukaInput.value = firstEnabledValue;
+                }
+            }
+
             // UPDATED: KTP wajib untuk semua metode
             if (ktpInput) ktpInput.required = true;
             if (buktiInput) buktiInput.required = true;
@@ -170,7 +198,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        [tenorInput, periodeInput, uangMukaInput].forEach((el) => el?.addEventListener('input', updatePreview));
+        [tenorInput, periodeInput, uangMukaInput].forEach((el) => {
+            el?.addEventListener('input', updatePreview);
+            el?.addEventListener('change', updatePreview);
+        });
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
             if (noTeleponInput && noTeleponInput.value.trim().length < 8) {

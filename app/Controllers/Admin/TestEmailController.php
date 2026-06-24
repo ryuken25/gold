@@ -19,7 +19,7 @@ class TestEmailController extends BaseController
 
         // Konfigurasi
         $email->setFrom('mahengoldofficial@gmail.com', 'Mahen Gold');
-        $email->setTo(['kadeknadi98@gmail.com', 'winayaarya@gmail.com']);
+        $email->setTo(['kadeknadi98@gmail.com']);
         $email->setSubject('[MahenGold] TEST - Email Notifikasi ' . date('d/m/Y H:i:s'));
         $email->setMailType('html');
         $email->setMessage('
@@ -32,7 +32,7 @@ class TestEmailController extends BaseController
                     <p>Email notifikasi dari sistem <strong>MahenGold</strong> sudah aktif.</p>
                     <table style="width:100%; border-collapse:collapse; margin:16px 0;">
                         <tr><td style="padding:6px 0; color:#777;">Waktu</td><td style="padding:6px 0; font-weight:bold;">' . date('d M Y H:i:s') . '</td></tr>
-                        <tr><td style="padding:6px 0; color:#777;">Server</td><td style="padding:6px 0; font-weight:bold;">' . $_SERVER['HTTP_HOST'] ?? 'localhost' . '</td></tr>
+                        <tr><td style="padding:6px 0; color:#777;">Server</td><td style="padding:6px 0; font-weight:bold;">' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '</td></tr>
                         <tr><td style="padding:6px 0; color:#777;">Status</td><td style="padding:6px 0; font-weight:bold; color:#19B85A;">Terkirim</td></tr>
                     </table>
                     <p style="color:#999; font-size:12px; text-align:center; margin-top:20px;">Email otomatis — mohon tidak membalas pesan ini.</p>
@@ -44,7 +44,7 @@ class TestEmailController extends BaseController
         if ($email->send(false)) {
             return $this->response->setJSON([
                 'status'  => 'success',
-                'message' => 'Email terkirim ke kadeknadi98@gmail.com dan winayaarya@gmail.com!',
+                'message' => 'Email terkirim ke kadeknadi98@gmail.com!',
                 'debug'   => $email->printDebugger(['headers']),
             ]);
         } else {

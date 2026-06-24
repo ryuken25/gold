@@ -24,10 +24,10 @@
                         </div>
                     </div>
                     <div class="col-sm-6 col-xl-4">
-                        <div class="akun-stat feature-card p-4">
+                        <div class="akun-stat feature-card p-4 clickable-card" data-href="<?= base_url('/akun/kredit'); ?>" style="cursor:pointer;" onclick="window.location.href='<?= base_url('/akun/kredit'); ?>'">
                             <span class="akun-stat-label">Kredit Aktif</span>
                             <span class="akun-stat-value"><?= esc(count($kreditAktif)); ?></span>
-                            <span class="akun-stat-link text-muted-mg">Kredit berjalan</span>
+                            <a href="<?= base_url('/akun/kredit'); ?>" class="akun-stat-link">Kredit berjalan →</a>
                         </div>
                     </div>
                     <div class="col-xl-4">

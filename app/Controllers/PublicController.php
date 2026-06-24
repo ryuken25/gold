@@ -135,7 +135,7 @@ class PublicController extends BaseController
         if ($metode === 'kredit') {
             $rules['tenor_bulan']      = 'required|in_list[6,10,12]';
             $rules['periode_angsuran'] = 'required|in_list[bulanan,mingguan]';
-            $rules['uang_muka']        = 'permit_empty|numeric'; // DP tetap, ditentukan server
+            $rules['uang_muka']        = 'required|in_list[200000,500000,1000000]';
             $rules['foto_ktp']         = 'uploaded[foto_ktp]|is_image[foto_ktp]|mime_in[foto_ktp,image/jpeg,image/jpg,image/png]|max_size[foto_ktp,3072]';
         }
         // Bukti pembayaran wajib untuk KEDUA metode (cash maupun kredit).
@@ -161,8 +161,15 @@ class PublicController extends BaseController
         // Pra-validasi DP untuk kredit (sebelum upload KTP, hindari file yatim).
         if ($metode === 'kredit') {
             $pengaturan  = $this->pengaturanModel->getPengaturan();
-            // DP tetap (nominal dari pengaturan) — abaikan input user.
-            $uangMukaCek = (int) ($pengaturan['dp_minimal'] ?? 0);
+            $uangMukaCek = (int) $this->request->getPost('uang_muka');
+
+            if ($uangMukaCek >= $produk['harga_pokok']) {
+                $msg = 'Uang muka (' . format_rupiah($uangMukaCek) . ') harus lebih kecil dari harga pokok produk (' . format_rupiah($produk['harga_pokok']) . ').';
+                return $this->request->isAJAX()
+                    ? $this->response->setStatusCode(422)->setJSON(['errors' => ['uang_muka' => $msg], 'csrf' => csrf_hash()])
+                    : redirect()->back()->withInput()->with('error', $msg);
+            }
+
             $cek = $this->calculator->calculate(
                 $produk['harga_pokok'],
                 (float) $pengaturan['margin_default'],
@@ -172,7 +179,7 @@ class PublicController extends BaseController
             );
             if ($uangMukaCek >= $cek['total_harga_kredit']) {
                 $msg = 'Total harga kredit (' . format_rupiah($cek['total_harga_kredit'])
-                    . ') terlalu kecil untuk DP tetap ' . format_rupiah($uangMukaCek) . '.';
+                    . ') terlalu kecil untuk DP ' . format_rupiah($uangMukaCek) . '.';
                 return $this->request->isAJAX()
                     ? $this->response->setStatusCode(422)->setJSON(['errors' => ['uang_muka' => $msg], 'csrf' => csrf_hash()])
                     : redirect()->back()->withInput()->with('error', $msg);
@@ -245,6 +252,7 @@ class PublicController extends BaseController
             'alamat'            => $this->request->getPost('alamat'),
             'foto_ktp'          => $namaFile,
             'status'            => 'baru',
+            'uang_muka'         => 0, // default 0 for cash
         ];
 
         // Payload untuk email notifikasi (dilengkapi simulasi bila kredit).
@@ -266,7 +274,7 @@ class PublicController extends BaseController
                 $marginDefault,
                 $pengajuanData['tenor_bulan'],
                 (string) $pengajuanData['periode_angsuran'],
-                (int) ($this->pengaturanModel->getPengaturan()['dp_minimal'] ?? 0) // DP tetap
+                (int) $this->request->getPost('uang_muka')
             );
 
             $pengajuanData['uang_muka'] = $kalkulasi['uang_muka'];
@@ -350,5 +358,21 @@ class PublicController extends BaseController
         }
 
         return redirect()->back()->withInput()->with('error', $pesan);
+    }
+
+    public function servingProductImage(string $filename): ResponseInterface
+    {
+        $filename = basename($filename);
+        $path = WRITEPATH . 'uploads/produk/' . $filename;
+        if (!is_file($path)) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound('Gambar produk tidak ditemukan.');
+        }
+
+        $mime = mime_content_type($path) ?: 'image/jpeg';
+
+        return $this->response
+            ->setHeader('Content-Type', $mime)
+            ->setHeader('Content-Disposition', 'inline; filename="' . $filename . '"')
+            ->setBody(file_get_contents($path));
     }
 }

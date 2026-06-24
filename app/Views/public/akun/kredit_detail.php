@@ -32,9 +32,30 @@ $persen    = $sisaPokok > 0 ? min(100, round($terbayar / $sisaPokok * 100)) : 0;
                 </div>
             </div>
             <div class="col-6 col-lg-3">
-                <div class="akun-stat feature-card p-4">
+                <div class="akun-stat feature-card p-4 h-100">
                     <span class="akun-stat-label">Uang Muka (DP)</span>
                     <span class="akun-stat-value akun-stat-sm"><?= esc(format_rupiah($uangMuka)); ?></span>
+                    <?php if (($kredit['dp_status'] ?? '') === 'terverifikasi' || ($kredit['dp_status'] ?? '') === 'terverifikasi'): ?>
+                        <?php
+                        $db = \Config\Database::connect();
+                        $buktiDp = $db->table('bukti_pembayaran')
+                            ->where('pengajuan_id', $kredit['pengajuan_id'])
+                            ->where('tipe', 'dp')
+                            ->where('status', 'terverifikasi')
+                            ->orderBy('id', 'DESC')
+                            ->get()->getRowArray();
+                        $tglDp = !empty($buktiDp['created_at']) ? format_tanggal_id($buktiDp['created_at']) : format_tanggal_id($kredit['dp_verified_at'] ?: date('Y-m-d H:i:s'));
+                        $blnDp = !empty($buktiDp['created_at']) ? format_tanggal_id($buktiDp['created_at'], 'F Y') : format_tanggal_id($kredit['dp_verified_at'] ?: date('Y-m-d H:i:s'), 'F Y');
+                        ?>
+                        <div class="small text-muted-mg mt-2" style="font-size: 0.75rem; line-height: 1.3;">
+                            <div>Bayar: <?= esc($tglDp); ?></div>
+                            <div>Bulan: <?= esc($blnDp); ?></div>
+                        </div>
+                        <div class="d-flex gap-1 mt-2">
+                            <a href="<?= base_url('/akun/kredit/' . $kredit['id'] . '/nota-dp'); ?>" class="btn btn-xs btn-outline-gold py-0 px-2" style="font-size: 0.75rem; border-radius: 4px; font-weight: normal; padding: 2px 6px;"><i class="bi bi-file-text"></i> Nota</a>
+                            <a href="<?= base_url('/akun/kredit/' . $kredit['id'] . '/print-dp'); ?>" target="_blank" rel="noopener" class="btn btn-xs btn-gold py-0 px-2" style="font-size: 0.75rem; border-radius: 4px; font-weight: normal; padding: 2px 6px; background-color: var(--mg-gold); color: var(--mg-dark);"><i class="bi bi-printer"></i> Print</a>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
@@ -72,7 +93,7 @@ $persen    = $sisaPokok > 0 ? min(100, round($terbayar / $sisaPokok * 100)) : 0;
             <?php if ($dpBelumVerified): ?>
                 <div class="alert alert-warning mb-0 p-4 rounded-3 text-center">
                     <i class="bi bi-clock-history fs-3 d-block mb-2 text-warning"></i>
-                    <h6 class="fw-bold">Menunggu Verifikasi DP</h6>
+                    <h6 class="fw-bold">Menunggu Verifikasi Uang Muka</h6>
                     <p class="mb-0 small">Jadwal angsuran belum aktif karena pembayaran Uang Muka (DP) belum diverifikasi oleh admin.</p>
                     <?php if ($dpStatus === 'ditolak'): ?>
                         <p class="mt-2 mb-0 text-danger fw-bold">Bukti DP sebelumnya ditolak. Silakan unggah ulang bukti DP dari menu <a href="<?= base_url('/akun/pesanan/' . $kredit['pengajuan_id']); ?>">Riwayat Pesanan</a>.</p>
@@ -108,9 +129,13 @@ $persen    = $sisaPokok > 0 ? min(100, round($terbayar / $sisaPokok * 100)) : 0;
                                     <td>
                                         <?php $b = $buktiByJadwal[(int) $row['id']] ?? null; ?>
                                         <?php if ($row['status'] === 'dibayar'): ?>
-                                            <span class="text-success small fw-semibold">Lunas &#10003;</span>
+                                            <span class="text-success small fw-semibold d-block mb-1">Lunas &#10003;</span>
+                                            <div class="d-flex gap-1 mb-1">
+                                                <a href="<?= base_url('/akun/kredit/' . $kredit['id'] . '/nota-angsuran/' . $row['id']); ?>" class="btn btn-xs btn-outline-gold py-0 px-2" style="font-size: 0.75rem; border-radius: 4px; font-weight: normal; padding: 2px 6px;"><i class="bi bi-file-text"></i> Nota</a>
+                                                <a href="<?= base_url('/akun/kredit/' . $kredit['id'] . '/print-angsuran/' . $row['id']); ?>" target="_blank" rel="noopener" class="btn btn-xs btn-gold py-0 px-2" style="font-size: 0.75rem; border-radius: 4px; font-weight: normal; padding: 2px 6px; background-color: var(--mg-gold); color: var(--mg-dark);"><i class="bi bi-printer"></i> Print</a>
+                                            </div>
                                             <?php if ($b): ?>
-                                                <a href="<?= base_url('/akun/bukti/' . $b['id']); ?>" target="_blank" rel="noopener" class="small d-block">Lihat bukti</a>
+                                                <a href="<?= base_url('/akun/bukti/' . $b['id']); ?>" target="_blank" rel="noopener" class="small text-muted-mg" style="font-size: 0.75rem;">Lihat bukti</a>
                                             <?php endif; ?>
                                         <?php elseif ($b && $b['status'] === 'menunggu'): ?>
                                             <span class="badge bg-warning">Menunggu verifikasi</span>

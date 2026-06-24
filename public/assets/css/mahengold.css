@@ -1915,10 +1915,10 @@ h6 {
 }
 
 .stepper-item.active .stepper-circle {
-    background: linear-gradient(135deg, var(--mg-gold-300), var(--mg-gold-500));
-    color: var(--mg-brown-950);
-    border-color: var(--mg-gold-500);
-    box-shadow: 0 4px 14px rgba(185, 130, 19, .28);
+    background: linear-gradient(135deg, var(--mg-green), var(--mg-green-dark));
+    color: var(--mg-white);
+    border-color: var(--mg-green-dark);
+    box-shadow: 0 4px 14px rgba(25, 184, 90, .28);
     transform: scale(1.1);
 }
 
@@ -1938,7 +1938,7 @@ h6 {
 }
 
 .stepper-item.active .stepper-label {
-    color: var(--mg-gold-600);
+    color: var(--mg-green-dark);
     font-weight: 800;
 }
 

@@ -82,10 +82,12 @@ class AkunController extends BaseController
 
         if ($nasabahIds !== []) {
             $kreditAktif = (new KreditModel())
-                ->select('kredit.*, pengajuan.pembayaran_status as dp_status')
+                ->select('kredit.*, pengajuan.pembayaran_status as dp_status, pengajuan.status as pengajuan_status')
                 ->join('pengajuan', 'pengajuan.id = kredit.pengajuan_id', 'left')
                 ->whereIn('kredit.nasabah_id', $nasabahIds)
                 ->where('kredit.status', 'aktif')
+                ->where('kredit.sisa_piutang >', 0)
+                ->whereNotIn('pengajuan.status', ['selesai', 'ditolak', 'dibatalkan'])
                 ->orderBy('kredit.tanggal_kredit', 'DESC')
                 ->findAll();
 
@@ -170,30 +172,37 @@ class AkunController extends BaseController
         $kreditList = [];
         if ($nasabahIds !== []) {
             $kreditList = (new KreditModel())
-                ->select('kredit.*, produk_emas.nama_produk, produk_emas.kode_produk, pengajuan.pembayaran_status as dp_status')
+                ->select('kredit.*, produk_emas.nama_produk, produk_emas.kode_produk, pengajuan.pembayaran_status as dp_status, pengajuan.status as pengajuan_status')
                 ->join('produk_emas', 'produk_emas.id = kredit.produk_emas_id', 'left')
                 ->join('pengajuan', 'pengajuan.id = kredit.pengajuan_id', 'left')
                 ->whereIn('kredit.nasabah_id', $nasabahIds)
                 ->orderBy('kredit.created_at', 'DESC')
                 ->findAll();
+        }
 
-            $kreditList = array_filter($kreditList, function($k) {
-                $uangMuka = (int) ($k['uang_muka'] ?? 0);
-                $dpStatus = $k['dp_status'] ?? 'belum';
-                if ($uangMuka > 0 && $dpStatus !== 'terverifikasi') {
-                    return false;
-                }
-                return true;
-            });
-            $kreditList = array_values($kreditList);
+        $activeKredit = [];
+
+        foreach ($kreditList as $k) {
+            $uangMuka = (int) ($k['uang_muka'] ?? 0);
+            $dpStatus = $k['dp_status'] ?? 'belum';
+            $pStatus = $k['pengajuan_status'] ?? '';
+            $statusKredit = $k['status'] ?? 'aktif';
+            $sisaPiutang = (int) ($k['sisa_piutang'] ?? 0);
+
+            $dpVerified = ($uangMuka <= 0 || $dpStatus === 'terverifikasi');
+            $isActive = ($statusKredit === 'aktif' && $sisaPiutang > 0 && !in_array($pStatus, ['selesai', 'ditolak', 'dibatalkan'], true) && $dpVerified);
+
+            if ($isActive) {
+                $activeKredit[] = $k;
+            }
         }
 
         return view('public/akun/kredit', [
-            'pageTitle'  => 'Kredit Saya - MahenGold',
-            'pengaturan' => $this->pengaturan(),
-            'pelanggan'  => current_pelanggan(),
-            'kredit'     => $kreditList,
-            'activeTab'  => 'kredit',
+            'pageTitle'      => 'Kredit Saya - MahenGold',
+            'pengaturan'     => $this->pengaturan(),
+            'pelanggan'      => current_pelanggan(),
+            'kredit'         => $activeKredit,
+            'activeTab'      => 'kredit',
         ]);
     }
 
@@ -580,5 +589,133 @@ class AkunController extends BaseController
         ]);
 
         return redirect()->to('/akun/profil')->with('success', 'Password berhasil diganti.');
+    }
+
+    public function notaDp(int $kreditId)
+    {
+        return $this->renderNotaDp($kreditId, false);
+    }
+
+    public function printDp(int $kreditId)
+    {
+        return $this->renderNotaDp($kreditId, true);
+    }
+
+    protected function renderNotaDp(int $kreditId, bool $print)
+    {
+        $pelanggan = current_pelanggan();
+        $nasabahIds = $this->nasabahIds((int) $pelanggan['id']);
+
+        $kModel = new KreditModel();
+        $kredit = $kModel
+            ->select('kredit.*, nasabah.nama AS nama_nasabah, produk_emas.nama_produk, produk_emas.kode_produk')
+            ->join('nasabah', 'nasabah.id = kredit.nasabah_id', 'left')
+            ->join('produk_emas', 'produk_emas.id = kredit.produk_emas_id', 'left')
+            ->where('kredit.id', $kreditId)
+            ->first();
+
+        if (!$kredit || !in_array((int) $kredit['nasabah_id'], $nasabahIds, true)) {
+            throw PageNotFoundException::forPageNotFound('Kredit tidak ditemukan.');
+        }
+
+        $pengajuan = (new PengajuanModel())->find($kredit['pengajuan_id']);
+        if (!$pengajuan || ($pengajuan['pembayaran_status'] ?? 'belum') !== 'terverifikasi') {
+            throw PageNotFoundException::forPageNotFound('Uang muka belum diverifikasi.');
+        }
+
+        $bukti = $this->buktiModel()
+            ->where('pengajuan_id', $kredit['pengajuan_id'])
+            ->where('tipe', 'dp')
+            ->where('status', 'terverifikasi')
+            ->orderBy('id', 'DESC')
+            ->first();
+
+        $tanggal_bayar = !empty($bukti['created_at']) ? format_tanggal_id($bukti['created_at']) : format_tanggal_id($kredit['dp_verified_at'] ?: date('Y-m-d H:i:s'));
+        $bulan_bayar = !empty($bukti['created_at']) ? format_tanggal_id($bukti['created_at'], 'F Y') : format_tanggal_id($kredit['dp_verified_at'] ?: date('Y-m-d H:i:s'), 'F Y');
+
+        return view('public/akun/nota', [
+            'pageTitle'     => 'Nota DP ' . ($kredit['kode_kredit'] ?? ''),
+            'pengaturan'    => $this->pengaturan(),
+            'tipe'          => 'dp',
+            'kredit'        => $kredit,
+            'pengajuan'     => $pengajuan,
+            'bukti'         => $bukti,
+            'tanggal_bayar' => $tanggal_bayar,
+            'bulan_bayar'   => $bulan_bayar,
+            'print'         => $print,
+            'backUrl'       => base_url('/akun/kredit/' . $kreditId),
+        ]);
+    }
+
+    public function notaAngsuran(int $kreditId, int $jadwalId)
+    {
+        return $this->renderNotaAngsuran($kreditId, $jadwalId, false);
+    }
+
+    public function printAngsuran(int $kreditId, int $jadwalId)
+    {
+        return $this->renderNotaAngsuran($kreditId, $jadwalId, true);
+    }
+
+    protected function renderNotaAngsuran(int $kreditId, int $jadwalId, bool $print)
+    {
+        $pelanggan = current_pelanggan();
+        $nasabahIds = $this->nasabahIds((int) $pelanggan['id']);
+
+        $kModel = new KreditModel();
+        $kredit = $kModel
+            ->select('kredit.*, nasabah.nama AS nama_nasabah, produk_emas.nama_produk, produk_emas.kode_produk')
+            ->join('nasabah', 'nasabah.id = kredit.nasabah_id', 'left')
+            ->join('produk_emas', 'produk_emas.id = kredit.produk_emas_id', 'left')
+            ->where('kredit.id', $kreditId)
+            ->first();
+
+        if (!$kredit || !in_array((int) $kredit['nasabah_id'], $nasabahIds, true)) {
+            throw PageNotFoundException::forPageNotFound('Kredit tidak ditemukan.');
+        }
+
+        $jadwal = (new JadwalAngsuranModel())
+            ->where('id', $jadwalId)
+            ->where('kredit_id', $kreditId)
+            ->where('status', 'dibayar')
+            ->first();
+
+        if (!$jadwal) {
+            throw PageNotFoundException::forPageNotFound('Angsuran belum dibayar atau tidak ditemukan.');
+        }
+
+        $db = \Config\Database::connect();
+        $alloc = $db->table('pembayaran_alokasi pa')
+            ->select('pa.*, py.kode_pembayaran, py.metode_pembayaran, py.tanggal_bayar')
+            ->join('pembayaran_angsuran py', 'py.id = pa.pembayaran_angsuran_id')
+            ->where('pa.jadwal_angsuran_id', $jadwalId)
+            ->get()->getRowArray();
+
+        $bukti = $this->buktiModel()
+            ->where('jadwal_angsuran_id', $jadwalId)
+            ->where('status', 'terverifikasi')
+            ->first();
+
+        $kode_pembayaran   = $alloc['kode_pembayaran'] ?? 'BYR-MOCK-' . $jadwalId;
+        $metode_pembayaran = $alloc['metode_pembayaran'] ?? 'transfer';
+        $tanggal_bayar     = !empty($alloc['tanggal_bayar']) ? format_tanggal_id($alloc['tanggal_bayar']) : format_tanggal_id($jadwal['tanggal_dibayar'] ?: date('Y-m-d'));
+
+        return view('public/akun/nota', [
+            'pageTitle'          => 'Nota Angsuran ' . $kode_pembayaran,
+            'pengaturan'         => $this->pengaturan(),
+            'tipe'               => 'cicilan',
+            'kredit'             => $kredit,
+            'jadwal'             => $jadwal,
+            'bukti'              => $bukti,
+            'kode_pembayaran'    => $kode_pembayaran,
+            'nominal_bayar'      => $jadwal['nominal_dibayar'],
+            'nominal_tagihan'    => $jadwal['nominal_tagihan'],
+            'tanggal_jatuh_tempo'=> format_tanggal_id($jadwal['tanggal_jatuh_tempo']),
+            'tanggal_bayar'      => $tanggal_bayar,
+            'metode_pembayaran'  => $metode_pembayaran,
+            'angsuran_ke'        => $jadwal['angsuran_ke'],
+            'print'              => $print,
+            'backUrl'            => base_url('/akun/kredit/' . $kreditId),
+        ]);
     }
 }

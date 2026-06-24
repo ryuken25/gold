@@ -25,16 +25,8 @@ class MahenGoldSeeder extends Seeder
 
         // Disable FK checks to safely clean old demo data
         $db->query('SET FOREIGN_KEY_CHECKS = 0');
-
-        // Delete all old demo users/customers to prevent duplicates/overlaps
-        $this->userModel->like('email', 'demo.', 'after')->delete();
-        $this->userModel->where('email', 'winayaarya@gmail.com')->delete();
-        $this->userModel->whereIn('nama', [
-            'Putu Demo Pelanggan', 'Made DP Pending', 'Ketut DP Ready', 'Wayan Cash Pending',
-            'Nyoman Cash Ready', 'Komang Shipped', 'Made Rejected', 'Ketut Overdue', 'Wayan Lunas'
-        ])->delete();
-
-        // Re-enable FK checks
+        $db->table('users')->truncate();
+        $db->table('nasabah')->truncate();
         $db->query('SET FOREIGN_KEY_CHECKS = 1');
 
         // ---- 1. Admin users (upsert by email) ----
@@ -43,65 +35,28 @@ class MahenGoldSeeder extends Seeder
             ['email' => 'staff.verifikasi@mahengold.test', 'nama' => 'Staff Verifikasi',   'username' => 'staff_verif',  'role' => 'admin'],
             ['email' => 'staff.finance@mahengold.test',    'nama' => 'Staff Finance',      'username' => 'staff_finance','role' => 'admin'],
         ] as $admin) {
-            $existing = $this->userModel->where('email', $admin['email'])->first();
-            if (!$existing) {
-                $this->userModel->insert([
-                    'nama'          => $admin['nama'],
-                    'email'         => $admin['email'],
-                    'username'      => $admin['username'],
-                    'password_hash' => password_hash('admin123', PASSWORD_DEFAULT),
-                    'role'          => $admin['role'],
-                    'is_active'     => 1,
-                ]);
-            }
-        }
-
-        // ---- 2. Special Dev User ----
-        $existingDev = $this->userModel->where('email', 'winayaarya@gmail.com')->first();
-        if (!$existingDev) {
             $this->userModel->insert([
-                'nama'          => 'I Wayan Zebec 1',
-                'email'         => 'winayaarya@gmail.com',
-                'username'      => null,
-                'no_telepon'    => '6281200000001',
-                'password_hash' => password_hash('123123123', PASSWORD_DEFAULT),
-                'role'          => 'pelanggan',
+                'nama'          => $admin['nama'],
+                'email'         => $admin['email'],
+                'username'      => $admin['username'],
+                'password_hash' => password_hash('admin123', PASSWORD_DEFAULT),
+                'role'          => $admin['role'],
                 'is_active'     => 1,
             ]);
         }
 
-        // ---- 3. Professional Dummy Customers ----
-        $dummies = [
-            ['nama' => 'I Made Winayagatar Arya Bhanu', 'email' => 'made.winayagatar@mahengold.test', 'no_telepon' => '6281200000002'],
-            ['nama' => 'Ni Putu Kirana Maheswari', 'email' => 'kirana.maheswari@mahengold.test', 'no_telepon' => '6281200000003'],
-            ['nama' => 'I Kadek Arya Pranata', 'email' => 'arya.pranata@mahengold.test', 'no_telepon' => '6281200000004'],
-            ['nama' => 'Ni Made Sekar Lestari', 'email' => 'sekar.lestari@mahengold.test', 'no_telepon' => '6281200000005'],
-            ['nama' => 'I Komang Aditya Mahendra', 'email' => 'aditya.mahendra@mahengold.test', 'no_telepon' => '6281200000006'],
-            ['nama' => 'Ni Kadek Diah Paramitha', 'email' => 'diah.paramitha@mahengold.test', 'no_telepon' => '6281200000007'],
-            ['nama' => 'I Wayan Surya Pradnyana', 'email' => 'surya.pradnyana@mahengold.test', 'no_telepon' => '6281200000008'],
-            ['nama' => 'Ni Luh Ayu Saraswati', 'email' => 'ayu.saraswati@mahengold.test', 'no_telepon' => '6281200000009'],
-            ['nama' => 'I Nyoman Bagus Pramana', 'email' => 'bagus.pramana@mahengold.test', 'no_telepon' => '6281200000010'],
-            ['nama' => 'Ni Komang Citra Dewayani', 'email' => 'citra.dewayani@mahengold.test', 'no_telepon' => '6281200000011'],
-            ['nama' => 'I Ketut Dharma Wijaya', 'email' => 'dharma.wijaya@mahengold.test', 'no_telepon' => '6281200000012'],
-            ['nama' => 'Ni Putu Anjani Larasati', 'email' => 'anjani.larasati@mahengold.test', 'no_telepon' => '6281200000013'],
-        ];
+        // ---- 2. Special Dev User (Single Dummy Customer) ----
+        $this->userModel->insert([
+            'nama'          => 'I Kadek Nadi Artana',
+            'email'         => 'kadeknadi98@gmail.com',
+            'username'      => null,
+            'no_telepon'    => '6281234567890',
+            'password_hash' => password_hash('123123123', PASSWORD_DEFAULT),
+            'role'          => 'pelanggan',
+            'is_active'     => 1,
+        ]);
 
-        foreach ($dummies as $plg) {
-            $existing = $this->userModel->where('email', $plg['email'])->first();
-            if (!$existing) {
-                $this->userModel->insert([
-                    'nama'          => $plg['nama'],
-                    'email'         => $plg['email'],
-                    'username'      => null,
-                    'no_telepon'    => $plg['no_telepon'],
-                    'password_hash' => password_hash('123123123', PASSWORD_DEFAULT),
-                    'role'          => 'pelanggan',
-                    'is_active'     => 1,
-                ]);
-            }
-        }
-
-        // ---- 4. System Configuration ----
+        // ---- 3. System Configuration ----
         $this->pengaturanModel->truncate();
         $this->pengaturanModel->insert([
             'nama_toko'          => 'MahenGold',
@@ -112,7 +67,7 @@ class MahenGoldSeeder extends Seeder
             'alamat_toko'        => 'Denpasar, Bali',
         ]);
 
-        // ---- 5. Gold Products ----
+        // ---- 4. Gold Products ----
         $products = [
             ['kode_produk' => 'MGD-001', 'nama_produk' => 'Cincin Emas 1 Gram',     'jenis_emas' => 'Perhiasan',  'kadar' => '22K', 'berat_gram' => 1.00,  'harga_pokok' => 1500000,  'stok' => 10],
             ['kode_produk' => 'MGD-002', 'nama_produk' => 'Anting Emas 0.8 Gram',   'jenis_emas' => 'Perhiasan',  'kadar' => '22K', 'berat_gram' => 0.80,  'harga_pokok' => 1250000,  'stok' => 10],
@@ -142,15 +97,12 @@ class MahenGoldSeeder extends Seeder
             $this->produkModel->insert($produk);
         }
 
-        // ---- 6. Generate demo KTP file ----
-        $this->writeDemoImage(WRITEPATH . 'uploads/ktp/demo_ktp.png', 'KTP DEMO', 'I Wayan Zebec 1');
+        // ---- 5. Generate demo KTP file ----
+        $this->writeDemoImage(WRITEPATH . 'uploads/ktp/demo_ktp.png', 'KTP DEMO', 'kadeknadi98@gmail.com');
     }
 
     protected function writeDemoImage(string $path, string $judul, string $sub): void
     {
-        if (is_file($path)) {
-            return;
-        }
         $dir = dirname($path);
         if (!is_dir($dir)) {
             @mkdir($dir, 0755, true);
@@ -161,15 +113,45 @@ class MahenGoldSeeder extends Seeder
 
         if (function_exists('imagecreatetruecolor')) {
             $img  = imagecreatetruecolor(640, 400);
-            $bg   = imagecolorallocate($img, 28, 26, 23);
-            $gold = imagecolorallocate($img, 201, 162, 75);
-            $soft = imagecolorallocate($img, 156, 147, 133);
-            imagefilledrectangle($img, 0, 0, 640, 400, $bg);
-            imagefilledrectangle($img, 0, 0, 640, 64, imagecolorallocate($img, 18, 17, 15));
-            imagestring($img, 5, 24, 24, 'MahenGold', $gold);
-            imagestring($img, 4, 24, 150, $judul, $gold);
-            imagestring($img, 3, 24, 185, 'Ref: ' . $sub, $soft);
-            imagestring($img, 2, 24, 360, 'Gambar contoh data demo.', $soft);
+            
+            if (strpos($path, 'ktp') !== false) {
+                $bg   = imagecolorallocate($img, 45, 62, 80);
+                $gold = imagecolorallocate($img, 201, 162, 75);
+                $white = imagecolorallocate($img, 255, 255, 255);
+                $red = imagecolorallocate($img, 220, 53, 69);
+                
+                imagefilledrectangle($img, 0, 0, 640, 400, $bg);
+                imagefilledrectangle($img, 0, 0, 640, 64, imagecolorallocate($img, 28, 38, 49));
+                imagestring($img, 5, 24, 24, 'DUMMY / BUKAN DOKUMEN RESMI', $red);
+                
+                imagestring($img, 5, 24, 90, 'KARTU IDENTITAS DUMMY', $gold);
+                imagestring($img, 4, 24, 140, 'NIK  : DEMO-000001', $white);
+                imagestring($img, 4, 24, 180, 'Nama : I Kadek Nadi Artana', $white);
+                imagestring($img, 4, 24, 220, 'Asal : Denpasar, Bali', $white);
+                
+                imagestring($img, 5, 100, 300, 'DUMMY - BUKAN DOKUMEN RESMI', $red);
+                imagestring($img, 2, 24, 370, 'Hanya digunakan untuk keperluan pengujian sistem.', $white);
+            } else {
+                $bg   = imagecolorallocate($img, 244, 246, 249);
+                $dark = imagecolorallocate($img, 33, 37, 41);
+                $gold = imagecolorallocate($img, 185, 130, 19);
+                $green = imagecolorallocate($img, 40, 167, 69);
+                $red = imagecolorallocate($img, 220, 53, 69);
+                
+                imagefilledrectangle($img, 0, 0, 640, 400, $bg);
+                imagerectangle($img, 10, 10, 630, 390, $gold);
+                imagefilledrectangle($img, 11, 11, 629, 64, imagecolorallocate($img, 233, 236, 239));
+                imagestring($img, 5, 24, 24, 'BUKTI PEMBAYARAN DUMMY', $green);
+                imagestring($img, 4, 450, 24, 'STATUS: SUCCESS', $green);
+                
+                imagestring($img, 5, 150, 150, 'DUMMY - TIDAK SAH', $red);
+                imagestring($img, 4, 50, 200, 'Referensi : ' . $sub, $dark);
+                imagestring($img, 4, 50, 240, 'Nominal   : ' . $judul, $dark);
+                imagestring($img, 4, 50, 280, 'Tanggal   : ' . date('Y-m-d'), $dark);
+                
+                imagestring($img, 2, 50, 350, 'Dokumen ini dibuat otomatis sebagai data simulasi seeder.', $dark);
+            }
+            
             imagepng($img, $path);
             imagedestroy($img);
             return;

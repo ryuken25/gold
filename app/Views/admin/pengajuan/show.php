@@ -124,18 +124,7 @@ $relatif = static function ($datetime): string {
                                     </div>
                                 <?php endif; ?>
                             </a>
-                            <div class="small text-muted-mg mt-1">
-                                <?= esc(ucfirst($b['tipe'])); ?> — <span class="badge text-bg-<?= $b['status'] === 'terverifikasi' ? 'success' : ($b['status'] === 'ditolak' ? 'danger' : 'warning'); ?>"><?= esc(ucfirst($b['status'])); ?></span>
-                                <?php if (!empty($b['nominal'])): ?>
-                                    <br><?= esc(format_rupiah($b['nominal'])); ?>
-                                <?php endif; ?>
-                                <?php if ($b['status'] === 'menunggu'): ?>
-                                    <div class="mt-2 d-flex gap-1 justify-content-center">
-                                        <button type="button" class="btn btn-xs btn-gold rounded-pill px-2 py-0 js-verif-bukti" data-id="<?= esc($b['id']); ?>" style="font-size: 0.75rem;">Verif</button>
-                                        <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0 js-tolak-bukti" data-id="<?= esc($b['id']); ?>" style="font-size: 0.75rem;">Tolak</button>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
+
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -159,24 +148,36 @@ $relatif = static function ($datetime): string {
             <h5 class="fw-bold mb-3">Aksi</h5>
 
             <?php
-            $terakhirDikirim = false;
+            $hasDikirimAct = false;
+            $hasDiterimaAct = false;
             if (!empty($aktivitas)) {
                 foreach ($aktivitas as $act) {
                     if ($act['aksi'] === 'dikirim') {
-                        $terakhirDikirim = true;
-                        break;
+                        $hasDikirimAct = true;
                     }
-                    // If there are other main workflow status changes after it, don't trigger warning.
-                    if (in_array($act['aksi'], ['diverifikasi', 'ditolak', 'dibatalkan'], true)) {
-                        break;
+                    if ($act['aksi'] === 'diterima') {
+                        $hasDiterimaAct = true;
                     }
                 }
             }
-            $statusKetidaksesuaian = $terakhirDikirim && !in_array($pengajuan['status'], ['dikirim', 'selesai'], true);
+            
+            $statusInconsistent = false;
+            $warningMsg = '';
+            
+            if ($hasDikirimAct && !in_array($pengajuan['status'], ['dikirim', 'diterima', 'selesai'], true)) {
+                $statusInconsistent = true;
+                $warningMsg = 'Data tidak sinkron: aktivitas dikirim ada, tetapi status tidak sesuai (harus Dikirim, Diterima, atau Selesai).';
+            } elseif ($hasDiterimaAct && !in_array($pengajuan['status'], ['diterima', 'selesai'], true)) {
+                $statusInconsistent = true;
+                $warningMsg = 'Data tidak sinkron: aktivitas diterima ada, tetapi status tidak sesuai (harus Diterima atau Selesai).';
+            } elseif ($pengajuan['status'] === 'selesai' && !$hasDiterimaAct) {
+                $statusInconsistent = true;
+                $warningMsg = 'Data tidak sinkron: status Selesai tetapi aktivitas Diterima tidak tercatat.';
+            }
             ?>
-            <?php if ($statusKetidaksesuaian): ?>
+            <?php if ($statusInconsistent): ?>
                 <div class="alert alert-danger mb-3 small">
-                    <i class="bi bi-exclamation-octagon-fill"></i> Data tidak sinkron: aktivitas dikirim ada, tetapi status belum dikirim.
+                    <i class="bi bi-exclamation-octagon-fill"></i> <?= esc($warningMsg); ?>
                 </div>
             <?php endif; ?>
 
@@ -227,9 +228,13 @@ $relatif = static function ($datetime): string {
                 <?php endif; ?>
 
             <?php elseif ($pengajuan['status'] === 'dikirim'): ?>
-                <button type="button" class="btn btn-gold rounded-pill w-100" id="btnSelesai">
-                    <i class="bi bi-check-circle-fill"></i> Tandai Selesai
+                <button type="button" class="btn btn-gold rounded-pill w-100" id="btnTerima">
+                    <i class="bi bi-box-seam"></i> Konfirmasi Diterima
                 </button>
+            <?php elseif ($pengajuan['status'] === 'diterima'): ?>
+                <div class="alert alert-info mb-0 small">
+                    <i class="bi bi-info-circle-fill"></i> Pesanan sudah diterima. Menunggu pelunasan kredit untuk otomatis selesai.
+                </div>
             <?php endif; ?>
         </div>
 
@@ -343,18 +348,18 @@ $relatif = static function ($datetime): string {
         });
     });
 
-    // SELESAI
-    document.getElementById('btnSelesai')?.addEventListener('click', () => {
+    // TERIMA
+    document.getElementById('btnTerima')?.addEventListener('click', () => {
         MahenDialog.confirm({
-            title: 'Tandai Selesai',
-            message: 'Tandai pesanan ini sebagai selesai? Pastikan pesanan telah diterima oleh pelanggan.',
-            confirmText: 'Ya, Selesai',
+            title: 'Konfirmasi Diterima',
+            message: 'Pastikan pesanan ini benar-benar telah diterima oleh pelanggan.',
+            confirmText: 'Ya, Diterima',
             confirmClass: 'btn-gold',
             onConfirm: async (helpers) => {
                 try {
-                    const res = await MahenAjax.post(BASE + '/selesai');
+                    const res = await MahenAjax.post(BASE + '/terima');
                     helpers.close();
-                    MahenDialog.success({ title: 'Selesai', message: res.message, onConfirm: () => window.location.href = res.redirect || BASE });
+                    MahenDialog.success({ title: 'Berhasil', message: res.message, onConfirm: () => window.location.href = res.redirect || BASE });
                 } catch (err) {
                     helpers.finish();
                     MahenDialog.error({ title: 'Gagal', message: err.message });
@@ -363,42 +368,7 @@ $relatif = static function ($datetime): string {
         });
     });
 
-    // VERIFIKASI BUKTI PEMBAYARAN INLINE
-    document.querySelectorAll('.js-verif-bukti').forEach(btn => {
-        btn.addEventListener('click', () => {
-            MahenDialog.confirm({
-                title: 'Verifikasi Pembayaran',
-                message: 'Pastikan nominal, rekening pengirim, dan bukti pembayaran sudah sesuai sebelum melanjutkan.',
-                confirmText: 'Ya, Verifikasi',
-                onConfirm: async (helpers) => {
-                    try {
-                        const res = await MahenAjax.post('/admin/pembayaran/' + btn.dataset.id + '/verifikasi');
-                        helpers.close();
-                        MahenDialog.success({ title: 'Berhasil', message: res.message, onConfirm: () => window.location.reload() });
-                    } catch (err) { helpers.finish(); MahenDialog.error({ title: 'Gagal', message: err.message }); }
-                }
-            });
-        });
-    });
 
-    // TOLAK BUKTI PEMBAYARAN INLINE
-    document.querySelectorAll('.js-tolak-bukti').forEach(btn => {
-        btn.addEventListener('click', () => {
-            MahenDialog.form({
-                title: 'Tolak Bukti Pembayaran',
-                fields: [{ name: 'catatan_admin', label: 'Alasan Penolakan', type: 'textarea', required: true, minlength: 5, placeholder: 'Jelaskan alasan penolakan...', rows: 3 }],
-                submitText: 'Tolak',
-                submitClass: 'btn-danger',
-                onsubmit: async (data, helpers) => {
-                    try {
-                        const res = await MahenAjax.post('/admin/pembayaran/' + btn.dataset.id + '/tolak', { catatan_admin: data.catatan_admin || '' });
-                        helpers.close();
-                        MahenDialog.success({ title: 'Ditolak', message: res.message, onConfirm: () => window.location.reload() });
-                    } catch (err) { helpers.setError(err.message); helpers.finish(); }
-                }
-            });
-        });
-    });
 })();
 </script>
 <?= $this->endSection(); ?>

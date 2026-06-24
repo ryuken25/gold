@@ -180,6 +180,9 @@ class CreditTransactionService
 
         $this->db->transStart();
 
+        $dpStatus = ($pengajuan['pembayaran_status'] ?? 'belum') === 'terverifikasi' ? 'terverifikasi' : 'menunggu';
+        $dpVerifiedAt = $dpStatus === 'terverifikasi' ? date('Y-m-d H:i:s') : null;
+
         $kreditId = $this->kreditModel->insert([
             'kode_kredit'          => 'PENDING',
             'pengajuan_id'         => $pengajuan['id'],
@@ -191,6 +194,8 @@ class CreditTransactionService
             'margin_nominal'       => $kalkulasi['margin_nominal'],
             'total_harga_kredit'   => $kalkulasi['total_harga_kredit'],
             'uang_muka'            => $kalkulasi['uang_muka'],
+            'dp_verified_at'       => $dpVerifiedAt,
+            'dp_status'            => $dpStatus,
             'sisa_pokok_kredit'    => $kalkulasi['sisa_pokok'],
             'tenor_bulan'          => $kalkulasi['tenor_bulan'],
             'periode_angsuran'     => $kalkulasi['periode_angsuran'],

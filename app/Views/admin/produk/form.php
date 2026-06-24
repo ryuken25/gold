@@ -2,7 +2,7 @@
 <?= $this->section('content'); ?>
 <div class="premium-card p-4">
     <form action="<?= $produk ? base_url('/admin/produk/' . $produk['id']) : base_url('/admin/produk'); ?>"
-        method="post" class="row g-3">
+        method="post" enctype="multipart/form-data" class="row g-3">
         <?= csrf_field(); ?>
         <div class="col-md-4"><label class="form-label">Kode Produk</label><input type="text" name="kode_produk"
                 class="form-control" value="<?= esc(old('kode_produk', $produk['kode_produk'] ?? '')); ?>" required>
@@ -29,8 +29,21 @@
                 <option value="nonaktif" <?= old('status', $produk['status'] ?? '') === 'nonaktif' ? 'selected' : ''; ?>
                     >Nonaktif</option>
             </select></div>
-        <div class="col-12"><label class="form-label">Gambar URL Placeholder</label><input type="text" name="gambar_url"
-                class="form-control" value="<?= esc(old('gambar_url', $produk['gambar_url'] ?? '')); ?>"></div>
+        <div class="col-12">
+            <label class="form-label">Gambar Produk</label>
+            <input type="file" name="gambar_file" class="form-control" accept="image/jpeg,image/png,image/jpg">
+            <div class="form-text">Format JPG/PNG/JPEG, maks. 3 MB. Kosongkan jika tidak ingin mengubah gambar.</div>
+            <?php if (!empty($produk['gambar_url'])): ?>
+                <div class="mt-2">
+                    <span class="d-block small text-muted">Preview Gambar Saat Ini:</span>
+                    <?php
+                        $isUrl = filter_var($produk['gambar_url'], FILTER_VALIDATE_URL);
+                        $imageUrl = $isUrl ? $produk['gambar_url'] : base_url('/produk-gambar/' . $produk['gambar_url']);
+                    ?>
+                    <img src="<?= esc($imageUrl); ?>" alt="Preview" class="img-thumbnail" style="max-height: 150px;">
+                </div>
+            <?php endif; ?>
+        </div>
         <div class="col-12"><label class="form-label">Deskripsi</label><textarea name="deskripsi" class="form-control"
                 rows="4"><?= esc(old('deskripsi', $produk['deskripsi'] ?? '')); ?></textarea></div>
         <div class="col-12 d-flex gap-2 justify-content-end mobile-stack"><a href="<?= base_url('/admin/produk'); ?>"

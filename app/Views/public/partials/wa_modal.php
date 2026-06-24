@@ -84,15 +84,15 @@
                             </select>
                         </div>
 
-                        <?php // Uang muka (DP) — nominal TETAP (tidak bisa diubah) ?>
-                        <?php $dpTetap = (int) ($pengaturan['dp_minimal'] ?? 0); ?>
+                        <?php // Uang muka (DP) — Pilihan Dropdown ?>
                         <div class="col-12 wa-kredit-field">
-                            <label class="form-label">Uang Muka (DP)</label>
-                            <input type="text" class="form-control form-control-lg"
-                                value="Rp <?= number_format($dpTetap, 0, ',', '.'); ?>" readonly>
-                            <input type="hidden" name="uang_muka" id="wa_uang_muka" value="<?= $dpTetap; ?>">
-                            <div class="form-text">DP <strong>tetap Rp <?= number_format($dpTetap, 0, ',', '.'); ?></strong>
-                                (bukan persen). Sisa setelah DP yang akan dicicil sesuai tenor.</div>
+                            <label class="form-label" for="wa_uang_muka">Uang Muka (DP)</label>
+                            <select class="form-select form-select-lg" name="uang_muka" id="wa_uang_muka">
+                                <option value="200000" selected>Rp 200.000</option>
+                                <option value="500000">Rp 500.000</option>
+                                <option value="1000000">Rp 1.000.000</option>
+                            </select>
+                            <div class="form-text">Pilih nominal Uang Muka (DP). Uang muka harus lebih kecil dari harga produk.</div>
                         </div>
 
                         <?php // Estimasi live (khusus kredit) ?>

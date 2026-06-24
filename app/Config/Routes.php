@@ -12,6 +12,7 @@ $routes->get('katalog', 'PublicController::katalog');
 $routes->get('produk/(:segment)', 'PublicController::detail/$1');
 $routes->get('simulasi', 'PublicController::simulasi');
 $routes->post('pesanan', 'PublicController::ajukanPesanan');
+$routes->get('produk-gambar/(:any)', 'PublicController::servingProductImage/$1');
 
 // Customer Auth
 $routes->get('login', 'Customer\AuthController::login', ['namespace' => 'App\Controllers']);
@@ -36,6 +37,10 @@ $routes->group('akun', ['namespace' => 'App\Controllers', 'filter' => 'customera
     $routes->get('kredit', 'Customer\AkunController::kredit');
     $routes->get('kredit/(:num)', 'Customer\AkunController::kreditDetail/$1');
     $routes->post('kredit/(:num)/bukti/(:num)', 'Customer\AkunController::uploadBuktiAngsuran/$1/$2');
+    $routes->get('kredit/(:num)/nota-dp', 'Customer\AkunController::notaDp/$1');
+    $routes->get('kredit/(:num)/print-dp', 'Customer\AkunController::printDp/$1');
+    $routes->get('kredit/(:num)/nota-angsuran/(:num)', 'Customer\AkunController::notaAngsuran/$1/$2');
+    $routes->get('kredit/(:num)/print-angsuran/(:num)', 'Customer\AkunController::printAngsuran/$1/$2');
     $routes->get('bukti/(:num)', 'Customer\AkunController::bukti/$1');
 });
 
@@ -63,6 +68,7 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
         $routes->post('pengajuan/(:num)/verifikasi', 'PengajuanController::verifikasi/$1');
         $routes->post('pengajuan/(:num)/tolak', 'PengajuanController::tolak/$1');
         $routes->post('pengajuan/(:num)/kirim', 'PengajuanController::kirim/$1');
+        $routes->post('pengajuan/(:num)/terima', 'PengajuanController::terima/$1');
         $routes->post('pengajuan/(:num)/selesai', 'PengajuanController::selesai/$1');
         $routes->post('pengajuan/(:num)/batalkan', 'PengajuanController::batalkan/$1');
         // UPDATED: WA manual route dihapus — notifikasi hanya via email
@@ -98,6 +104,10 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], static functio
         $routes->get('kredit/(:num)', 'KreditController::show/$1');
         $routes->post('kredit/(:num)/batalkan', 'KreditController::cancel/$1');
         $routes->post('kredit/(:num)/angsuran/(:num)/reminder', 'KreditController::reminder/$1/$2');
+        $routes->get('kredit/(:num)/nota-dp', 'KreditController::notaDp/$1');
+        $routes->get('kredit/(:num)/print-dp', 'KreditController::printDp/$1');
+        $routes->get('kredit/(:num)/nota-angsuran/(:num)', 'KreditController::notaAngsuran/$1/$2');
+        $routes->get('kredit/(:num)/print-angsuran/(:num)', 'KreditController::printAngsuran/$1/$2');
 
         // Pembayaran CRUD
         $routes->get('pembayaran/create', 'PembayaranController::create');

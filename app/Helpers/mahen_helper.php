@@ -25,6 +25,54 @@ if (!function_exists('format_tanggal')) {
     }
 }
 
+if (!function_exists('format_tanggal_id')) {
+    function format_tanggal_id(?string $tanggal, string $format = 'd F Y'): string
+    {
+        if (empty($tanggal)) {
+            return '-';
+        }
+
+        $time = strtotime($tanggal);
+        if (!$time) {
+            return '-';
+        }
+
+        $bulan_id = [
+            'January'   => 'Januari',
+            'February'  => 'Februari',
+            'March'     => 'Maret',
+            'April'     => 'April',
+            'May'       => 'Mei',
+            'June'      => 'Juni',
+            'July'      => 'Juli',
+            'August'    => 'Agustus',
+            'September' => 'September',
+            'October'   => 'Oktober',
+            'November'  => 'November',
+            'December'  => 'Desember',
+            'Jan'       => 'Jan',
+            'Feb'       => 'Feb',
+            'Mar'       => 'Mar',
+            'Apr'       => 'Apr',
+            'Jun'       => 'Jun',
+            'Jul'       => 'Jul',
+            'Aug'       => 'Ags',
+            'Sep'       => 'Sep',
+            'Oct'       => 'Okt',
+            'Nov'       => 'Nov',
+            'Dec'       => 'Des'
+        ];
+
+        $formatted = date($format, $time);
+        foreach ($bulan_id as $en => $id) {
+            $formatted = str_replace($en, $id, $formatted);
+        }
+
+        return $formatted;
+    }
+}
+
+
 if (!function_exists('periode_label')) {
     function periode_label(string $periode): string
     {
@@ -124,7 +172,7 @@ if (!function_exists('pesanan_status_label')) {
     function pesanan_status_label(?string $status, ?string $metode = null, int $uangMuka = 0, ?string $payStatus = null): string
     {
         if ($status === 'disetujui' && $metode === 'kredit' && $uangMuka > 0 && $payStatus !== 'terverifikasi') {
-            return 'Menunggu Verifikasi DP';
+            return 'Menunggu Verifikasi Uang Muka';
         }
         return match ($status) {
             'baru'       => 'Menunggu Verifikasi',
@@ -160,15 +208,18 @@ if (!function_exists('pesanan_badge_class')) {
     }
 }
 
+// ============================================================
+// UPDATED: pesanan_status_step — nomor step (1-5) untuk stepper
+// ============================================================
 if (!function_exists('pesanan_status_step')) {
     function pesanan_status_step(?string $status): int
     {
         return match ($status) {
-            'baru', 'diproses' => 1,
-            'disetujui'        => 2,
-            'dikirim'          => 3,
-            'diterima'         => 4,
-            'selesai'          => 5,
+            'baru', 'diproses' => 1,  // Menunggu Verifikasi
+            'disetujui'        => 2,  // Menunggu Dikirim
+            'dikirim'          => 3,  // Dikirim
+            'diterima'         => 4,  // Diterima
+            'selesai'          => 5,  // Selesai
             'ditolak', 'dibatalkan' => 0,
             default            => 1,
         };

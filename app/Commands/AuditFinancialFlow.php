@@ -79,10 +79,10 @@ class AuditFinancialFlow extends BaseCommand
             $issues[] = "Status lunas tapi sisa piutang > 0: {$r['kode_kredit']} = {$r['sisa_piutang']}";
         }
 
-        // 8. Aktif tapi sisa = 0
-        $activeButZero = $db->query("SELECT id, kode_kredit, sisa_piutang FROM kredit WHERE status = 'aktif' AND sisa_piutang = 0")->getResultArray();
+        // 8. Aktif tapi sisa <= 0
+        $activeButZero = $db->query("SELECT id, kode_kredit, sisa_piutang FROM kredit WHERE status = 'aktif' AND sisa_piutang <= 0")->getResultArray();
         foreach ($activeButZero as $r) {
-            $issues[] = "Status aktif tapi sisa piutang = 0: {$r['kode_kredit']}";
+            $issues[] = "Status aktif tapi sisa piutang <= 0: {$r['kode_kredit']} (sisa: {$r['sisa_piutang']})";
             if ($fix) {
                 $db->query("UPDATE kredit SET status = 'lunas' WHERE id = {$r['id']}");
                 CLI::write("  → Fixed: {$r['kode_kredit']} → lunas", 'green');
@@ -95,21 +95,97 @@ class AuditFinancialFlow extends BaseCommand
             $issues[] = "Pesanan dikirim tanpa detail pengiriman lengkap (metode atau referensi kosong): {$r['kode_pesanan']}";
         }
 
-        // 10. Selesai tanpa metadata pengiriman
-        $doneNoShip = $db->query("SELECT id, kode_pesanan FROM pengajuan WHERE status = 'selesai' AND (dikirim_pada IS NULL OR dikirim_oleh IS NULL OR metode_pengiriman IS NULL OR referensi_pengiriman IS NULL)")->getResultArray();
-        foreach ($doneNoShip as $r) {
-            $issues[] = "Pesanan selesai tapi belum pernah melalui proses kirim (detail/metadata pengiriman kosong): {$r['kode_pesanan']}";
+        // 10. Selesai tanpa metadata pengiriman/penerimaan
+        $doneNoShipOrRecv = $db->query("SELECT id, kode_pesanan FROM pengajuan WHERE status = 'selesai' AND (dikirim_pada IS NULL OR dikirim_oleh IS NULL OR metode_pengiriman IS NULL OR referensi_pengiriman IS NULL OR diterima_pada IS NULL OR diterima_oleh IS NULL)")->getResultArray();
+        foreach ($doneNoShipOrRecv as $r) {
+            $issues[] = "Pesanan selesai tapi detail/metadata pengiriman/penerimaan kosong: {$r['kode_pesanan']}";
         }
 
-        // 10b. Dikirim activity matches dikirim/selesai status
+        // 10b. Dikirim/Diterima/Selesai activity matches status
         $shippedActivityMismatch = $db->query("
             SELECT DISTINCT p.id, p.kode_pesanan, p.status
             FROM pengajuan p
             JOIN pengajuan_aktivitas pa ON pa.pengajuan_id = p.id
-            WHERE pa.aksi = 'dikirim' AND p.status NOT IN ('dikirim', 'selesai')
+            WHERE pa.aksi = 'dikirim' AND p.status NOT IN ('dikirim', 'diterima', 'selesai')
         ")->getResultArray();
         foreach ($shippedActivityMismatch as $r) {
             $issues[] = "Inkonsistensi: Pesanan {$r['kode_pesanan']} memiliki aktivitas 'dikirim' tetapi status saat ini adalah '{$r['status']}'";
+        }
+
+        $diterimaActivityMismatch = $db->query("
+            SELECT DISTINCT p.id, p.kode_pesanan, p.status
+            FROM pengajuan p
+            JOIN pengajuan_aktivitas pa ON pa.pengajuan_id = p.id
+            WHERE pa.aksi = 'diterima' AND p.status NOT IN ('diterima', 'selesai')
+        ")->getResultArray();
+        foreach ($diterimaActivityMismatch as $r) {
+            $issues[] = "Inkonsistensi: Pesanan {$r['kode_pesanan']} memiliki aktivitas 'diterima' tetapi status saat ini adalah '{$r['status']}'";
+        }
+
+        // 10c. Selesai status without diterima activity
+        $doneNoDiterimaAct = $db->query("
+            SELECT id, kode_pesanan FROM pengajuan p
+            WHERE p.status = 'selesai'
+            AND NOT EXISTS (
+                SELECT 1 FROM pengajuan_aktivitas pa
+                WHERE pa.pengajuan_id = p.id AND pa.aksi = 'diterima'
+            )
+        ")->getResultArray();
+        foreach ($doneNoDiterimaAct as $r) {
+            $issues[] = "Inkonsistensi: Pesanan selesai tanpa aktivitas 'diterima': {$r['kode_pesanan']}";
+        }
+
+        // 10d. Diterima status without dikirim activity
+        $diterimaNoDikirimAct = $db->query("
+            SELECT id, kode_pesanan FROM pengajuan p
+            WHERE p.status = 'diterima'
+            AND NOT EXISTS (
+                SELECT 1 FROM pengajuan_aktivitas pa
+                WHERE pa.pengajuan_id = p.id AND pa.aksi = 'dikirim'
+            )
+        ")->getResultArray();
+        foreach ($diterimaNoDikirimAct as $r) {
+            $issues[] = "Inkonsistensi: Pesanan diterima tanpa aktivitas 'dikirim': {$r['kode_pesanan']}";
+        }
+
+        // 10e. Unpaid credit orders in selesai status
+        $unpaidCreditDone = $db->query("
+            SELECT p.id, p.kode_pesanan, k.kode_kredit, k.sisa_piutang
+            FROM pengajuan p
+            JOIN kredit k ON k.pengajuan_id = p.id
+            WHERE p.status = 'selesai'
+            AND p.metode_pembayaran = 'kredit'
+            AND k.status != 'lunas' AND k.sisa_piutang > 0
+        ")->getResultArray();
+        foreach ($unpaidCreditDone as $r) {
+            $issues[] = "Inkonsistensi: Pesanan kredit {$r['kode_pesanan']} selesai tapi kredit {$r['kode_kredit']} belum lunas (sisa: {$r['sisa_piutang']})";
+        }
+
+        // 10f. Cash orders in diterima status that are fully verified but not completed
+        $cashDiterimaVerifiedNotDone = $db->query("
+            SELECT id, kode_pesanan FROM pengajuan
+            WHERE status = 'diterima'
+            AND metode_pembayaran = 'cash'
+            AND pembayaran_status = 'terverifikasi'
+        ")->getResultArray();
+        foreach ($cashDiterimaVerifiedNotDone as $r) {
+            $issues[] = "Inkonsistensi: Pesanan cash {$r['kode_pesanan']} diterima & terverifikasi tapi belum selesai";
+        }
+
+        // 10g. Missing metadata dates
+        $missingShipMeta = $db->query("SELECT id, kode_pesanan FROM pengajuan WHERE status IN ('dikirim', 'diterima', 'selesai') AND (dikirim_pada IS NULL OR dikirim_oleh IS NULL)")->getResultArray();
+        foreach ($missingShipMeta as $r) {
+            $issues[] = "Pesanan {$r['kode_pesanan']} dalam status dikirim/diterima/selesai tapi data dikirim_pada/oleh kosong";
+        }
+
+        $missingRecvMeta = $db->query("SELECT id, kode_pesanan FROM pengajuan WHERE status IN ('diterima', 'selesai') AND (diterima_pada IS NULL OR diterima_oleh IS NULL)")->getResultArray();
+        foreach ($missingRecvMeta as $r) {
+            $issues[] = "Pesanan {$r['kode_pesanan']} dalam status diterima/selesai tapi data diterima_pada/oleh kosong";
+        }
+
+        $missingDoneMeta = $db->query("SELECT id, kode_pesanan FROM pengajuan WHERE status = 'selesai' AND selesai_pada IS NULL")->getResultArray();
+        foreach ($missingDoneMeta as $r) {
+            $issues[] = "Pesanan selesai {$r['kode_pesanan']} tapi selesai_pada kosong";
         }
 
         // 11. Kredit tanpa pengajuan
@@ -215,6 +291,44 @@ class AuditFinancialFlow extends BaseCommand
             if (!preg_match('/^KRD-\d{4,}$/', $r['kode_kredit'])) {
                 $issues[] = "Kode kredit tidak sesuai format generator (KRD-xxxx): {$r['kode_kredit']} (ID: {$r['id']})";
             }
+        }
+
+        // 17b. Active credit with completed/cancelled/rejected order (dashboard mismatch)
+        $activeCreditOrderMismatch = $db->query("
+            SELECT k.id, k.kode_kredit, p.kode_pesanan, p.status as pengajuan_status
+            FROM kredit k
+            JOIN pengajuan p ON p.id = k.pengajuan_id
+            WHERE k.status = 'aktif' AND p.status IN ('selesai', 'ditolak', 'dibatalkan')
+        ")->getResultArray();
+        foreach ($activeCreditOrderMismatch as $r) {
+            $issues[] = "Dashboard active credit mismatch: kredit {$r['kode_kredit']} berstatus aktif tetapi pesanan {$r['kode_pesanan']} berstatus {$r['pengajuan_status']}";
+        }
+
+        // 18. Warning: produk aktif dengan gambar hilang/rusak (warning only)
+        $activeProducts = $db->query("SELECT id, kode_produk, nama_produk, gambar_url FROM produk_emas WHERE status = 'aktif' AND deleted_at IS NULL")->getResultArray();
+        $warningShown = false;
+        foreach ($activeProducts as $p) {
+            $hasImage = false;
+            if (!empty($p['gambar_url'])) {
+                if (filter_var($p['gambar_url'], FILTER_VALIDATE_URL)) {
+                    $hasImage = true;
+                } else {
+                    $imagePath = WRITEPATH . 'uploads/produk/' . basename($p['gambar_url']);
+                    if (is_file($imagePath)) {
+                        $hasImage = true;
+                    }
+                }
+            }
+            if (!$hasImage) {
+                if (!$warningShown) {
+                    CLI::write('⚠️  Peringatan Gambar Produk:', 'yellow');
+                    $warningShown = true;
+                }
+                CLI::write("  [WARNING] Produk aktif {$p['nama_produk']} ({$p['kode_produk']}) tidak memiliki gambar valid atau file gambar hilang.", 'yellow');
+            }
+        }
+        if ($warningShown) {
+            CLI::newLine();
         }
 
         // Output

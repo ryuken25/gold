@@ -102,11 +102,22 @@
         <div class="product-grid product-grid-featured">
             <?php $featuredImages = ['product-ring.jpg', 'product-necklace.jpg', 'product-earrings.jpg']; ?>
             <?php foreach ($produkUnggulan as $index => $item): ?>
-                <?php $imageName = $featuredImages[$index % count($featuredImages)]; ?>
+                <?php
+                    $imageName = $featuredImages[$index % count($featuredImages)];
+                    $fallbackUrl = base_url('assets/images/mahengold/' . $imageName);
+                    if (!empty($item['gambar_url'])) {
+                        $isUrl = filter_var($item['gambar_url'], FILTER_VALIDATE_URL);
+                        $imageUrl = $isUrl ? $item['gambar_url'] : base_url('/produk-gambar/' . $item['gambar_url']);
+                    } else {
+                        $imageUrl = $fallbackUrl;
+                    }
+                ?>
                 <article class="product-card product-card-simple">
-                    <div class="product-visual image-visual"><img
-                            src="<?= base_url('assets/images/mahengold/' . $imageName); ?>"
-                            alt="<?= esc($item['nama_produk']); ?>" loading="lazy"></div>
+                    <div class="product-visual image-visual">
+                        <img src="<?= esc($imageUrl); ?>"
+                            alt="<?= esc($item['nama_produk']); ?>" loading="lazy"
+                            onerror="this.onerror=null;this.src='<?= esc($fallbackUrl); ?>';">
+                    </div>
                     <div class="product-content">
                         <div class="product-code mb-1">
                             <?= esc($item['kode_produk']); ?>

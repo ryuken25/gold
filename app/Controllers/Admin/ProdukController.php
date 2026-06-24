@@ -53,13 +53,30 @@ class ProdukController extends BaseAdminController
             'harga_pokok' => 'required|decimal',
             'stok' => 'required|integer',
             'status' => 'required|in_list[aktif,nonaktif]',
+            'gambar_file' => 'permit_empty|uploaded[gambar_file]|is_image[gambar_file]|mime_in[gambar_file,image/jpg,image/jpeg,image/png]|max_size[gambar_file,3072]',
         ];
 
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
-        $this->produkModel->insert($this->collectPayload());
+        $payload = $this->collectPayload();
+
+        $file = $this->request->getFile('gambar_file');
+        if ($file && $file->isValid() && !$file->hasMoved()) {
+            $uploadDir = WRITEPATH . 'uploads/produk/';
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0755, true);
+            }
+            if (!is_file($uploadDir . 'index.html')) {
+                @file_put_contents($uploadDir . 'index.html', '');
+            }
+            $newName = $file->getRandomName();
+            $file->move($uploadDir, $newName);
+            $payload['gambar_url'] = $newName;
+        }
+
+        $this->produkModel->insert($payload);
 
         return redirect()->to('/admin/produk')->with('success', 'Produk berhasil ditambahkan.');
     }
@@ -93,13 +110,41 @@ class ProdukController extends BaseAdminController
             'harga_pokok' => 'required|decimal',
             'stok' => 'required|integer',
             'status' => 'required|in_list[aktif,nonaktif]',
+            'gambar_file' => 'permit_empty|uploaded[gambar_file]|is_image[gambar_file]|mime_in[gambar_file,image/jpg,image/jpeg,image/png]|max_size[gambar_file,3072]',
         ];
 
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
-        $this->produkModel->update($id, $this->collectPayload());
+        $payload = $this->collectPayload();
+
+        $file = $this->request->getFile('gambar_file');
+        if ($file && $file->isValid() && !$file->hasMoved()) {
+            $uploadDir = WRITEPATH . 'uploads/produk/';
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0755, true);
+            }
+            if (!is_file($uploadDir . 'index.html')) {
+                @file_put_contents($uploadDir . 'index.html', '');
+            }
+            $newName = $file->getRandomName();
+            $file->move($uploadDir, $newName);
+            $payload['gambar_url'] = $newName;
+
+            // Delete old file if it is a local file
+            if (!empty($produk['gambar_url']) && !filter_var($produk['gambar_url'], FILTER_VALIDATE_URL)) {
+                $oldPath = $uploadDir . basename($produk['gambar_url']);
+                if (is_file($oldPath)) {
+                    @unlink($oldPath);
+                }
+            }
+        } else {
+            // Keep old image
+            $payload['gambar_url'] = $produk['gambar_url'];
+        }
+
+        $this->produkModel->update($id, $payload);
 
         return redirect()->to('/admin/produk')->with('success', 'Produk berhasil diperbarui.');
     }

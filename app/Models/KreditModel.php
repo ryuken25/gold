@@ -23,6 +23,8 @@ class KreditModel extends Model
         'margin_nominal',
         'total_harga_kredit',
         'uang_muka',
+        'dp_verified_at',
+        'dp_status',
         'sisa_pokok_kredit',
         'tenor_bulan',
         'periode_angsuran',

@@ -9,7 +9,7 @@ class TestEmail extends BaseCommand
 {
     protected $group       = 'email';
     protected $name        = 'email:test';
-    protected $description = 'Test kirim email ke kadeknadi98 & winayaarya';
+    protected $description = 'Test kirim email ke kadeknadi98';
 
     public function run(array $params)
     {
@@ -17,7 +17,7 @@ class TestEmail extends BaseCommand
 
         $email->clear();
         $email->setFrom('mahengoldofficial@gmail.com', 'Mahen Gold');
-        $email->setTo(['kadeknadi98@gmail.com', 'winayaarya@gmail.com']);
+        $email->setTo(['kadeknadi98@gmail.com']);
         $email->setSubject('[MahenGold] TEST EMAIL - ' . date('d/m/Y H:i:s'));
         $email->setMailType('html');
         $email->setMessage('
@@ -32,7 +32,7 @@ class TestEmail extends BaseCommand
         ');
 
         CLI::write('Mengirim email test...', 'yellow');
-        CLI::write('Ke: kadeknadi98@gmail.com, winayaarya@gmail.com', 'cyan');
+        CLI::write('Ke: kadeknadi98@gmail.com', 'cyan');
 
         if ($email->send(false)) {
             CLI::write('✅ EMAIL BERHASIL TERKIRIM!', 'green');

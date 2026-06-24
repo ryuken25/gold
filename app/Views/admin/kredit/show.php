@@ -79,7 +79,31 @@
                 <div><span>Produk</span><strong><?= esc($kredit['nama_produk']); ?></strong></div>
                 <div><span>Total Kredit</span><strong><?= esc(format_rupiah($kredit['total_harga_kredit'])); ?></strong>
                 </div>
-                <div><span>Uang Muka (DP)</span><strong><?= esc(format_rupiah($kredit['uang_muka'] ?? 0)); ?></strong></div>
+                <div>
+                    <span>Uang Muka (DP)</span>
+                    <strong><?= esc(format_rupiah($kredit['uang_muka'] ?? 0)); ?></strong>
+                    <?php if (($kredit['dp_status'] ?? '') === 'terverifikasi'): ?>
+                        <?php
+                        $db = \Config\Database::connect();
+                        $buktiDp = $db->table('bukti_pembayaran')
+                            ->where('pengajuan_id', $kredit['pengajuan_id'])
+                            ->where('tipe', 'dp')
+                            ->where('status', 'terverifikasi')
+                            ->orderBy('id', 'DESC')
+                            ->get()->getRowArray();
+                        $tglDp = !empty($buktiDp['created_at']) ? format_tanggal_id($buktiDp['created_at']) : format_tanggal_id($kredit['dp_verified_at'] ?: date('Y-m-d H:i:s'));
+                        $blnDp = !empty($buktiDp['created_at']) ? format_tanggal_id($buktiDp['created_at'], 'F Y') : format_tanggal_id($kredit['dp_verified_at'] ?: date('Y-m-d H:i:s'), 'F Y');
+                        ?>
+                        <div class="small text-muted ps-2" style="font-size: 0.75rem; line-height: 1.3;">
+                            <div>Bayar: <?= esc($tglDp); ?></div>
+                            <div>Bulan: <?= esc($blnDp); ?></div>
+                            <div class="d-flex gap-1 mt-1">
+                                <a href="<?= base_url('/admin/kredit/' . $kredit['id'] . '/nota-dp'); ?>" class="btn btn-xs btn-outline-gold py-0 px-2" style="font-size: 0.7rem; border-radius: 4px; font-weight: normal; padding: 1px 4px; line-height: 1.2;"><i class="bi bi-file-text"></i> Nota</a>
+                                <a href="<?= base_url('/admin/kredit/' . $kredit['id'] . '/print-dp'); ?>" target="_blank" rel="noopener" class="btn btn-xs btn-gold py-0 px-2" style="font-size: 0.7rem; border-radius: 4px; font-weight: normal; padding: 1px 4px; line-height: 1.2; background-color: var(--mg-gold); color: var(--mg-dark);"><i class="bi bi-printer"></i> Print</a>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
                 <div><span>Sisa Pokok (dicicil)</span><strong><?= esc(format_rupiah($kredit['sisa_pokok_kredit'] ?? $kredit['total_harga_kredit'])); ?></strong></div>
                 <div><span>Total Terbayar</span><strong><?= esc(format_rupiah($kredit['total_terbayar'])); ?></strong>
                 </div>
@@ -191,8 +215,15 @@
                                 </td>
                                 <td>
                                     <?php $b = $buktiByJadwal[(int) $row['id']] ?? null; ?>
-                                    <?php if ($b): ?>
-                                        <div class="d-flex flex-column gap-1">
+                                    <div class="d-flex flex-column gap-1">
+                                        <?php if ($row['status'] === 'dibayar'): ?>
+                                            <div class="d-flex gap-1 mb-1">
+                                                <a href="<?= base_url('/admin/kredit/' . $kredit['id'] . '/nota-angsuran/' . $row['id']); ?>" class="btn btn-xs btn-outline-gold py-0 px-2" style="font-size: 0.75rem; border-radius: 4px; font-weight: normal; padding: 2px 6px;"><i class="bi bi-file-text"></i> Nota</a>
+                                                <a href="<?= base_url('/admin/kredit/' . $kredit['id'] . '/print-angsuran/' . $row['id']); ?>" target="_blank" rel="noopener" class="btn btn-xs btn-gold py-0 px-2" style="font-size: 0.75rem; border-radius: 4px; font-weight: normal; padding: 2px 6px; background-color: var(--mg-gold); color: var(--mg-dark);"><i class="bi bi-printer"></i> Print</a>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <?php if ($b): ?>
                                             <div>
                                                 <a href="<?= base_url('/admin/pembayaran/' . $b['id'] . '/bukti'); ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-gold rounded-pill px-2 py-0">
                                                     <i class="bi bi-eye"></i> Lihat Bukti
@@ -216,10 +247,10 @@
                                                     <small class="text-danger" style="font-size:0.75rem;">Alasan: <?= esc($b['catatan_admin']); ?></small>
                                                 <?php endif; ?>
                                             <?php endif; ?>
-                                        </div>
-                                    <?php else: ?>
-                                        -
-                                    <?php endif; ?>
+                                        <?php elseif ($row['status'] !== 'dibayar'): ?>
+                                            -
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr><?php endforeach; ?>
                     </tbody>

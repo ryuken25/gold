@@ -78,35 +78,79 @@ class EmailNotificationService
     {
         $isKredit = ($p['tipe'] ?? '') === 'cicilan';
 
-        $baris = ['Kode Bukti' => $p['kode'] ?? '-'];
         if ($isKredit) {
-            $baris['Kredit'] = $p['kode_kredit'] ?? '-';
-            if (!empty($p['angsuran_ke'])) {
-                $baris['Angsuran Ke'] = $p['angsuran_ke'];
+            $angsuran_ke = $p['angsuran_ke'] ?? '-';
+            $subjek = "Pembayaran Angsuran ke-{$angsuran_ke} Terverifikasi";
+            $pembuka = 'Halo ' . esc($p['nama'] ?? 'Pelanggan') . ", pembayaran angsuran ke-{$angsuran_ke} Anda telah diverifikasi.";
+
+            $baris = [
+                'Kode Kredit' => $p['kode_kredit'] ?? '-',
+                'Angsuran Ke' => $angsuran_ke,
+                'Periode' => ucfirst((string) ($p['periode_angsuran'] ?? 'bulanan')),
+            ];
+
+            $periode = strtolower((string) ($p['periode_angsuran'] ?? 'bulanan'));
+            $jt = $p['tanggal_jatuh_tempo'] ?? '';
+            if ($periode === 'mingguan') {
+                if (!empty($jt)) {
+                    $start = date('Y-m-d', strtotime($jt . ' - 6 days'));
+                    $baris['Minggu Tagihan'] = format_tanggal_id($start) . ' - ' . format_tanggal_id($jt);
+                } else {
+                    $baris['Minggu Tagihan'] = '-';
+                }
+            } else {
+                $baris['Bulan Tagihan'] = !empty($jt) ? format_tanggal_id($jt, 'F Y') : '-';
             }
-            $baris['Nominal']       = format_rupiah($p['nominal'] ?? 0);
-            $baris['Total Terbayar'] = format_rupiah($p['total_terbayar'] ?? 0);
-            $baris['Sisa Piutang']  = format_rupiah($p['sisa_piutang'] ?? 0);
-            $baris['Status Kredit'] = ucfirst((string) ($p['status_kredit'] ?? 'aktif'));
+
+            $baris['Jatuh Tempo'] = !empty($jt) ? format_tanggal_id($jt) : '-';
+            $baris['Dibayar Pada'] = !empty($p['tanggal_bayar']) ? format_tanggal_id($p['tanggal_bayar']) : '-';
+            $baris['Diverifikasi Pada'] = !empty($p['diverifikasi_pada']) ? format_tanggal_id($p['diverifikasi_pada']) : '-';
+            $baris['Nominal Pembayaran Ini'] = format_rupiah($p['nominal'] ?? 0);
+            $baris['Total Sudah Dibayar'] = format_rupiah($p['total_terbayar'] ?? 0);
+            $baris['Sisa Piutang'] = format_rupiah($p['sisa_piutang'] ?? 0);
+            $baris['Status Kredit'] = ($p['status_kredit'] ?? '') === 'lunas' ? 'Lunas' : 'Aktif';
+
+            $allocHtml = '';
+            if (!empty($p['allocations']) && count($p['allocations']) > 1) {
+                $allocHtml .= '<p style="margin:16px 0 8px;font-weight:bold;color:#1c1a17;font-size:14px;">Rincian Alokasi Pembayaran:</p>';
+                $allocHtml .= '<ul style="margin:0;padding-left:20px;font-size:14px;color:#2b2b2b;line-height:1.6;">';
+                foreach ($p['allocations'] as $alloc) {
+                    $ke = $alloc['angsuran_ke'] ?? '?';
+                    $nom = format_rupiah($alloc['nominal_alokasi'] ?? 0);
+                    $jt_alloc = !empty($alloc['tanggal_jatuh_tempo']) ? format_tanggal_id($alloc['tanggal_jatuh_tempo']) : '-';
+                    $allocHtml .= "<li>Angsuran ke-{$ke} — {$nom} — Jatuh tempo {$jt_alloc}</li>";
+                }
+                $allocHtml .= '</ul>';
+            }
+
+            $lunas = ($p['status_kredit'] ?? '') === 'lunas';
+            $penutup = $lunas
+                ? 'Selamat! Seluruh angsuran kredit emas Anda telah lunas. Pesanan Anda akan otomatis diselesaikan jika barang sudah diterima.'
+                : 'Pembayaran Anda sudah tercatat. Silakan lanjutkan pembayaran angsuran berikutnya sesuai jadwal di akun MahenGold.';
+
+            $isi = $this->daftarHtml($baris) . $allocHtml . '<p style="margin:16px 0 0;">' . $penutup . '</p>';
+
         } else {
+            $isDP = ($p['tipe'] ?? '') === 'dp';
+            $subjek = 'Pembayaran ' . ($p['kode'] ?? '') . ' terverifikasi';
+            $pembuka = 'Halo ' . esc($p['nama'] ?? 'Pelanggan') . ', pembayaran Anda sudah kami verifikasi.';
+
+            $baris = ['Kode Bukti' => $p['kode'] ?? '-'];
             $baris['Nomor Pesanan'] = $p['kode_pesanan'] ?? '-';
-            $baris['Nominal']       = format_rupiah($p['nominal'] ?? 0);
+            $baris['Nominal'] = format_rupiah($p['nominal'] ?? 0);
+
+            $penutup = $isDP 
+                ? 'Pembayaran uang muka (DP) Anda telah kami verifikasi. Status pesanan Anda akan segera diperbarui.'
+                : 'Pembayaran Anda telah kami verifikasi. Pesanan sedang <strong>dipersiapkan untuk proses pengiriman</strong>. Terima kasih.';
+
+            $isi = $this->daftarHtml($baris) . '<p style="margin:16px 0 0;">' . $penutup . '</p>';
         }
-
-        $lunas   = $isKredit && ($p['status_kredit'] ?? '') === 'lunas';
-        $penutup = $lunas
-            ? 'Selamat! Seluruh angsuran kredit emas Anda telah <strong>LUNAS</strong>. Terima kasih telah mempercayai MahenGold.'
-            : ($isKredit
-                ? 'Pembayaran angsuran Anda telah kami verifikasi. Lanjutkan pembayaran berikutnya sesuai jadwal di akun Anda.'
-                : 'Pembayaran Anda telah kami verifikasi. Pesanan sedang <strong>dipersiapkan untuk proses pengiriman</strong>. Terima kasih.');
-
-        $isi = $this->daftarHtml($baris) . '<p style="margin:16px 0 0;">' . $penutup . '</p>';
 
         return $this->kirim(
             'pembayaran_terverifikasi',
             (int) ($p['user_id'] ?? 0),
-            'Pembayaran ' . ($p['kode'] ?? '') . ' terverifikasi',
-            'Halo ' . esc($p['nama'] ?? 'Pelanggan') . ', pembayaran Anda sudah kami verifikasi.',
+            $subjek,
+            $pembuka,
             $isi,
             (int) ($p['related_id'] ?? 0),
         );
@@ -121,16 +165,18 @@ class EmailNotificationService
         $label      = email_status_label($status);
         $isSelesai  = $status === 'selesai';
         $isDikirim  = $status === 'dikirim';
+        $isDiterima = $status === 'diterima';
         $isDitolak  = in_array($status, ['ditolak', 'dibatalkan'], true);
 
         $baris = $this->barisPesanan($p);
         $baris['Status'] = $label;
 
         $penutup = match (true) {
-            $isSelesai => 'Pesanan Anda telah <strong>selesai</strong>. Terima kasih telah mempercayai MahenGold sebagai mitra investasi emas Anda.',
-            $isDikirim => 'Pesanan Anda sedang <strong>dalam perjalanan</strong> ke alamat tujuan. Anda akan menerima konfirmasi lagi setelah pesanan sampai.',
-            $isDitolak => 'Pesanan Anda telah <strong>dibatalkan/ditolak</strong>. Jika ada pertanyaan, silakan hubungi admin.',
-            default    => 'Status pesanan Anda telah diperbarui ke <strong>' . esc($label) . '</strong>. Pantau terus di menu Pesanan pada akun MahenGold Anda.',
+            $isSelesai  => 'Pesanan Anda telah <strong>selesai</strong>. Terima kasih telah mempercayai MahenGold sebagai mitra investasi emas Anda.',
+            $isDikirim  => 'Pesanan Anda sedang <strong>dalam perjalanan</strong> ke alamat tujuan. Anda akan menerima konfirmasi lagi setelah pesanan sampai.',
+            $isDiterima => 'Pesanan Anda telah <strong>diterima</strong> oleh pelanggan. Sistem akan otomatis menandai pesanan selesai jika seluruh pembayaran/kredit Anda telah lunas terverifikasi.',
+            $isDitolak  => 'Pesanan Anda telah <strong>dibatalkan/ditolak</strong>. Jika ada pertanyaan, silakan hubungi admin.',
+            default     => 'Status pesanan Anda telah diperbarui ke <strong>' . esc($label) . '</strong>. Pantau terus di menu Pesanan pada akun MahenGold Anda.',
         };
 
         $isi = $this->daftarHtml($baris)
@@ -158,6 +204,33 @@ class EmailNotificationService
             'Halo ' . esc($p['nama']) . ',',
             $messageHtml,
             (int) $p['kredit_id']
+        );
+    }
+
+    public function kirimDpTerverifikasi(array $p): bool
+    {
+        $isi = $this->daftarHtml([
+            'Kode Kredit'            => $p['kode_kredit'] ?? '-',
+            'Nomor Pesanan'          => $p['kode_pesanan'] ?? '-',
+            'Nama Pelanggan'         => $p['nama_pelanggan'] ?? '-',
+            'Produk'                 => $p['produk'] ?? '-',
+            'Nominal Uang Muka (DP)' => format_rupiah($p['nominal_dp'] ?? 0),
+            'Tanggal Pembayaran DP'  => $p['tanggal_bayar_dp'] ?? '-',
+            'Bulan Pembayaran DP'    => $p['bulan_bayar_dp'] ?? '-',
+            'Total Harga Kredit'     => format_rupiah($p['total_harga_kredit'] ?? 0),
+            'Sisa Piutang'           => format_rupiah($p['sisa_piutang'] ?? 0),
+            'Status Verifikasi DP'   => $p['status_verifikasi_dp'] ?? 'Terverifikasi',
+        ]) . '<p style="margin:16px 0 0;">Pembayaran uang muka (DP) Anda telah sukses diverifikasi oleh admin. Jadwal angsuran kredit Anda kini telah aktif.</p>'
+        . '<p style="margin:14px 0 0;"><a href="' . esc(base_url('/akun/kredit/' . ($p['kredit_id'] ?? 0))) . '" '
+        . 'style="background:#C9A24B;color:#1c1a17;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700;">Lihat Detail Kredit &amp; Nota DP</a></p>';
+
+        return $this->kirim(
+            'dp_terverifikasi',
+            (int) ($p['user_id'] ?? 0),
+            'Pembayaran Uang Muka (DP) Terverifikasi — ' . ($p['kode_kredit'] ?? ''),
+            'Halo ' . esc($p['nama'] ?? 'Pelanggan') . ', pembayaran uang muka (DP) Anda telah diverifikasi.',
+            $isi,
+            (int) ($p['kredit_id'] ?? 0)
         );
     }
 
@@ -254,10 +327,6 @@ class EmailNotificationService
         $tujuanEmail = $user['email'];
         $namaTujuan  = $user['nama'];
 
-        if (ENVIRONMENT === 'development' || ENVIRONMENT === 'testing') {
-            $subjek = '[MahenGold TEST] ' . $subjek;
-        }
-
         $body   = $this->render($subjek, $pembuka, $isiHtml);
         $status = 'terkirim';
         $error  = null;
@@ -284,7 +353,7 @@ class EmailNotificationService
         try {
             $email = Services::email(null, false);
             $email->clear(); // UPDATED: WAJIB clear sebelum setiap kirim baru
-            $email->setFrom($cfg->fromEmail ?: 'no-reply@mahengold.test', $cfg->fromName ?: 'Mahen Gold');
+            $email->setFrom($cfg->fromEmail ?: 'no-reply@mahengold.com', $cfg->fromName ?: 'Mahen Gold');
             $email->setTo($tujuanEmail);
             $email->setSubject($subjek);
             $email->setMailType('html');

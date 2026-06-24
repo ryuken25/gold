@@ -35,10 +35,21 @@
     <div class="container-mg">
         <div class="row g-4 g-lg-5 align-items-start">
             <div class="col-lg-6">
-                <?php $detailImage = stripos($produk['nama_produk'] . ' ' . $produk['jenis_emas'], 'kalung') !== false ? 'product-necklace.jpg' : (stripos($produk['nama_produk'] . ' ' . $produk['jenis_emas'], 'anting') !== false ? 'product-earrings.jpg' : (stripos($produk['nama_produk'] . ' ' . $produk['jenis_emas'], 'logam') !== false ? 'gold-bars.jpg' : 'product-ring.jpg')); ?>
-                <div class="product-visual image-visual detail-visual mb-4"><img
-                        src="<?= base_url('assets/images/mahengold/' . $detailImage); ?>"
-                        alt="<?= esc($produk['nama_produk']); ?>"></div>
+                <?php
+                    $detailImage = stripos($produk['nama_produk'] . ' ' . $produk['jenis_emas'], 'kalung') !== false ? 'product-necklace.jpg' : (stripos($produk['nama_produk'] . ' ' . $produk['jenis_emas'], 'anting') !== false ? 'product-earrings.jpg' : (stripos($produk['nama_produk'] . ' ' . $produk['jenis_emas'], 'logam') !== false ? 'gold-bars.jpg' : 'product-ring.jpg'));
+                    $fallbackUrl = base_url('assets/images/mahengold/' . $detailImage);
+                    if (!empty($produk['gambar_url'])) {
+                        $isUrl = filter_var($produk['gambar_url'], FILTER_VALIDATE_URL);
+                        $imageUrl = $isUrl ? $produk['gambar_url'] : base_url('/produk-gambar/' . $produk['gambar_url']);
+                    } else {
+                        $imageUrl = $fallbackUrl;
+                    }
+                ?>
+                <div class="product-visual image-visual detail-visual mb-4">
+                    <img src="<?= esc($imageUrl); ?>"
+                        alt="<?= esc($produk['nama_produk']); ?>"
+                        onerror="this.onerror=null;this.src='<?= esc($fallbackUrl); ?>';">
+                </div>
                 <div class="premium-card p-4">
                     <h4 class="fw-bold mb-3">Informasi Produk</h4>
                     <p class="text-muted-mg mb-4">

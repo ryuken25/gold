@@ -42,11 +42,21 @@
             <div class="product-grid">
                 <?php $catalogImages = ['product-ring.jpg', 'product-necklace.jpg', 'product-earrings.jpg', 'gold-bars.jpg']; ?>
                 <?php foreach ($produk as $index => $item): ?>
-                    <?php $imageName = $catalogImages[$index % count($catalogImages)]; ?>
+                    <?php
+                        $imageName = $catalogImages[$index % count($catalogImages)];
+                        $fallbackUrl = base_url('assets/images/mahengold/' . $imageName);
+                        if (!empty($item['gambar_url'])) {
+                            $isUrl = filter_var($item['gambar_url'], FILTER_VALIDATE_URL);
+                            $imageUrl = $isUrl ? $item['gambar_url'] : base_url('/produk-gambar/' . $item['gambar_url']);
+                        } else {
+                            $imageUrl = $fallbackUrl;
+                        }
+                    ?>
                     <article class="product-card">
                         <div class="product-visual image-visual">
-                            <img src="<?= base_url('assets/images/mahengold/' . $imageName); ?>"
-                                alt="<?= esc($item['nama_produk']); ?>" loading="lazy">
+                            <img src="<?= esc($imageUrl); ?>"
+                                alt="<?= esc($item['nama_produk']); ?>" loading="lazy"
+                                onerror="this.onerror=null;this.src='<?= esc($fallbackUrl); ?>';">
                         </div>
                         <div class="product-content">
                             <div class="d-flex justify-content-between gap-3 align-items-start mb-3">

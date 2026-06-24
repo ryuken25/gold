@@ -145,18 +145,31 @@ class PengajuanController extends BaseAdminController
     }
 
     /**
-     * Transisi → selesai.
+     * Transisi → diterima.
      */
-    public function selesai(int $id)
+    public function terima(int $id)
     {
         try {
             $workflow = new \App\Services\PengajuanWorkflowService();
-            $workflow->complete($id, (int) current_admin()['id']);
-            return $this->respondOk('Pesanan selesai.', '/admin/pengajuan/' . $id);
+            $updated = $workflow->receive($id, (int) current_admin()['id']);
+            
+            $msg = 'Pesanan ditandai diterima.';
+            if (($updated['status'] ?? '') === 'selesai') {
+                $msg = 'Pesanan ditandai diterima dan otomatis selesai karena pembayaran sudah terverifikasi.';
+            }
+            return $this->respondOk($msg, '/admin/pengajuan/' . $id);
         } catch (\Throwable $e) {
-            log_message('error', 'Selesai pengajuan ' . $id . ' gagal: ' . $e->getMessage());
-            return $this->respondFail('Gagal menyelesaikan: ' . $e->getMessage(), 409);
+            log_message('error', 'Terima pengajuan ' . $id . ' gagal: ' . $e->getMessage());
+            return $this->respondFail('Gagal menerima: ' . $e->getMessage(), 409);
         }
+    }
+
+    /**
+     * @deprecated Status selesai is now automated by the system.
+     */
+    public function selesai(int $id)
+    {
+        return $this->respondFail('Status selesai tidak bisa dilakukan manual. Konfirmasi diterima terlebih dahulu; sistem akan menyelesaikan otomatis saat pembayaran/kredit lunas.', 409);
     }
 
     public function batalkan(int $id)

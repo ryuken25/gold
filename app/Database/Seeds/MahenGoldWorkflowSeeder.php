@@ -40,21 +40,9 @@ class MahenGoldWorkflowSeeder extends Seeder
         $adminRow = $db->table('users')->where('email', 'admin@mahengold.test')->get()->getRowArray();
         $adminId  = $adminRow ? (int) $adminRow['id'] : 1;
 
-        // 3. Fetch Balinese users seeded by MahenGoldSeeder
+        // 3. Fetch single customer
         $userEmails = [
-            'winayaarya@gmail.com', // I Wayan Zebec 1 (dev user)
-            'made.winayagatar@mahengold.test', // I Made Winayagatar Arya Bhanu
-            'kirana.maheswari@mahengold.test', // Ni Putu Kirana Maheswari
-            'arya.pranata@mahengold.test', // I Kadek Arya Pranata
-            'sekar.lestari@mahengold.test', // Ni Made Sekar Lestari
-            'aditya.mahendra@mahengold.test', // I Komang Aditya Mahendra
-            'diah.paramitha@mahengold.test', // Ni Kadek Diah Paramitha
-            'surya.pradnyana@mahengold.test', // I Wayan Surya Pradnyana
-            'ayu.saraswati@mahengold.test', // Ni Luh Ayu Saraswati
-            'bagus.pramana@mahengold.test', // I Nyoman Bagus Pramana
-            'citra.dewayani@mahengold.test', // Ni Komang Citra Dewayani
-            'dharma.wijaya@mahengold.test', // I Ketut Dharma Wijaya
-            'anjani.larasati@mahengold.test', // Ni Putu Anjani Larasati
+            'kadeknadi98@gmail.com',
         ];
 
         $users = [];
@@ -62,8 +50,7 @@ class MahenGoldWorkflowSeeder extends Seeder
             $user = $db->table('users')->where('email', $email)->get()->getRowArray();
             if ($user) {
                 $users[$email] = $user;
-                // Ensure nasabah profile exists for the user
-                $this->upsertNasabah($db, (int)$user['id'], $user['nama'], $user['no_telepon'] ?: '6281200000001');
+                $this->upsertNasabah($db, (int)$user['id'], $user['nama'], $user['no_telepon'] ?: '6281234567890');
             }
         }
 
@@ -83,351 +70,30 @@ class MahenGoldWorkflowSeeder extends Seeder
         $pick = fn(array $codes) => (int) ($produk[$codes[0]]['id'] ?? reset($produk)['id']);
         $calculator = new CreditCalculatorService();
 
-        // Write demo image for KTP
-        $this->writeDemoImage(WRITEPATH . 'uploads/ktp/demo_ktp.png', 'KTP DEMO', 'KTP');
+        // Generate demo KTP
+        $this->writeDemoImage(WRITEPATH . 'uploads/ktp/demo_ktp.png', 'KTP DEMO', 'kadeknadi98@gmail.com');
 
         // ============================================================
-        // SEED SCENARIOS
+        // SEED SINGLE ACTIVE CREDIT OVERDUE SCENARIO
         // ============================================================
-
-        // 1. Pengajuan kredit baru belum diverifikasi (Zebec)
         $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['winayaarya@gmail.com']['id'],
-            'produk_emas_id'    => $pick(['MGD-001']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'baru',
-            'pembayaran_status' => 'belum',
-            'days_ago'          => 5,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-        ]);
-
-        // 2. Pengajuan kredit disetujui dengan DP pending (Zebec)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['winayaarya@gmail.com']['id'],
-            'produk_emas_id'    => $pick(['MGD-002']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 6,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'disetujui',
-            'pembayaran_status' => 'menunggu', // DP pending
-            'days_ago'          => 6,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-        ]);
-
-        // 3. Pengajuan kredit disetujui dengan DP verified (Zebec)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['winayaarya@gmail.com']['id'],
+            'user_id'           => $users['kadeknadi98@gmail.com']['id'],
             'produk_emas_id'    => $pick(['MGD-003']),
             'metode_pembayaran' => 'kredit',
             'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'disetujui',
+            'uang_muka'         => 500000,
+            'status'            => 'diterima', // order received, credit active, NOT completed
             'pembayaran_status' => 'terverifikasi', // DP verified
-            'days_ago'          => 7,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-        ]);
-
-        // 4. Pengajuan kredit DP 0 yang siap dikirim (Made Winayagatar)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['made.winayagatar@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-004']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 6,
-            'uang_muka'         => 0,
-            'status'            => 'disetujui',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 8,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-        ]);
-
-        // 5. Cash pending verifikasi (Made Winayagatar)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['made.winayagatar@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-005']),
-            'metode_pembayaran' => 'cash',
-            'status'            => 'disetujui',
-            'pembayaran_status' => 'menunggu', // Cash pending
-            'days_ago'          => 9,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'nominal_cash'      => (int) $produk['MGD-005']['harga_pokok'],
-        ]);
-
-        // 6. Cash verified siap dikirim (Ni Putu Kirana)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['kirana.maheswari@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-006']),
-            'metode_pembayaran' => 'cash',
-            'status'            => 'disetujui',
-            'pembayaran_status' => 'terverifikasi', // Cash verified
-            'days_ago'          => 10,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'nominal_cash'      => (int) $produk['MGD-006']['harga_pokok'],
-        ]);
-
-        // 7. Pesanan dikirim via resi (Ni Putu Kirana)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['kirana.maheswari@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-007']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'dikirim',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 12,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-RESI-777',
-        ]);
-
-        // 8. Pesanan dikirim via nomor HP (I Kadek Arya)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['arya.pranata@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-008']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'dikirim',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 13,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'no_hp',
-            'shipping_ref'      => '6281200000004',
-        ]);
-
-        // 9. Pesanan selesai (I Kadek Arya)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['arya.pranata@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-009']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 15,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-RESI-999',
-        ]);
-
-        // 10. Pesanan ditolak (Ni Made Sekar)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['sekar.lestari@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-010']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'ditolak',
-            'pembayaran_status' => 'belum',
-            'days_ago'          => 4,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'reject_reason'     => 'Identitas KTP tidak terbaca dengan jelas.',
-        ]);
-
-        // 11. Kredit aktif lancar (Zebec)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['winayaarya@gmail.com']['id'],
-            'produk_emas_id'    => $pick(['MGD-005']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 45,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-ZEBEC-111',
-            'payment_scenario'  => 'lancar',
-        ]);
-
-        // 12. Kredit H-3 jatuh tempo (I Komang Aditya)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['aditya.mahendra@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-001']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 27,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-ADITYA-122',
-            'payment_scenario'  => 'H-3',
-        ]);
-
-        // 13. Kredit jatuh tempo hari ini (Ni Kadek Diah)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['diah.paramitha@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-002']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 30,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-DIAH-133',
-            'payment_scenario'  => 'today',
-        ]);
-
-        // 14. Kredit jatuh tempo bulan depan (I Wayan Surya)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['surya.pradnyana@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-003']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 1,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-SURYA-144',
-            'payment_scenario'  => 'bulan-depan',
-        ]);
-
-        // 15. Kredit telat 7 hari (Zebec)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['winayaarya@gmail.com']['id'],
-            'produk_emas_id'    => $pick(['MGD-004']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
             'days_ago'          => 37,
             'admin_id'          => $adminId,
             'margin'            => $margin,
             'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-ZEBEC-155',
-            'payment_scenario'  => 'telat-7',
-        ]);
-
-        // 16. Kredit telat 30 hari (Ni Luh Ayu)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['ayu.saraswati@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-005']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 60,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-AYU-166',
-            'payment_scenario'  => 'telat-30',
-        ]);
-
-        // 17. Kredit pembayaran sebagian (I Nyoman Bagus)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['bagus.pramana@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-006']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 35,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-BAGUS-177',
-            'payment_scenario'  => 'sebagian',
-        ]);
-
-        // 18. Kredit pembayaran multi-jadwal (Ni Komang Citra)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['citra.dewayani@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-007']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 65,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-CITRA-188',
-            'payment_scenario'  => 'multi-jadwal',
-        ]);
-
-        // 19. Kredit lunas (I Ketut Dharma)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['dharma.wijaya@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-008']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 370,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-DHARMA-199',
-            'payment_scenario'  => 'lunas',
-        ]);
-
-        // 20. Bukti cicilan pending verifikasi (Ni Putu Anjani)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['anjani.larasati@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-009']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 35,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-ANJANI-200',
-            'payment_scenario'  => 'cicilan-pending',
-        ]);
-
-        // 21. Bukti cicilan ditolak dan bisa upload ulang (Ni Putu Anjani)
-        $this->simulateWorkflow($db, $calculator, [
-            'user_id'           => $users['anjani.larasati@mahengold.test']['id'],
-            'produk_emas_id'    => $pick(['MGD-010']),
-            'metode_pembayaran' => 'kredit',
-            'tenor_bulan'       => 12,
-            'uang_muka'         => $dpMinimal,
-            'status'            => 'selesai',
-            'pembayaran_status' => 'terverifikasi',
-            'days_ago'          => 35,
-            'admin_id'          => $adminId,
-            'margin'            => $margin,
-            'shipping_method'   => 'resi',
-            'shipping_ref'      => 'REG-ANJANI-211',
-            'payment_scenario'  => 'cicilan-rejected',
+            'shipping_ref'      => 'REG-NADI-001',
+            'payment_scenario'  => 'telat-7', // first schedule is terlambat (7 days overdue)
         ]);
 
         log_message('info', 'MahenGoldWorkflowSeeder completed successfully.');
     }
-
-    // ================================================================
-    // SIMULATION WORKFLOW ENGINE
-    // ================================================================
 
     protected function simulateWorkflow($db, $calculator, array $params): int
     {
@@ -436,8 +102,8 @@ class MahenGoldWorkflowSeeder extends Seeder
         $metodePembayaran = $params['metode_pembayaran'];
         $tenorBulan = $params['tenor_bulan'] ?? 12;
         $uangMuka = $params['uang_muka'] ?? 200000;
-        $targetStatus = $params['status']; // baru, disetujui, dikirim, selesai, ditolak
-        $pembayaranStatus = $params['pembayaran_status'] ?? 'belum'; // belum, menunggu, terverifikasi
+        $targetStatus = $params['status'];
+        $pembayaranStatus = $params['pembayaran_status'] ?? 'belum';
         $daysAgo = $params['days_ago'] ?? 30;
         $adminId = $params['admin_id'];
 
@@ -453,7 +119,7 @@ class MahenGoldWorkflowSeeder extends Seeder
             'produk_emas_id'    => $produkEmasId,
             'metode_pembayaran' => $metodePembayaran,
             'nama'              => $user['nama'],
-            'no_telepon'        => $user['no_telepon'] ?: '6281200000001',
+            'no_telepon'        => $user['no_telepon'] ?: '6281234567890',
             'alamat'            => $nasabah['alamat'] ?? 'Denpasar, Bali',
             'tenor_bulan'       => $tenorBulan,
             'periode_angsuran'  => 'bulanan',
@@ -466,8 +132,8 @@ class MahenGoldWorkflowSeeder extends Seeder
 
         $this->logAktivitas($db, $pengajuanId, 'dibuat', 'Pesanan dibuat oleh pelanggan', 'pelanggan');
 
-        // 2. Order Verification (DIVERIFIKASI / DISETUJUI)
-        if (in_array($targetStatus, ['disetujui', 'dikirim', 'selesai', 'ditolak'], true)) {
+        // 2. Order Verification (DISETUJUI)
+        if (in_array($targetStatus, ['disetujui', 'dikirim', 'diterima', 'selesai', 'ditolak'], true)) {
             $verifDaysAgo = max(0, $daysAgo - 1);
             $verifDate = $today->modify("-{$verifDaysAgo} days");
 
@@ -483,29 +149,16 @@ class MahenGoldWorkflowSeeder extends Seeder
                 $updateData['pembayaran_status'] = 'menunggu';
             }
 
-            if ($targetStatus === 'ditolak') {
-                $updateData['catatan'] = $params['reject_reason'] ?? 'Pesanan ditolak karena KTP kurang jelas.';
-                $updateData['ditolak_pada'] = $verifDate->format('Y-m-d H:i:s');
-                $updateData['ditolak_oleh'] = $adminId;
-            }
-
             $db->table('pengajuan')->where('id', $pengajuanId)->update($updateData);
 
-            if ($targetStatus === 'ditolak') {
-                $this->logAktivitas($db, $pengajuanId, 'ditolak', $updateData['catatan'], 'admin');
-                return $pengajuanId;
-            }
-
-            $this->logAktivitas($db, $pengajuanId, 'diverifikasi', 'Pesanan disetujui admin', 'admin');
-
-            // Auto-create Kredit row if kredit
+            // Auto-create Kredit row if credit
             if ($metodePembayaran === 'kredit') {
                 $kreditId = $this->buatKreditDariPengajuan($db, $pengajuanId, $params['margin'], $adminId, $verifDate);
             }
         }
 
         // 3. Payment Upload (DP/Cash Proof)
-        if ($pembayaranStatus !== 'belum' && in_array($targetStatus, ['disetujui', 'dikirim', 'selesai'], true)) {
+        if ($pembayaranStatus !== 'belum' && in_array($targetStatus, ['disetujui', 'dikirim', 'diterima', 'selesai'], true)) {
             $payDaysAgo = max(0, $daysAgo - 2);
             $payDate = $today->modify("-{$payDaysAgo} days");
 
@@ -525,7 +178,7 @@ class MahenGoldWorkflowSeeder extends Seeder
         }
 
         // 4. Shipping (DIKIRIM)
-        if (in_array($targetStatus, ['dikirim', 'selesai'], true)) {
+        if (in_array($targetStatus, ['dikirim', 'diterima', 'selesai'], true)) {
             $shipDaysAgo = max(0, $daysAgo - 3);
             $shipDate = $today->modify("-{$shipDaysAgo} days");
 
@@ -540,7 +193,21 @@ class MahenGoldWorkflowSeeder extends Seeder
             $this->logAktivitas($db, $pengajuanId, 'dikirim', 'Pesanan dikirim via ' . ($params['shipping_method'] ?? 'resi'), 'admin');
         }
 
-        // 5. Completion (SELESAI)
+        // 4b. Received (DITERIMA)
+        if (in_array($targetStatus, ['diterima', 'selesai'], true)) {
+            $recvDaysAgo = max(0, $daysAgo - 3);
+            $recvDate = $today->modify("-{$recvDaysAgo} days");
+
+            $db->table('pengajuan')->where('id', $pengajuanId)->update([
+                'status'        => 'diterima',
+                'diterima_pada' => $recvDate->format('Y-m-d H:i:s'),
+                'diterima_oleh' => $adminId,
+            ]);
+
+            $this->logAktivitas($db, $pengajuanId, 'diterima', 'Pesanan dikonfirmasi sudah diterima pelanggan.', 'admin');
+        }
+
+        // 5. Completion (SELESAI) - only if requested status is selesai
         if ($targetStatus === 'selesai') {
             $completeDaysAgo = max(0, $daysAgo - 4);
             $completeDate = $today->modify("-{$completeDaysAgo} days");
@@ -548,10 +215,10 @@ class MahenGoldWorkflowSeeder extends Seeder
             $db->table('pengajuan')->where('id', $pengajuanId)->update([
                 'status'       => 'selesai',
                 'selesai_pada' => $completeDate->format('Y-m-d H:i:s'),
-                'selesai_oleh' => $adminId,
+                'selesai_oleh' => null,
             ]);
 
-            $this->logAktivitas($db, $pengajuanId, 'selesai', 'Pesanan selesai', 'admin');
+            $this->logAktivitas($db, $pengajuanId, 'selesai', 'Pesanan selesai otomatis karena pembayaran/kredit sudah lunas.', 'system');
         }
 
         // 6. Installment payment scenarios (for credit)
@@ -561,10 +228,6 @@ class MahenGoldWorkflowSeeder extends Seeder
 
         return $pengajuanId;
     }
-
-    // ================================================================
-    // WORKFLOW STAGE SUB-HELPERS
-    // ================================================================
 
     protected function upsertNasabah($db, int $userId, string $nama, string $noTelepon): int
     {
@@ -712,10 +375,6 @@ class MahenGoldWorkflowSeeder extends Seeder
         return $kreditId;
     }
 
-    // ================================================================
-    // PAYMENT SCENARIO APPLIER
-    // ================================================================
-
     protected function applyPaymentScenario($db, int $kreditId, string $scenario, DateTimeImmutable $today, int $adminId, int $userId, string $email): void
     {
         $schedules = $db->table('jadwal_angsuran')->where('kredit_id', $kreditId)->orderBy('angsuran_ke', 'ASC')->get()->getResultArray();
@@ -723,55 +382,6 @@ class MahenGoldWorkflowSeeder extends Seeder
         $sisaPokok = (int) $kredit['sisa_pokok_kredit'];
 
         switch ($scenario) {
-            case 'lancar':
-                // Set first schedule in past, pay it.
-                if (isset($schedules[0])) {
-                    $dueDate = $today->modify('-15 days');
-                    $nominal = (int) round((float) $schedules[0]['nominal_tagihan']);
-
-                    $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
-                        'tanggal_jatuh_tempo' => $dueDate->format('Y-m-d'),
-                        'nominal_dibayar'     => $nominal,
-                        'status'              => 'dibayar',
-                        'tanggal_dibayar'     => $dueDate->format('Y-m-d'),
-                    ]);
-
-                    $this->recordPayment($db, $kreditId, $schedules[0]['id'], $nominal, $dueDate, $adminId, 'Pembayaran Angsuran 1');
-
-                    $db->table('kredit')->where('id', $kreditId)->update([
-                        'total_terbayar' => $nominal,
-                        'sisa_piutang'   => max(0, $sisaPokok - $nominal),
-                    ]);
-                }
-                break;
-
-            case 'H-3':
-                if (isset($schedules[0])) {
-                    $dueDate = $today->modify('+3 days');
-                    $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
-                        'tanggal_jatuh_tempo' => $dueDate->format('Y-m-d'),
-                    ]);
-                }
-                break;
-
-            case 'today':
-                if (isset($schedules[0])) {
-                    $dueDate = $today;
-                    $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
-                        'tanggal_jatuh_tempo' => $dueDate->format('Y-m-d'),
-                    ]);
-                }
-                break;
-
-            case 'bulan-depan':
-                if (isset($schedules[0])) {
-                    $dueDate = $today->modify('+30 days');
-                    $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
-                        'tanggal_jatuh_tempo' => $dueDate->format('Y-m-d'),
-                    ]);
-                }
-                break;
-
             case 'telat-7':
                 if (isset($schedules[0])) {
                     $dueDate = $today->modify('-7 days');
@@ -797,238 +407,11 @@ class MahenGoldWorkflowSeeder extends Seeder
                     ]);
                 }
                 break;
-
-            case 'telat-30':
-                if (isset($schedules[0])) {
-                    $dueDate = $today->modify('-30 days');
-                    $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
-                        'tanggal_jatuh_tempo' => $dueDate->format('Y-m-d'),
-                        'status'              => 'terlambat',
-                    ]);
-
-                    // Seed reminder log
-                    $db->table('reminder_angsuran_logs')->insert([
-                        'kredit_id'          => $kreditId,
-                        'jadwal_angsuran_id' => $schedules[0]['id'],
-                        'user_id'            => $userId,
-                        'nasabah_id'         => $kredit['nasabah_id'],
-                        'jenis'              => 'terlambat',
-                        'channel'            => 'email',
-                        'tujuan'             => $email,
-                        'subjek'             => 'Pemberitahuan Keterlambatan Pembayaran Angsuran',
-                        'pesan'              => 'Angsuran Anda sudah telat 30 hari...',
-                        'status'             => 'sukses',
-                        'tanggal_referensi'  => $dueDate->format('Y-m-d'),
-                        'created_at'         => date('Y-m-d H:i:s'),
-                    ]);
-                }
-                break;
-
-            case 'sebagian':
-                if (isset($schedules[0])) {
-                    $dueDate = $today->modify('-5 days');
-                    $nominal = (int) round((float) $schedules[0]['nominal_tagihan']);
-                    $bayar = (int) ($nominal * 0.5); // 50%
-
-                    $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
-                        'tanggal_jatuh_tempo' => $dueDate->format('Y-m-d'),
-                        'nominal_dibayar'     => $bayar,
-                        'status'              => 'sebagian',
-                        'tanggal_dibayar'     => $dueDate->format('Y-m-d'),
-                    ]);
-
-                    $this->recordPayment($db, $kreditId, $schedules[0]['id'], $bayar, $dueDate, $adminId, 'Pembayaran Sebagian');
-
-                    $db->table('kredit')->where('id', $kreditId)->update([
-                        'total_terbayar' => $bayar,
-                        'sisa_piutang'   => max(0, $sisaPokok - $bayar),
-                    ]);
-                }
-                break;
-
-            case 'multi-jadwal':
-                if (count($schedules) >= 2) {
-                    $dueDate1 = $today->modify('-35 days');
-                    $dueDate2 = $today->modify('-5 days');
-
-                    $nom1 = (int) round((float) $schedules[0]['nominal_tagihan']);
-                    $nom2 = (int) round((float) $schedules[1]['nominal_tagihan']);
-                    $total = $nom1 + $nom2;
-
-                    // Update schedules
-                    $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
-                        'tanggal_jatuh_tempo' => $dueDate1->format('Y-m-d'),
-                        'nominal_dibayar'     => $nom1,
-                        'status'              => 'dibayar',
-                        'tanggal_dibayar'     => $dueDate2->format('Y-m-d'),
-                    ]);
-
-                    $db->table('jadwal_angsuran')->where('id', $schedules[1]['id'])->update([
-                        'tanggal_jatuh_tempo' => $dueDate2->format('Y-m-d'),
-                        'nominal_dibayar'     => $nom2,
-                        'status'              => 'dibayar',
-                        'tanggal_dibayar'     => $dueDate2->format('Y-m-d'),
-                    ]);
-
-                    // Single payment covering both
-                    $db->table('pembayaran_angsuran')->insert([
-                        'kode_pembayaran'   => 'PENDING',
-                        'kredit_id'         => $kreditId,
-                        'nominal_bayar'     => $total,
-                        'tanggal_bayar'     => $dueDate2->format('Y-m-d'),
-                        'metode_pembayaran' => 'transfer',
-                        'keterangan'        => 'Pembayaran multi-jadwal (Angsuran 1 & 2)',
-                        'dicatat_oleh'      => $adminId,
-                        'created_at'        => $dueDate2->format('Y-m-d H:i:s'),
-                    ]);
-                    $payId = $db->insertID();
-                    $db->table('pembayaran_angsuran')->where('id', $payId)->update(['kode_pembayaran' => generate_kode('BYR', $payId)]);
-
-                    // Allocations
-                    $db->table('pembayaran_alokasi')->insertBatch([
-                        [
-                            'pembayaran_angsuran_id' => $payId,
-                            'jadwal_angsuran_id'     => $schedules[0]['id'],
-                            'nominal_alokasi'        => $nom1,
-                            'created_at'             => date('Y-m-d H:i:s'),
-                        ],
-                        [
-                            'pembayaran_angsuran_id' => $payId,
-                            'jadwal_angsuran_id'     => $schedules[1]['id'],
-                            'nominal_alokasi'        => $nom2,
-                            'created_at'             => date('Y-m-d H:i:s'),
-                        ]
-                    ]);
-
-                    $db->table('kredit')->where('id', $kreditId)->update([
-                        'total_terbayar' => $total,
-                        'sisa_piutang'   => max(0, $sisaPokok - $total),
-                    ]);
-                }
-                break;
-
-            case 'lunas':
-                $totalPaid = 0;
-                $pBatch = [];
-                
-                foreach ($schedules as $index => $s) {
-                    $nominal = (int) round((float) $s['nominal_tagihan']);
-                    $dueDate = $today->modify("-" . (12 - $index) . " months");
-                    
-                    $db->table('jadwal_angsuran')->where('id', $s['id'])->update([
-                        'tanggal_jatuh_tempo' => $dueDate->format('Y-m-d'),
-                        'nominal_dibayar'     => $nominal,
-                        'status'              => 'dibayar',
-                        'tanggal_dibayar'     => $dueDate->format('Y-m-d'),
-                    ]);
-
-                    $this->recordPayment($db, $kreditId, $s['id'], $nominal, $dueDate, $adminId, 'Pembayaran Angsuran ' . ($index + 1));
-                    $totalPaid += $nominal;
-                }
-
-                $db->table('kredit')->where('id', $kreditId)->update([
-                    'total_terbayar' => $totalPaid,
-                    'sisa_piutang'   => 0,
-                    'status'         => 'lunas',
-                ]);
-                break;
-
-            case 'cicilan-pending':
-                if (isset($schedules[0])) {
-                    $dueDate = $today->modify('-5 days');
-                    $nominal = (int) round((float) $schedules[0]['nominal_tagihan']);
-
-                    $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
-                        'tanggal_jatuh_tempo' => $dueDate->format('Y-m-d'),
-                        'status'              => 'terlambat',
-                    ]);
-
-                    // Pending bukti pembayaran
-                    $file = 'demo_bukti_cicilan_' . $schedules[0]['id'] . '.png';
-                    $this->writeDemoImage(WRITEPATH . 'uploads/bukti/' . $file, 'BUKTI ANGSURAN', 'Ref');
-
-                    $db->table('bukti_pembayaran')->insert([
-                        'tipe'               => 'cicilan',
-                        'kredit_id'          => $kreditId,
-                        'jadwal_angsuran_id' => $schedules[0]['id'],
-                        'user_id'            => $userId,
-                        'nominal'            => $nominal,
-                        'file_path'          => $file,
-                        'status'             => 'menunggu',
-                        'created_at'         => $dueDate->format('Y-m-d H:i:s'),
-                    ]);
-                    $bid = $db->insertID();
-                    $db->table('bukti_pembayaran')->where('id', $bid)->update(['kode' => generate_kode('BKT', $bid)]);
-                }
-                break;
-
-            case 'cicilan-rejected':
-                if (isset($schedules[0])) {
-                    $dueDate = $today->modify('-5 days');
-                    $nominal = (int) round((float) $schedules[0]['nominal_tagihan']);
-
-                    $db->table('jadwal_angsuran')->where('id', $schedules[0]['id'])->update([
-                        'tanggal_jatuh_tempo' => $dueDate->format('Y-m-d'),
-                        'status'              => 'terlambat',
-                    ]);
-
-                    // Ditolak bukti pembayaran
-                    $file = 'demo_bukti_cicilan_reject_' . $schedules[0]['id'] . '.png';
-                    $this->writeDemoImage(WRITEPATH . 'uploads/bukti/' . $file, 'BUKTI REJECTED', 'Ref');
-
-                    $db->table('bukti_pembayaran')->insert([
-                        'tipe'               => 'cicilan',
-                        'kredit_id'          => $kreditId,
-                        'jadwal_angsuran_id' => $schedules[0]['id'],
-                        'user_id'            => $userId,
-                        'nominal'            => $nominal,
-                        'file_path'          => $file,
-                        'status'             => 'ditolak',
-                        'catatan_admin'      => 'Bukti transfer buram/tidak terbaca.',
-                        'diverifikasi_oleh'  => $adminId,
-                        'diverifikasi_pada'  => $dueDate->format('Y-m-d H:i:s'),
-                        'created_at'         => $dueDate->format('Y-m-d H:i:s'),
-                    ]);
-                    $bid = $db->insertID();
-                    $db->table('bukti_pembayaran')->where('id', $bid)->update(['kode' => generate_kode('BKT', $bid)]);
-                }
-                break;
         }
     }
-
-    protected function recordPayment($db, int $kreditId, int $jadwalId, int $nominal, DateTimeImmutable $date, int $adminId, string $keterangan): void
-    {
-        $db->table('pembayaran_angsuran')->insert([
-            'kode_pembayaran'   => 'PENDING',
-            'kredit_id'         => $kreditId,
-            'jadwal_angsuran_id'=> $jadwalId,
-            'nominal_bayar'     => $nominal,
-            'tanggal_bayar'     => $date->format('Y-m-d'),
-            'metode_pembayaran' => 'transfer',
-            'keterangan'        => $keterangan,
-            'dicatat_oleh'      => $adminId,
-            'created_at'        => $date->format('Y-m-d H:i:s'),
-        ]);
-        $payId = $db->insertID();
-        $db->table('pembayaran_angsuran')->where('id', $payId)->update(['kode_pembayaran' => generate_kode('BYR', $payId)]);
-
-        $db->table('pembayaran_alokasi')->insert([
-            'pembayaran_angsuran_id' => $payId,
-            'jadwal_angsuran_id'     => $jadwalId,
-            'nominal_alokasi'        => $nominal,
-            'created_at'             => $date->format('Y-m-d H:i:s'),
-        ]);
-    }
-
-    // ================================================================
-    // IMAGE CREATOR HELPER
-    // ================================================================
 
     protected function writeDemoImage(string $path, string $judul, string $sub): void
     {
-        if (is_file($path)) {
-            return;
-        }
         $dir = dirname($path);
         if (!is_dir($dir)) {
             @mkdir($dir, 0755, true);
@@ -1039,15 +422,45 @@ class MahenGoldWorkflowSeeder extends Seeder
 
         if (function_exists('imagecreatetruecolor')) {
             $img  = imagecreatetruecolor(640, 400);
-            $bg   = imagecolorallocate($img, 28, 26, 23);
-            $gold = imagecolorallocate($img, 201, 162, 75);
-            $soft = imagecolorallocate($img, 156, 147, 133);
-            imagefilledrectangle($img, 0, 0, 640, 400, $bg);
-            imagefilledrectangle($img, 0, 0, 640, 64, imagecolorallocate($img, 18, 17, 15));
-            imagestring($img, 5, 24, 24, 'MahenGold', $gold);
-            imagestring($img, 4, 24, 150, $judul, $gold);
-            imagestring($img, 3, 24, 185, 'Ref: ' . $sub, $soft);
-            imagestring($img, 2, 24, 360, 'Gambar contoh data demo.', $soft);
+            
+            if (strpos($path, 'ktp') !== false) {
+                $bg   = imagecolorallocate($img, 45, 62, 80);
+                $gold = imagecolorallocate($img, 201, 162, 75);
+                $white = imagecolorallocate($img, 255, 255, 255);
+                $red = imagecolorallocate($img, 220, 53, 69);
+                
+                imagefilledrectangle($img, 0, 0, 640, 400, $bg);
+                imagefilledrectangle($img, 0, 0, 640, 64, imagecolorallocate($img, 28, 38, 49));
+                imagestring($img, 5, 24, 24, 'DUMMY / BUKAN DOKUMEN RESMI', $red);
+                
+                imagestring($img, 5, 24, 90, 'KARTU IDENTITAS DUMMY', $gold);
+                imagestring($img, 4, 24, 140, 'NIK  : DEMO-000001', $white);
+                imagestring($img, 4, 24, 180, 'Nama : I Kadek Nadi Artana', $white);
+                imagestring($img, 4, 24, 220, 'Asal : Denpasar, Bali', $white);
+                
+                imagestring($img, 5, 100, 300, 'DUMMY - BUKAN DOKUMEN RESMI', $red);
+                imagestring($img, 2, 24, 370, 'Hanya digunakan untuk keperluan pengujian sistem.', $white);
+            } else {
+                $bg   = imagecolorallocate($img, 244, 246, 249);
+                $dark = imagecolorallocate($img, 33, 37, 41);
+                $gold = imagecolorallocate($img, 185, 130, 19);
+                $green = imagecolorallocate($img, 40, 167, 69);
+                $red = imagecolorallocate($img, 220, 53, 69);
+                
+                imagefilledrectangle($img, 0, 0, 640, 400, $bg);
+                imagerectangle($img, 10, 10, 630, 390, $gold);
+                imagefilledrectangle($img, 11, 11, 629, 64, imagecolorallocate($img, 233, 236, 239));
+                imagestring($img, 5, 24, 24, 'BUKTI PEMBAYARAN DUMMY', $green);
+                imagestring($img, 4, 450, 24, 'STATUS: SUCCESS', $green);
+                
+                imagestring($img, 5, 150, 150, 'DUMMY - TIDAK SAH', $red);
+                imagestring($img, 4, 50, 200, 'Referensi : ' . $sub, $dark);
+                imagestring($img, 4, 50, 240, 'Nominal   : ' . $judul, $dark);
+                imagestring($img, 4, 50, 280, 'Tanggal   : ' . date('Y-m-d'), $dark);
+                
+                imagestring($img, 2, 50, 350, 'Dokumen ini dibuat otomatis sebagai data simulasi seeder.', $dark);
+            }
+            
             imagepng($img, $path);
             imagedestroy($img);
             return;
