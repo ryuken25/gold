@@ -125,6 +125,30 @@ $relatif = static function ($datetime): string {
                                 <?php endif; ?>
                             </a>
 
+                            <?php // UPDATED: aksi verifikasi/tolak bukti langsung dari detail pesanan.
+                            // Tanpa ini pembayaran cash tidak pernah bisa terverifikasi,
+                            // sehingga tombol "Kirim Pesanan" terkunci selamanya. ?>
+                            <div class="small text-muted-mg mt-2">
+                                <?= esc(strtoupper($b['tipe'])); ?> · <?= esc(format_rupiah($b['nominal'] ?? 0)); ?>
+                            </div>
+                            <?php if ($b['status'] === 'menunggu'): ?>
+                                <span class="badge text-bg-warning small">Menunggu verifikasi</span>
+                                <div class="btn-group btn-group-sm d-flex mt-1">
+                                    <button type="button" class="btn btn-gold js-verif-bukti" data-id="<?= (int) $b['id']; ?>">
+                                        <i class="bi bi-check"></i> Verifikasi
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger js-tolak-bukti" data-id="<?= (int) $b['id']; ?>">
+                                        <i class="bi bi-x"></i> Tolak
+                                    </button>
+                                </div>
+                            <?php elseif ($b['status'] === 'terverifikasi'): ?>
+                                <span class="badge text-bg-success small">Terverifikasi</span>
+                            <?php elseif ($b['status'] === 'ditolak'): ?>
+                                <span class="badge text-bg-danger small">Ditolak</span>
+                                <?php if (!empty($b['catatan_admin'])): ?>
+                                    <div class="small text-danger">Alasan: <?= esc($b['catatan_admin']); ?></div>
+                                <?php endif; ?>
+                            <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -204,11 +228,11 @@ $relatif = static function ($datetime): string {
                     if ($payStatus === 'terverifikasi') {
                         $bisaKirim = true;
                     } else {
-                        $kirimReason = 'Pembayaran cash belum terverifikasi. Verifikasi pembayaran terlebih dahulu.';
+                        $kirimReason = 'Pembayaran cash belum terverifikasi. Verifikasi bukti pembayaran pada panel di sebelah kiri terlebih dahulu.';
                     }
                 } elseif ($metode === 'kredit') {
                     if ($uangMuka > 0 && $payStatus !== 'terverifikasi') {
-                        $kirimReason = 'DP belum terverifikasi. Verifikasi pembayaran DP terlebih dahulu.';
+                        $kirimReason = 'DP belum terverifikasi. Verifikasi bukti pembayaran DP pada panel di sebelah kiri terlebih dahulu.';
                     } else {
                         $bisaKirim = true;
                     }
@@ -368,6 +392,42 @@ $relatif = static function ($datetime): string {
         });
     });
 
+    // VERIFIKASI / TOLAK BUKTI PEMBAYARAN (cash & dp)
+    document.querySelectorAll('.js-verif-bukti').forEach(btn => {
+        btn.addEventListener('click', () => {
+            MahenDialog.confirm({
+                title: 'Verifikasi Pembayaran',
+                message: 'Pastikan nominal, rekening pengirim, dan bukti pembayaran sudah sesuai sebelum melanjutkan.',
+                confirmText: 'Ya, Verifikasi',
+                confirmClass: 'btn-gold',
+                onConfirm: async (helpers) => {
+                    try {
+                        const res = await MahenAjax.post('/admin/pembayaran/' + btn.dataset.id + '/verifikasi');
+                        helpers.close();
+                        MahenDialog.success({ title: 'Berhasil', message: res.message, onConfirm: () => window.location.href = BASE });
+                    } catch (err) { helpers.finish(); MahenDialog.error({ title: 'Gagal', message: err.message }); }
+                }
+            });
+        });
+    });
+
+    document.querySelectorAll('.js-tolak-bukti').forEach(btn => {
+        btn.addEventListener('click', () => {
+            MahenDialog.form({
+                title: 'Tolak Bukti Pembayaran',
+                fields: [{ name: 'catatan_admin', label: 'Alasan Penolakan', type: 'textarea', required: true, minlength: 5, placeholder: 'Jelaskan alasan penolakan...', rows: 3 }],
+                submitText: 'Tolak',
+                submitClass: 'btn-danger',
+                onsubmit: async (data, helpers) => {
+                    try {
+                        const res = await MahenAjax.post('/admin/pembayaran/' + btn.dataset.id + '/tolak', { catatan_admin: data.catatan_admin || '' });
+                        helpers.close();
+                        MahenDialog.success({ title: 'Ditolak', message: res.message, onConfirm: () => window.location.href = BASE });
+                    } catch (err) { helpers.setError(err.message); helpers.finish(); }
+                }
+            });
+        });
+    });
 
 })();
 </script>

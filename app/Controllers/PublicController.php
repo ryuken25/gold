@@ -136,8 +136,10 @@ class PublicController extends BaseController
             $rules['tenor_bulan']      = 'required|in_list[6,10,12]';
             $rules['periode_angsuran'] = 'required|in_list[bulanan,mingguan]';
             $rules['uang_muka']        = 'required|in_list[200000,500000,1000000]';
-            $rules['foto_ktp']         = 'uploaded[foto_ktp]|is_image[foto_ktp]|mime_in[foto_ktp,image/jpeg,image/jpg,image/png]|max_size[foto_ktp,3072]';
         }
+        // Foto KTP wajib untuk KEDUA metode (cash maupun kredit) — sesuai form
+        // pemesanan yang menandai field ini required untuk semua metode.
+        $rules['foto_ktp']      = 'uploaded[foto_ktp]|is_image[foto_ktp]|mime_in[foto_ktp,image/jpeg,image/jpg,image/png]|max_size[foto_ktp,3072]';
         // Bukti pembayaran wajib untuk KEDUA metode (cash maupun kredit).
         $rules['bukti']         = 'uploaded[bukti]|max_size[bukti,3072]|ext_in[bukti,jpg,jpeg,png,pdf]|mime_in[bukti,image/jpeg,image/jpg,image/png,application/pdf]';
         $rules['nama_pengirim'] = 'permit_empty|max_length[150]';
@@ -186,29 +188,28 @@ class PublicController extends BaseController
             }
         }
 
+        // Foto KTP (WAJIB untuk cash maupun kredit) — disimpan sebelum insert
+        // pesanan supaya tidak ada order tanpa identitas pemesan.
         $namaFile = null;
-        if ($metode === 'kredit') {
-            $file = $this->request->getFile('foto_ktp');
-            if ($file && $file->isValid() && !$file->hasMoved()) {
-                $ktpDir = WRITEPATH . 'uploads/ktp/';
-                if (!is_dir($ktpDir) && !@mkdir($ktpDir, 0755, true) && !is_dir($ktpDir)) {
-                    return $this->gagalUpload('Gagal menyiapkan folder upload KTP. Hubungi admin.');
-                }
-                if (!is_file($ktpDir . 'index.html')) {
-                    @file_put_contents($ktpDir . 'index.html', '');
-                }
-                try {
-                    $namaFile = $file->getRandomName();
-                    $file->move($ktpDir, $namaFile);
-                } catch (\Throwable $e) {
-                    $namaFile = null;
-                }
+        $file = $this->request->getFile('foto_ktp');
+        if ($file && $file->isValid() && !$file->hasMoved()) {
+            $ktpDir = WRITEPATH . 'uploads/ktp/';
+            if (!is_dir($ktpDir) && !@mkdir($ktpDir, 0755, true) && !is_dir($ktpDir)) {
+                return $this->gagalUpload('Gagal menyiapkan folder upload KTP. Hubungi admin.');
             }
+            if (!is_file($ktpDir . 'index.html')) {
+                @file_put_contents($ktpDir . 'index.html', '');
+            }
+            try {
+                $namaFile = $file->getRandomName();
+                $file->move($ktpDir, $namaFile);
+            } catch (\Throwable $e) {
+                $namaFile = null;
+            }
+        }
 
-            // Untuk kredit, KTP wajib benar-benar tersimpan sebelum lanjut.
-            if ($namaFile === null || !is_file(WRITEPATH . 'uploads/ktp/' . $namaFile)) {
-                return $this->gagalUpload('Foto KTP gagal diunggah. Coba lagi dengan file JPG/PNG maksimal 3 MB.');
-            }
+        if ($namaFile === null || !is_file(WRITEPATH . 'uploads/ktp/' . $namaFile)) {
+            return $this->gagalUpload('Foto KTP gagal diunggah. Coba lagi dengan file JPG/PNG maksimal 3 MB.');
         }
 
         // Bukti pembayaran (WAJIB untuk cash maupun kredit) — disimpan

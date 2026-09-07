@@ -89,7 +89,7 @@
                             // Cash row class based on status
                             if (in_array($row['status'], ['selesai'])) {
                                 $rowClass = 'row-lunas';
-                            } elseif (in_array($row['status'], ['disetujui', 'dikirim'])) {
+                            } elseif (in_array($row['status'], ['disetujui', 'dikirim', 'diterima'])) {
                                 $rowClass = 'row-aktif';
                             } elseif (in_array($row['status'], ['ditolak', 'dibatalkan'])) {
                                 $rowClass = 'row-overdue';

@@ -32,7 +32,7 @@ class PengajuanController extends BaseAdminController
         // Count per bucket
         $counts = [
             'perlu'   => $db->table('pengajuan')->whereIn('status', ['baru', 'diproses'])->countAllResults(),
-            'proses'  => $db->table('pengajuan')->whereIn('status', ['disetujui', 'dikirim', 'selesai'])->countAllResults(),
+            'proses'  => $db->table('pengajuan')->whereIn('status', ['disetujui', 'dikirim', 'diterima', 'selesai'])->countAllResults(),
             'ditolak' => $db->table('pengajuan')->whereIn('status', ['ditolak', 'dibatalkan'])->countAllResults(),
         ];
 
@@ -45,7 +45,7 @@ class PengajuanController extends BaseAdminController
         if ($bucket === 'perlu') {
             $builder->whereIn('pg.status', ['baru', 'diproses']);
         } elseif ($bucket === 'proses') {
-            $builder->whereIn('pg.status', ['disetujui', 'dikirim', 'selesai']);
+            $builder->whereIn('pg.status', ['disetujui', 'dikirim', 'diterima', 'selesai']);
         } elseif ($bucket === 'ditolak') {
             $builder->whereIn('pg.status', ['ditolak', 'dibatalkan']);
         }
